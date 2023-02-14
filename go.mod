@@ -22,9 +22,17 @@ require (
 )
 
 require (
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
+	github.com/gorilla/schema v1.2.0 // indirect
+	github.com/spf13/cast v1.5.0 // indirect
+	github.com/twitchtv/twirp v8.1.2+incompatible // indirect
+)
+
+require (
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
 	github.com/fox-one/msgpack v1.0.0 // indirect
+	github.com/fox-one/pkg/httputil v0.0.1
 	github.com/fox-one/pkg/uuid v0.0.1 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/gin-gonic/gin v1.8.1 // indirect
