@@ -10,7 +10,10 @@ import (
 	"github.com/fox-one/pkg/logger"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/handler/hc"
+	"github.com/pandodao/botastic/store"
+	"github.com/pandodao/botastic/store/property"
 	"github.com/rs/cors"
 
 	"github.com/drone/signal"
@@ -25,6 +28,13 @@ func NewCmdHttpd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			ctx := cmd.Context()
+			cfg := config.C()
+			h := store.MustInit(store.Config{
+				Driver: cfg.DB.Driver,
+				DSN:    cfg.DB.DSN,
+			})
+
+			_ = property.New(h.DB)
 
 			mux := chi.NewMux()
 			mux.Use(middleware.Recoverer)
@@ -34,7 +44,6 @@ func NewCmdHttpd() *cobra.Command {
 			mux.Use(middleware.Logger)
 			mux.Use(middleware.NewCompressor(5).Handler)
 
-			// /
 			{
 				mux.Get("/", func(w http.ResponseWriter, r *http.Request) {
 					w.Write([]byte("hello world"))

@@ -1,41 +1,29 @@
 package property
 
 import (
-	"context"
-	_ "embed"
-
-	"github.com/jmoiron/sqlx"
 	"github.com/pandodao/botastic/core"
+	"github.com/pandodao/botastic/store"
+	"github.com/pandodao/botastic/store/property/dao"
+	"gorm.io/gen"
+	"gorm.io/gorm"
 )
 
-func New(db *sqlx.DB) core.PropertyStore {
-	return &store{
-		db: db,
+func init() {
+	store.RegistGenerate(
+		"store/property/dao",
+		func(g *gen.Generator) {
+			g.ApplyInterface(func(core.PropertyStore) {}, core.Property{})
+		},
+	)
+}
+
+func New(db *gorm.DB) core.PropertyStore {
+	dao.SetDefault(db)
+	return &storeImpl{
+		PropertyStore: dao.Property,
 	}
 }
 
-type store struct {
-	db *sqlx.DB
-}
-
-func (s *store) Get(ctx context.Context, key string) (core.PropertyValue, error) {
-	pp := &core.Property{}
-	return pp.Value, nil
-}
-
-func (s *store) Set(ctx context.Context, key string, value interface{}) error {
-	query, args, err := s.db.BindNamed("", map[string]interface{}{
-		"key":   key,
-		"value": value,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	if _, err = s.db.ExecContext(ctx, query, args...); err != nil {
-		return err
-	}
-
-	return nil
+type storeImpl struct {
+	core.PropertyStore
 }

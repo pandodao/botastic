@@ -16,8 +16,14 @@ type (
 	PropertyValue string
 
 	PropertyStore interface {
+		// SELECT value FROM @@table WHERE key=@key
 		Get(ctx context.Context, key string) (PropertyValue, error)
-		Set(ctx context.Context, key string, value interface{}) error
+		// UPDATE @@table
+		//  {{set}}
+		//    value=@value
+		//  {{end}}
+		// WHERE key=@key
+		Set(ctx context.Context, key string, value interface{}) (int64, error)
 	}
 )
 
