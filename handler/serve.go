@@ -4,16 +4,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"botastic/core"
-	"botastic/handler/asset"
-	"botastic/handler/echo"
-	"botastic/handler/render"
-
 	"github.com/go-chi/chi"
+	"github.com/pandodao/botastic/handler/render"
 )
 
-func New(cfg Config, assets core.AssetStore) Server {
-	return Server{cfg: cfg, assets: assets}
+func New(cfg Config) Server {
+	return Server{cfg: cfg}
 }
 
 type (
@@ -21,8 +17,7 @@ type (
 	}
 
 	Server struct {
-		cfg    Config
-		assets core.AssetStore
+		cfg Config
 	}
 )
 
@@ -32,16 +27,6 @@ func (s Server) HandleRest() http.Handler {
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		render.Error(w, http.StatusNotFound, fmt.Errorf("not found"))
-	})
-
-	r.Route("/echo", func(r chi.Router) {
-		r.Get("/{msg}", echo.Get())
-		r.Post("/", echo.Post())
-	})
-
-	r.Route("/assets", func(r chi.Router) {
-		r.Get("/", asset.GetAssets(s.assets))
-		r.Get("/{assetID}", asset.GetAsset(s.assets))
 	})
 
 	return r
