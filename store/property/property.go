@@ -9,8 +9,11 @@ import (
 )
 
 func init() {
+	cfg := gen.Config{
+		OutPath: "store/property/dao",
+	}
 	store.RegistGenerate(
-		"store/property/dao",
+		cfg,
 		func(g *gen.Generator) {
 			g.ApplyInterface(func(core.PropertyStore) {}, core.Property{})
 		},
@@ -19,9 +22,11 @@ func init() {
 
 func New(db *gorm.DB) core.PropertyStore {
 	dao.SetDefault(db)
-	return &storeImpl{
-		PropertyStore: dao.Property,
+	s := &storeImpl{}
+	if v, ok := interface{}(dao.Property).(core.PropertyStore); ok {
+		s.PropertyStore = v
 	}
+	return s
 }
 
 type storeImpl struct {

@@ -74,26 +74,25 @@ func Init(cfg Config) (*Handler, error) {
 }
 
 type generateModel struct {
-	outputPath string
-	f          func(g *gen.Generator)
+	cfg gen.Config
+	f   func(g *gen.Generator)
 }
 
 var generateModels []*generateModel
 
-func RegistGenerate(outputPath string, f func(g *gen.Generator)) {
+func RegistGenerate(cfg gen.Config, f func(g *gen.Generator)) {
 	generateModels = append(generateModels, &generateModel{
-		outputPath: outputPath,
-		f:          f,
+		cfg: cfg,
+		f:   f,
 	})
 }
 
 func (h *Handler) Generate() {
 	for _, gm := range generateModels {
-		g := gen.NewGenerator(gen.Config{
-			OutPath: gm.outputPath,
-			Mode:    gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface,
-		})
-
+		if gm.cfg.Mode == 0 {
+			gm.cfg.Mode = gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface
+		}
+		g := gen.NewGenerator(gm.cfg)
 		g.UseDB(h.DB)
 		gm.f(g)
 		g.Execute()

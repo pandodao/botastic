@@ -158,12 +158,12 @@ type IPropertyDo interface {
 	UnderlyingDB() *gorm.DB
 	schema.Tabler
 
-	Get(ctx context.Context, key string) (result core.PropertyValue, err error)
+	Get(ctx context.Context, key string) (result string, err error)
 	Set(ctx context.Context, key string, value interface{}) (result int64, err error)
 }
 
 // SELECT value FROM @@table WHERE key=@key
-func (p propertyDo) Get(ctx context.Context, key string) (result core.PropertyValue, err error) {
+func (p propertyDo) Get(ctx context.Context, key string) (result string, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
@@ -180,7 +180,8 @@ func (p propertyDo) Get(ctx context.Context, key string) (result core.PropertyVa
 // UPDATE @@table
 // {{set}}
 //
-//	value=@value
+//	value=@value,
+//	updated_at=NOW()
 //
 // {{end}}
 // WHERE key=@key
@@ -191,7 +192,7 @@ func (p propertyDo) Set(ctx context.Context, key string, value interface{}) (res
 	generateSQL.WriteString("UPDATE properties ")
 	var setSQL0 strings.Builder
 	params = append(params, value)
-	setSQL0.WriteString("value=? ")
+	setSQL0.WriteString("value=?, updated_at=NOW() ")
 	helper.JoinSetBuilder(&generateSQL, setSQL0)
 	params = append(params, key)
 	generateSQL.WriteString("WHERE key=? ")
