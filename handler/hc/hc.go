@@ -4,10 +4,9 @@ import (
 	"net/http"
 	"time"
 
-	"botastic/handler/render"
-
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	"github.com/pandodao/botastic/handler/render"
 )
 
 func Handle(version string) http.Handler {

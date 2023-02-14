@@ -79,8 +79,15 @@ func defaultConfig() *Config {
 	}
 }
 
+var cfg *Config
+
+func C() *Config {
+	return cfg
+}
+
 func MustInit(fp string) *Config {
-	cfg, err := Init(fp)
+	var err error
+	cfg, err = Init(fp)
 	if err != nil {
 		log.Fatal(err)
 	}

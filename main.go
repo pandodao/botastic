@@ -18,11 +18,9 @@ import (
 	"context"
 	"os"
 
-	"botastic/cmd/root"
-	"botastic/cmdutil"
-	"botastic/session"
-
 	_ "github.com/lib/pq"
+	"github.com/pandodao/botastic/cmd/root"
+	"github.com/pandodao/botastic/session"
 
 	"github.com/spf13/cobra"
 )
@@ -42,18 +40,6 @@ func main() {
 	}
 
 	rootCmd := root.NewCmdRoot(version)
-
-	if len(expandedArgs) > 0 && !hasCommand(rootCmd, expandedArgs) {
-		name := expandedArgs[0]
-		if b, err := cmdutil.LookupAndLoadKeystore(name); err == nil {
-			if store, pin, err := cmdutil.DecodeKeystore(b); err == nil {
-				s.WithKeystore(store)
-				s.WithPin(pin)
-
-				expandedArgs = expandedArgs[1:]
-			}
-		}
-	}
 
 	rootCmd.SetArgs(expandedArgs)
 	if err := rootCmd.ExecuteContext(ctx); err != nil {

@@ -3,20 +3,14 @@ package httpd
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
 
-	"botastic/config"
-	"botastic/handler"
-	"botastic/handler/hc"
-	"botastic/store/asset"
-
 	"github.com/fox-one/pkg/logger"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-	"github.com/jmoiron/sqlx"
+	"github.com/pandodao/botastic/handler/hc"
 	"github.com/rs/cors"
 
 	"github.com/drone/signal"
@@ -31,22 +25,6 @@ func NewCmdHttpd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			ctx := cmd.Context()
-
-			conn, err := sqlx.Connect(config.C().DB.Driver, config.C().DB.Datasource)
-			if err != nil {
-				log.Fatalln("connect to database failed", err)
-			}
-			conn.SetMaxIdleConns(2)
-
-			defer conn.Close()
-
-			// s := session.From(ctx)
-			// client, err := s.GetClient()
-			// if err != nil {
-			// 	return err
-			// }
-
-			assets := asset.New(conn)
 
 			mux := chi.NewMux()
 			mux.Use(middleware.Recoverer)
@@ -66,15 +44,6 @@ func NewCmdHttpd() *cobra.Command {
 			// hc
 			{
 				mux.Mount("/hc", hc.Handle(cmd.Version))
-			}
-
-			// rpc & api
-			{
-				cfg := handler.Config{}
-				svr := handler.New(cfg, assets)
-				// api v1
-				restHandler := svr.HandleRest()
-				mux.Mount("/api", restHandler)
 			}
 
 			port := 8080
