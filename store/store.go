@@ -90,7 +90,7 @@ func RegistGenerate(cfg gen.Config, f func(g *gen.Generator)) {
 func (h *Handler) Generate() {
 	for _, gm := range generateModels {
 		if gm.cfg.Mode == 0 {
-			gm.cfg.Mode = gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface
+			gm.cfg.Mode = gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface | gen.WithoutCRUDMethods
 		}
 		g := gen.NewGenerator(gm.cfg)
 		g.UseDB(h.DB)

@@ -23,9 +23,11 @@ func init() {
 func New(db *gorm.DB) core.PropertyStore {
 	dao.SetDefault(db)
 	s := &storeImpl{}
-	if v, ok := interface{}(dao.Property).(core.PropertyStore); ok {
-		s.PropertyStore = v
+	v, ok := interface{}(dao.Property).(core.PropertyStore)
+	if !ok {
+		panic("dao.Property is not core.PropertyStore")
 	}
+	s.PropertyStore = v
 	return s
 }
 
