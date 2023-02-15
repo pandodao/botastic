@@ -23,9 +23,11 @@ func init() {
 func New(db *gorm.DB) core.AppStore {
 	dao.SetDefault(db)
 	s := &storeImpl{}
-	if v, ok := interface{}(dao.App).(core.AppStore); ok {
-		s.AppStore = v
+	v, ok := interface{}(dao.App).(core.AppStore)
+	if !ok {
+		panic("dao.App is not core.AppStore")
 	}
+	s.AppStore = v
 	return s
 }
 
