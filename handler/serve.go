@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi"
+	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/handler/auth"
 	"github.com/pandodao/botastic/handler/bot"
 	"github.com/pandodao/botastic/handler/conv"
@@ -13,8 +14,12 @@ import (
 	"github.com/pandodao/botastic/session"
 )
 
-func New(cfg Config) Server {
-	return Server{cfg: cfg}
+func New(cfg Config, s *session.Session, apps core.AppStore) Server {
+	return Server{
+		cfg:     cfg,
+		apps:    apps,
+		session: s,
+	}
 }
 
 type (
@@ -25,13 +30,14 @@ type (
 		cfg Config
 
 		session *session.Session
+		apps    core.AppStore
 	}
 )
 
 func (s Server) HandleRest() http.Handler {
 	r := chi.NewRouter()
 	r.Use(render.WrapResponse(true))
-	r.Use(auth.HandleAuthentication(s.session))
+	r.Use(auth.HandleAuthentication(s.session, s.apps))
 
 	r.Route("/indexes", func(r chi.Router) {
 		r.Post("/{indexName}", indexHandler.CreateIndex())

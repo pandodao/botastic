@@ -1,32 +1,39 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/pandodao/botastic/core"
+	"github.com/pandodao/botastic/handler/render"
 	"github.com/pandodao/botastic/session"
+	"gorm.io/gorm"
 )
 
-func HandleAuthentication(s *session.Session) func(http.Handler) http.Handler {
+func HandleAuthentication(s *session.Session, apps core.AppStore) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			// ctx := r.Context()
+			ctx := r.Context()
 
 			appID, appSecret := getAuthInfo(r)
 			if appID == "" || appSecret == "" {
-				next.ServeHTTP(w, r)
+				render.Error(w, http.StatusUnauthorized, errors.New("missing app id or secret"))
 				return
 			}
 
-			// @TODO check appID and appSecret
-			// app, err := foo(ctx, appID, appSecret)
-			// if err != nil {
-			// 	fmt.Println("auth app", err)
-			// 	next.ServeHTTP(w, r)
-			// 	return
-			// }
-			// next.ServeHTTP(w, r.WithContext(
-			// 	session.WithUser(ctx, app),
-			// ))
+			app, err := apps.GetAppByAppID(ctx, appID)
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				render.Error(w, http.StatusInternalServerError, err)
+				return
+			}
+			if app.AppSecret != appSecret {
+				render.Error(w, http.StatusUnauthorized, errors.New("invalid app id or secret"))
+				return
+			}
+
+			next.ServeHTTP(w, r.WithContext(
+				session.WithApp(r.Context(), app),
+			))
 		}
 
 		return http.HandlerFunc(fn)

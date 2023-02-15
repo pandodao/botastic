@@ -11,9 +11,11 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/pandodao/botastic/config"
+	"github.com/pandodao/botastic/handler"
 	"github.com/pandodao/botastic/handler/hc"
+	"github.com/pandodao/botastic/session"
 	"github.com/pandodao/botastic/store"
-	"github.com/pandodao/botastic/store/property"
+	"github.com/pandodao/botastic/store/app"
 	"github.com/rs/cors"
 
 	"github.com/drone/signal"
@@ -28,13 +30,14 @@ func NewCmdHttpd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			ctx := cmd.Context()
+			s := session.From(ctx)
+
 			cfg := config.C()
 			h := store.MustInit(store.Config{
 				Driver: cfg.DB.Driver,
 				DSN:    cfg.DB.DSN,
 			})
-
-			_ = property.New(h.DB)
+			apps := app.New(h.DB)
 
 			mux := chi.NewMux()
 			mux.Use(middleware.Recoverer)
@@ -53,6 +56,14 @@ func NewCmdHttpd() *cobra.Command {
 			// hc
 			{
 				mux.Mount("/hc", hc.Handle(cmd.Version))
+			}
+
+			{
+				svr := handler.New(handler.Config{}, s, apps)
+
+				// api v1
+				restHandler := svr.HandleRest()
+				mux.Mount("/api", restHandler)
 			}
 
 			port := 8080
