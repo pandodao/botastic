@@ -3,6 +3,7 @@ package gen
 import (
 	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/store"
+	_ "github.com/pandodao/botastic/store/app"
 	_ "github.com/pandodao/botastic/store/property"
 	"github.com/spf13/cobra"
 )
