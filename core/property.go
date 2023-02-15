@@ -7,17 +7,12 @@ import (
 )
 
 type (
-	Property struct {
-		Key       string        `json:"key"`
-		Value     PropertyValue `json:"value"`
-		UpdatedAt *time.Time    `json:"updated_at"`
-	}
-
 	PropertyValue string
 
 	PropertyStore interface {
 		// SELECT value FROM @@table WHERE key=@key
 		Get(ctx context.Context, key string) (string, error)
+
 		// UPDATE @@table
 		//  {{set}}
 		//    value=@value,

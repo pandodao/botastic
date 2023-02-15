@@ -2,6 +2,8 @@ module github.com/pandodao/botastic
 
 go 1.19
 
+replace gorm.io/gen v0.3.22-0.20230213112745-6dc1af4c110b => github.com/pandodao/gen v0.0.0-20230215020331-916e2ec8363e
+
 require (
 	github.com/drone/signal v1.0.0
 	github.com/fox-one/mixin-sdk-go v1.7.2
