@@ -21,4 +21,5 @@ CREATE INDEX idx_apps_app_id ON "apps" USING BTREE("app_id", "deleted_at");
 -- +goose Down
 -- +goose StatementBegin
 DROP TABLE properties;
+DROP TABLE apps;
 -- +goose StatementEnd
