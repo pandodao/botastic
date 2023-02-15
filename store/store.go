@@ -73,43 +73,25 @@ func Init(cfg Config) (*Handler, error) {
 	}, err
 }
 
-type generateData struct {
+type generateModel struct {
 	cfg gen.Config
 	f   func(g *gen.Generator)
 }
 
-var generateDAOs []*generateData
+var generateModels []*generateModel
 
-func RegistGenerateDAO(cfg gen.Config, f func(g *gen.Generator)) {
-	generateDAOs = append(generateDAOs, &generateData{
+func RegistGenerate(cfg gen.Config, f func(g *gen.Generator)) {
+	generateModels = append(generateModels, &generateModel{
 		cfg: cfg,
 		f:   f,
 	})
 }
 
-func (h *Handler) GenerateDAOs() {
-	for _, gm := range generateDAOs {
-		if gm.cfg.Mode == 0 {
-			gm.cfg.Mode = gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface | gen.WithoutCRUDMethods
-		}
-		g := gen.NewGenerator(gm.cfg)
-		g.UseDB(h.DB)
-		gm.f(g)
-		g.Execute()
-	}
-}
-
-var generateModels []*generateData
-
-func RegistGenerateModel(cfg gen.Config, f func(g *gen.Generator)) {
-	generateModels = append(generateModels, &generateData{
-		cfg: cfg,
-		f:   f,
-	})
-}
-
-func (h *Handler) GenerateModels() {
+func (h *Handler) Generate() {
 	for _, gm := range generateModels {
+		if gm.cfg.Mode == 0 {
+			gm.cfg.Mode = gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface
+		}
 		g := gen.NewGenerator(gm.cfg)
 		g.UseDB(h.DB)
 		gm.f(g)
