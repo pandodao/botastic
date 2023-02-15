@@ -9,22 +9,13 @@ import (
 )
 
 func init() {
-	store.RegistGenerateDAO(
-		gen.Config{
-			OutPath: "store/property/dao",
-		},
+	cfg := gen.Config{
+		OutPath: "store/property/dao",
+	}
+	store.RegistGenerate(
+		cfg,
 		func(g *gen.Generator) {
 			g.ApplyInterface(func(core.PropertyStore) {}, core.Property{})
-		},
-	)
-
-	store.RegistGenerateModel(
-		gen.Config{
-			ModelPkgPath:     "./core",
-			FieldWithTypeTag: true,
-		},
-		func(g *gen.Generator) {
-			g.GenerateModel("properties")
 		},
 	)
 }
@@ -32,11 +23,9 @@ func init() {
 func New(db *gorm.DB) core.PropertyStore {
 	dao.SetDefault(db)
 	s := &storeImpl{}
-	v, ok := interface{}(dao.Property).(core.PropertyStore)
-	if !ok {
-		panic("dao.Property is not core.PropertyStore")
+	if v, ok := interface{}(dao.Property).(core.PropertyStore); ok {
+		s.PropertyStore = v
 	}
-	s.PropertyStore = v
 	return s
 }
 

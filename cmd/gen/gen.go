@@ -12,31 +12,15 @@ func NewCmdGen() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gen",
 		Short: "generate database operation code",
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, args []string) {
 			cfg := config.C()
 			h := store.MustInit(store.Config{
 				Driver: cfg.DB.Driver,
 				DSN:    cfg.DB.DSN,
 			})
-			cmd.SetContext(store.NewContext(cmd.Context(), h))
+			h.Generate()
 		},
 	}
-
-	cmd.AddCommand(&cobra.Command{
-		Use:   "dao",
-		Short: "Generate database operation code",
-		Run: func(cmd *cobra.Command, args []string) {
-			store.WithContext(cmd.Context()).GenerateDAOs()
-		},
-	})
-
-	cmd.AddCommand(&cobra.Command{
-		Use:   "model",
-		Short: "Generate database models code",
-		Run: func(cmd *cobra.Command, args []string) {
-			store.WithContext(cmd.Context()).GenerateModels()
-		},
-	})
 
 	return cmd
 }
