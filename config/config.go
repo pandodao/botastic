@@ -3,13 +3,20 @@ package config
 import (
 	"io/ioutil"
 	"log"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	DB  DBConfig `yaml:"db"`
-	Sys System   `yaml:"sys"`
+	DB      DBConfig     `yaml:"db"`
+	Sys     System       `yaml:"sys"`
+	OpenAPI OpenAIConfig `yaml:"openai"`
+}
+
+type OpenAIConfig struct {
+	Keys    []string      `yaml:"keys"`
+	Timeout time.Duration `yaml:"timeout"`
 }
 
 type DBConfig struct {

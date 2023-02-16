@@ -13,11 +13,13 @@ import (
 	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/handler"
 	"github.com/pandodao/botastic/handler/hc"
+	"github.com/pandodao/botastic/internal/gpt"
 	appServ "github.com/pandodao/botastic/service/app"
 	botServ "github.com/pandodao/botastic/service/bot"
 	"github.com/pandodao/botastic/session"
 	"github.com/pandodao/botastic/store"
 	"github.com/pandodao/botastic/store/app"
+	"github.com/pandodao/botastic/store/index"
 	"github.com/rs/cors"
 
 	"github.com/drone/signal"
@@ -39,10 +41,20 @@ func NewCmdHttpd() *cobra.Command {
 				Driver: cfg.DB.Driver,
 				DSN:    cfg.DB.DSN,
 			})
+			gptHandler := gpt.New(gpt.Config{
+				Keys:    cfg.OpenAPI.Keys,
+				Timeout: cfg.OpenAPI.Timeout,
+			})
+
 			apps := app.New(h.DB)
 			appz := appServ.New(appServ.Config{
 				SecretKey: cfg.Sys.SecretKey,
 			}, apps)
+			indexes := index.New(h.DB)
+			indexService, err := index.NewService(ctx, gptHandler, indexes)
+			if err != nil {
+				return err
+			}
 
 			botz := botServ.New(botServ.Config{}, apps)
 
@@ -66,7 +78,7 @@ func NewCmdHttpd() *cobra.Command {
 			}
 
 			{
-				svr := handler.New(handler.Config{}, s, apps, appz, botz)
+				svr := handler.New(handler.Config{}, s, apps, appz, botz, indexService)
 
 				// api v1
 				restHandler := svr.HandleRest()

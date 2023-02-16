@@ -16,14 +16,12 @@ import (
 
 func New(cfg Config, s *session.Session,
 	apps core.AppStore,
-	appz core.AppService,
-	botz core.BotService) Server {
+	appz core.AppService, bots core.BotService, indexes core.IndexService) Server {
 	return Server{
-		cfg:  cfg,
-		apps: apps,
-		appz: appz,
-		botz: botz,
-
+		cfg:     cfg,
+		apps:    apps,
+		appz:    appz,
+		indexes: indexes,
 		session: s,
 	}
 }
@@ -38,8 +36,8 @@ type (
 		session *session.Session
 		apps    core.AppStore
 		botz    core.BotService
-
-		appz core.AppService
+		appz    core.AppService
+		indexes core.IndexService
 	}
 )
 
@@ -49,8 +47,8 @@ func (s Server) HandleRest() http.Handler {
 	r.Use(auth.HandleAuthentication(s.session, s.appz))
 
 	r.Route("/indexes", func(r chi.Router) {
-		r.Post("/{indexName}", indexHandler.CreateIndex())
-		r.Get("/{indexName}/search", indexHandler.Search())
+		r.Post("/{indexName}", indexHandler.CreateIndex(s.indexes))
+		r.Get("/{indexName}/search/{data}", indexHandler.Search(s.indexes))
 	})
 
 	r.Route("/bots", func(r chi.Router) {

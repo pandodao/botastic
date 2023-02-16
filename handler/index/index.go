@@ -5,6 +5,7 @@ import (
 
 	"github.com/fox-one/pkg/httputil/param"
 	"github.com/go-chi/chi"
+	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/handler/render"
 )
 
@@ -16,7 +17,7 @@ type CreateIndexPayload struct {
 	Properties string `json:"properties"`
 }
 
-func CreateIndex() http.HandlerFunc {
+func CreateIndex(indexes core.IndexService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		indexName := chi.URLParam(r, "indexName")
 		if indexName == "" {
@@ -29,20 +30,35 @@ func CreateIndex() http.HandlerFunc {
 			return
 		}
 
-		// @TODO create index
+		err := indexes.CreateIndex(r.Context(), body.Data, body.ObjectID, body.IndexName, body.Category, body.Properties)
+		if err != nil {
+			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
 
 		render.JSON(w, nil)
 	}
 }
 
-func Search() http.HandlerFunc {
+func Search(indexes core.IndexService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		indexName := chi.URLParam(r, "indexName")
 		if indexName == "" {
 			render.Error(w, http.StatusBadRequest, nil)
+			return
+		}
+		searchData := chi.URLParam(r, "data")
+		if searchData == "" {
+			render.Error(w, http.StatusBadRequest, nil)
+			return
 		}
 
-		// @TODO search index
-		render.JSON(w, []interface{}{})
+		result, err := indexes.SearchIndex(r.Context(), indexName, searchData, 1)
+		if err != nil {
+			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		render.JSON(w, result)
 	}
 }
