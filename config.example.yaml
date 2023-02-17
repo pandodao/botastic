@@ -1,3 +1,6 @@
 db:
   driver: "postgres"
   dsn: "user=postgres dbname=botastic host=localhost password=postgres sslmode=disable"
+
+sys:
+  secret_key: ""

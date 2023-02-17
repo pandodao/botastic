@@ -9,7 +9,7 @@ CREATE TABLE properties (
 CREATE TABLE apps (
     id BIGSERIAL PRIMARY KEY,
     app_id varchar(256) NOT NULL UNIQUE,
-    app_secret varchar(256) NOT NULL,
+    app_secret_encrypted varchar(256) NOT NULL,
 
     created_at timestamptz,
     updated_at timestamptz,

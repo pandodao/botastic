@@ -8,13 +8,18 @@ import (
 )
 
 type Config struct {
-	DB DBConfig `yaml:"db"`
+	DB  DBConfig `yaml:"db"`
+	Sys System   `yaml:"sys"`
 }
 
 type DBConfig struct {
 	Driver  string `yaml:"driver"`
 	DSN     string `yaml:"dsn"`
 	AutoGen bool   `yaml:"auto_gen"`
+}
+
+type System struct {
+	SecretKey string `yaml:"secret_key"`
 }
 
 func (c Config) validate() error {

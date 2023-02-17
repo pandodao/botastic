@@ -10,7 +10,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func HandleAuthentication(s *session.Session, apps core.AppStore) func(http.Handler) http.Handler {
+func HandleAuthentication(s *session.Session, appz core.AppService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
@@ -21,7 +21,7 @@ func HandleAuthentication(s *session.Session, apps core.AppStore) func(http.Hand
 				return
 			}
 
-			app, err := apps.GetAppByAppID(ctx, appID)
+			app, err := appz.GetAppByAppID(ctx, appID)
 			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 				render.Error(w, http.StatusInternalServerError, err)
 				return

@@ -14,10 +14,13 @@ import (
 	"github.com/pandodao/botastic/session"
 )
 
-func New(cfg Config, s *session.Session, apps core.AppStore) Server {
+func New(cfg Config, s *session.Session,
+	apps core.AppStore,
+	appz core.AppService) Server {
 	return Server{
 		cfg:     cfg,
 		apps:    apps,
+		appz:    appz,
 		session: s,
 	}
 }
@@ -31,13 +34,15 @@ type (
 
 		session *session.Session
 		apps    core.AppStore
+
+		appz core.AppService
 	}
 )
 
 func (s Server) HandleRest() http.Handler {
 	r := chi.NewRouter()
 	r.Use(render.WrapResponse(true))
-	r.Use(auth.HandleAuthentication(s.session, s.apps))
+	r.Use(auth.HandleAuthentication(s.session, s.appz))
 
 	r.Route("/indexes", func(r chi.Router) {
 		r.Post("/{indexName}", indexHandler.CreateIndex())

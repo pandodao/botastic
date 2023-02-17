@@ -1,6 +1,7 @@
 package root
 
 import (
+	"github.com/pandodao/botastic/cmd/app"
 	"github.com/pandodao/botastic/cmd/gen"
 	"github.com/pandodao/botastic/cmd/httpd"
 	"github.com/pandodao/botastic/cmd/migrate"
@@ -22,6 +23,7 @@ func NewCmdRoot(version string) *cobra.Command {
 	cmd.AddCommand(httpd.NewCmdHttpd())
 	cmd.AddCommand(migrate.NewCmdMigrate())
 	cmd.AddCommand(gen.NewCmdGen())
+	cmd.AddCommand(app.NewCmdApp())
 
 	return cmd
 }
