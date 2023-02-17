@@ -14,6 +14,7 @@ import (
 	"github.com/pandodao/botastic/handler"
 	"github.com/pandodao/botastic/handler/hc"
 	appServ "github.com/pandodao/botastic/service/app"
+	botServ "github.com/pandodao/botastic/service/bot"
 	"github.com/pandodao/botastic/session"
 	"github.com/pandodao/botastic/store"
 	"github.com/pandodao/botastic/store/app"
@@ -43,6 +44,8 @@ func NewCmdHttpd() *cobra.Command {
 				SecretKey: cfg.Sys.SecretKey,
 			}, apps)
 
+			botz := botServ.New(botServ.Config{}, apps)
+
 			mux := chi.NewMux()
 			mux.Use(middleware.Recoverer)
 			mux.Use(middleware.StripSlashes)
@@ -63,7 +66,7 @@ func NewCmdHttpd() *cobra.Command {
 			}
 
 			{
-				svr := handler.New(handler.Config{}, s, apps, appz)
+				svr := handler.New(handler.Config{}, s, apps, appz, botz)
 
 				// api v1
 				restHandler := svr.HandleRest()

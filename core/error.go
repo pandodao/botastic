@@ -73,4 +73,6 @@ var (
 	ErrSelfInvitation = errors.New("cannot invite oneself")
 
 	ErrFailedToAddVerification = errors.New("cannot add verification record")
+
+	ErrBotNotFound = errors.New("bot not found")
 )

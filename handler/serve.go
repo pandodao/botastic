@@ -16,11 +16,14 @@ import (
 
 func New(cfg Config, s *session.Session,
 	apps core.AppStore,
-	appz core.AppService) Server {
+	appz core.AppService,
+	botz core.BotService) Server {
 	return Server{
-		cfg:     cfg,
-		apps:    apps,
-		appz:    appz,
+		cfg:  cfg,
+		apps: apps,
+		appz: appz,
+		botz: botz,
+
 		session: s,
 	}
 }
@@ -34,6 +37,7 @@ type (
 
 		session *session.Session
 		apps    core.AppStore
+		botz    core.BotService
 
 		appz core.AppService
 	}
@@ -55,10 +59,10 @@ func (s Server) HandleRest() http.Handler {
 	})
 
 	r.Route("/conversations", func(r chi.Router) {
-		r.Post("/", conv.CreateConversation())
-		r.Get("/{conversationID}", conv.GetConversation())
-		r.Post("/{conversationID}", conv.PostToConversation())
-		r.Delete("/{conversationID}", conv.DeleteConversation())
+		r.Post("/", conv.CreateConversation(s.botz))
+		r.Get("/{conversationID}", conv.GetConversation(s.botz))
+		r.Post("/{conversationID}", conv.PostToConversation(s.botz))
+		r.Delete("/{conversationID}", conv.DeleteConversation(s.botz))
 		r.Put("/{conversationID}", conv.UpdateConversation())
 	})
 
