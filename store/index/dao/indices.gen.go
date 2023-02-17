@@ -128,7 +128,7 @@ type indexDo struct{ gen.DO }
 type IIndexDo interface {
 	WithContext(ctx context.Context) IIndexDo
 
-	CreateIndex(ctx context.Context, appID uint64, data string, vectors []float64, objectID string, indexName string, category string, properties string) (result uint64, err error)
+	UpsertIndex(ctx context.Context, idx *core.Index) (err error)
 	GetIndexes(ctx context.Context) (result []*core.Index, err error)
 }
 
@@ -138,25 +138,31 @@ type IIndexDo interface {
 //
 // VALUES
 //
-//	(@appID, @data, @vectors, @objectID, @indexName, @category, @properties, NOW(), NOW())
+//	(@idx.AppID, @idx.Data, @idx.Vectors, @idx.ObjectID, @idx.IndexName, @idx.Category, @idx.Properties, NOW(), NOW())
 //
-// ON CONFLICT ("text") DO NOTHING
-// RETURNING "id"
-func (i indexDo) CreateIndex(ctx context.Context, appID uint64, data string, vectors []float64, objectID string, indexName string, category string, properties string) (result uint64, err error) {
+// ON CONFLICT ("app_id", "object_id") DO
+//
+//	UPDATE SET "data" = @idx.Data, "vectors" = @idx.Vectors, "index_name" = @idx.IndexName, "category" = @idx.Category, "properties" = @idx.Properties, "updated_at" = NOW()
+func (i indexDo) UpsertIndex(ctx context.Context, idx *core.Index) (err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
-	params = append(params, appID)
-	params = append(params, data)
-	params = append(params, vectors)
-	params = append(params, objectID)
-	params = append(params, indexName)
-	params = append(params, category)
-	params = append(params, properties)
-	generateSQL.WriteString("INSERT INTO indices (\"app_id\", \"data\", \"vectors\", \"object_id\", \"index_name\", \"category\", \"properties\", \"created_at\", \"updated_at\") VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) ON CONFLICT (\"text\") DO NOTHING RETURNING \"id\" ")
+	params = append(params, idx.AppID)
+	params = append(params, idx.Data)
+	params = append(params, idx.Vectors)
+	params = append(params, idx.ObjectID)
+	params = append(params, idx.IndexName)
+	params = append(params, idx.Category)
+	params = append(params, idx.Properties)
+	params = append(params, idx.Data)
+	params = append(params, idx.Vectors)
+	params = append(params, idx.IndexName)
+	params = append(params, idx.Category)
+	params = append(params, idx.Properties)
+	generateSQL.WriteString("INSERT INTO indices (\"app_id\", \"data\", \"vectors\", \"object_id\", \"index_name\", \"category\", \"properties\", \"created_at\", \"updated_at\") VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) ON CONFLICT (\"app_id\", \"object_id\") DO UPDATE SET \"data\" = ?, \"vectors\" = ?, \"index_name\" = ?, \"category\" = ?, \"properties\" = ?, \"updated_at\" = NOW() ")
 
 	var executeSQL *gorm.DB
-	executeSQL = i.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert
+	executeSQL = i.UnderlyingDB().Exec(generateSQL.String(), params...) // ignore_security_alert
 	err = executeSQL.Error
 
 	return

@@ -48,7 +48,7 @@ func (s Server) HandleRest() http.Handler {
 
 	r.Route("/indexes", func(r chi.Router) {
 		r.Post("/{indexName}", indexHandler.CreateIndex(s.indexes))
-		r.Get("/{indexName}/search/{data}", indexHandler.Search(s.indexes))
+		r.Get("/search", indexHandler.Search(s.apps, s.indexes))
 	})
 
 	r.Route("/bots", func(r chi.Router) {

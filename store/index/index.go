@@ -52,7 +52,7 @@ func NewService(ctx context.Context, gptHandler *gpt.Handler, indexes core.Index
 	}
 
 	for _, i := range is {
-		si.indexData[fmt.Sprintf("%d:%s", i.AppID, i.IndexName)][i.Data] = i
+		si.indexData[fmt.Sprintf("%d:%s", i.AppID, i.IndexName)][i.ObjectID] = i
 	}
 	return si, nil
 }
@@ -67,7 +67,7 @@ type serviceImpl struct {
 	indexes    core.IndexStore
 }
 
-func (s *serviceImpl) SearchIndex(ctx context.Context, indexName, text string, limit int) ([]*core.Index, error) {
+func (s *serviceImpl) SearchIndex(ctx context.Context, indexName, keywords string, limit int) ([]*core.Index, error) {
 	if limit <= 0 {
 		return nil, errors.New("limit should be greater than 0")
 	}
@@ -76,13 +76,16 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, indexName, text string, l
 	if app == nil {
 		return nil, fmt.Errorf("app is nil")
 	}
+
 	key := fmt.Sprintf("%d:%s", app.ID, indexName)
-	if s.indexData[key] == nil {
-		return []*core.Index{}, nil
+	if indexName != "" {
+		if s.indexData[key] == nil {
+			return []*core.Index{}, nil
+		}
 	}
 
 	resp, err := s.gptHandler.CreateEmbeddings(ctx, gogpt.EmbeddingRequest{
-		Input: []string{text},
+		Input: []string{keywords},
 		Model: gogpt.AdaEmbeddingV2,
 	})
 	if err != nil {
@@ -94,13 +97,29 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, indexName, text string, l
 
 	indexMap := map[float64]*core.Index{}
 	cosines := make([]float64, 0)
-	for _, d := range s.indexData[key] {
-		cosine, err := Cosine(d.Vectors, resp.Data[0].Embedding)
-		if err != nil {
-			continue
+	if indexName != "" {
+		for _, d := range s.indexData[key] {
+			cosine, err := Cosine(d.Vectors, resp.Data[0].Embedding)
+			if err != nil {
+				continue
+			}
+			cosines = append(cosines, cosine)
+			indexMap[cosine] = d
 		}
-		cosines = append(cosines, cosine)
-		indexMap[cosine] = d
+	} else {
+		for key, appIndexData := range s.indexData {
+			if !strings.HasPrefix(key, fmt.Sprintf("%d:", app.ID)) {
+				continue
+			}
+			for _, d := range appIndexData {
+				cosine, err := Cosine(d.Vectors, resp.Data[0].Embedding)
+				if err != nil {
+					continue
+				}
+				cosines = append(cosines, cosine)
+				indexMap[cosine] = d
+			}
+		}
 	}
 
 	sort.Slice(cosines, func(i, j int) bool {
@@ -109,7 +128,9 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, indexName, text string, l
 
 	result := make([]*core.Index, 0, limit)
 	for i := 0; i < limit && i < len(cosines); i++ {
-		result[i] = indexMap[cosines[i]]
+		idx := indexMap[cosines[i]]
+		idx.Similarity = cosines[i]
+		result[i] = idx
 	}
 
 	return result, nil
@@ -120,40 +141,32 @@ func (s *serviceImpl) CreateIndex(ctx context.Context, indexName, objectID, cate
 	if app == nil {
 		return fmt.Errorf("app is nil")
 	}
-	lines := strings.Split(data, "\n")
-	input := make([]string, 0, len(lines))
 	key := fmt.Sprintf("%d:%s", app.ID, indexName)
 	appIndexData := s.indexData[key]
-	for i, line := range lines {
-		if appIndexData != nil && appIndexData[line] != nil {
-			input[i] = line
-		}
-	}
 
 	resp, err := s.gptHandler.CreateEmbeddings(ctx, gogpt.EmbeddingRequest{
-		Input: input,
+		Input: []string{data},
 		Model: gogpt.AdaEmbeddingV2,
 	})
 	if err != nil {
 		return err
 	}
+	if len(resp.Data) == 0 {
+		return fmt.Errorf("no embedding data")
+	}
 
-	addIndexes := make([]*core.Index, 0, len(resp.Data))
-	if err := dao.Q.Transaction(func(tx *dao.Query) error {
-		for i, e := range resp.Data {
-			rawText := lines[e.Index]
-			id, err := tx.Index.CreateIndex(ctx, app.ID, rawText, e.Embedding, objectID, indexName, category, properties)
-			if err != nil {
-				return err
-			}
-			addIndexes[i] = &core.Index{
-				ID:      id,
-				Data:    rawText,
-				Vectors: e.Embedding,
-			}
-		}
-		return nil
-	}); err != nil {
+	respResult := resp.Data[0]
+	idx := &core.Index{
+		AppID:      app.ID,
+		Data:       data,
+		Vectors:    respResult.Embedding,
+		ObjectID:   objectID,
+		IndexName:  indexName,
+		Category:   category,
+		Properties: properties,
+	}
+	err = s.indexes.UpsertIndex(ctx, idx)
+	if err != nil {
 		return err
 	}
 
@@ -161,9 +174,7 @@ func (s *serviceImpl) CreateIndex(ctx context.Context, indexName, objectID, cate
 		appIndexData = make(map[string]*core.Index)
 		s.indexData[key] = appIndexData
 	}
-	for _, ai := range addIndexes {
-		appIndexData[ai.Data] = ai
-	}
+	appIndexData[objectID] = idx
 
 	return nil
 }

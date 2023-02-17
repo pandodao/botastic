@@ -18,17 +18,17 @@ type (
 		CreatedAt  *time.Time `db:"created_at" json:"created_at"`
 		UpdatedAt  *time.Time `db:"updated_at" json:"updated_at"`
 		DeletedAt  *time.Time `db:"deleted_at" json:"-"`
+		Similarity float64    `gorm:"-" json:"similarity"`
 	}
 
 	IndexStore interface {
 		// INSERT INTO @@table
 		// 	("app_id", "data", "vectors", "object_id", "index_name", "category", "properties", "created_at", "updated_at")
 		// VALUES
-		// 	(@appID, @data, @vectors, @objectID, @indexName, @category, @properties, NOW(), NOW())
-		// ON CONFLICT ("text") DO NOTHING
-		// RETURNING "id"
-		CreateIndex(ctx context.Context, appID uint64, data string, vectors []float64,
-			objectID string, indexName string, category string, properties string) (uint64, error)
+		// 	(@idx.AppID, @idx.Data, @idx.Vectors, @idx.ObjectID, @idx.IndexName, @idx.Category, @idx.Properties, NOW(), NOW())
+		// ON CONFLICT ("app_id", "object_id") DO
+		// 	UPDATE SET "data" = @idx.Data, "vectors" = @idx.Vectors, "index_name" = @idx.IndexName, "category" = @idx.Category, "properties" = @idx.Properties, "updated_at" = NOW()
+		UpsertIndex(ctx context.Context, idx *Index) error
 
 		// SELECT * FROM @@table WHERE
 		// 	"deleted_at" IS NULL
@@ -41,4 +41,3 @@ type (
 		SearchIndex(ctx context.Context, indexName, data string, limit int) ([]*Index, error)
 	}
 )
-

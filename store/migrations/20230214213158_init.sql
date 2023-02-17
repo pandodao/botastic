@@ -30,7 +30,8 @@ CREATE TABLE indexes (
     updated_at timestamptz,
     deleted_at timestamptz
 );
-CREATE INDEX idx_indexes_deleted_at ON "indexes" USING BTREE("app_id", "deleted_at");
+CREATE INDEX idx_indexes_deleted_at ON "indexes" USING BTREE("deleted_at");
+CREATE UNIQUE INDEX idx_indexes_app_id_object_id ON indexes("app_id", "object_id") WHERE "deleted_at" IS NULL;;
 -- +goose StatementEnd
 
 -- +goose Down
