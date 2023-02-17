@@ -71,11 +71,7 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, indexName, keywords strin
 	if limit <= 0 {
 		return nil, errors.New("limit should be greater than 0")
 	}
-
 	app := session.AppFrom(ctx)
-	if app == nil {
-		return nil, fmt.Errorf("app is nil")
-	}
 
 	key := fmt.Sprintf("%d:%s", app.ID, indexName)
 	if indexName != "" {
@@ -138,9 +134,6 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, indexName, keywords strin
 
 func (s *serviceImpl) CreateIndex(ctx context.Context, indexName, objectID, category, properties, data string) error {
 	app := session.AppFrom(ctx)
-	if app == nil {
-		return fmt.Errorf("app is nil")
-	}
 	key := fmt.Sprintf("%d:%s", app.ID, indexName)
 	appIndexData := s.indexData[key]
 

@@ -1,7 +1,6 @@
 package index
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -10,8 +9,6 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/handler/render"
-	"github.com/pandodao/botastic/session"
-	"gorm.io/gorm"
 )
 
 type CreateIndexPayload struct {
@@ -51,6 +48,7 @@ func CreateIndex(indexes core.IndexService) http.HandlerFunc {
 
 func Search(apps core.AppStore, indexes core.IndexService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		indexName := chi.URLParam(r, "indexName")
 		keywords := chi.URLParam(r, "keywords")
 		if keywords == "" {
@@ -67,27 +65,7 @@ func Search(apps core.AppStore, indexes core.IndexService) http.HandlerFunc {
 			}
 		}
 
-		app := session.AppFrom(r.Context())
-		if app == nil {
-			appIDStr := chi.URLParam(r, "appid")
-			if appIDStr == "" {
-				render.Error(w, http.StatusBadRequest, fmt.Errorf("app id is required"))
-				return
-			}
-			var err error
-			app, err = apps.GetAppByAppID(r.Context(), appIDStr)
-			if err != nil {
-				if errors.Is(err, gorm.ErrRecordNotFound) {
-					render.Error(w, http.StatusBadRequest, fmt.Errorf("app not found"))
-					return
-				}
-				render.Error(w, http.StatusInternalServerError, err)
-				return
-			}
-			r = r.WithContext(session.WithApp(r.Context(), app))
-		}
-
-		result, err := indexes.SearchIndex(r.Context(), indexName, keywords, limit)
+		result, err := indexes.SearchIndex(ctx, indexName, keywords, limit)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return

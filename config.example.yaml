@@ -2,5 +2,9 @@ db:
   driver: "postgres"
   dsn: "user=postgres dbname=botastic host=localhost password=postgres sslmode=disable"
 
+openai:
+  keys: ["YOUR_KEY"]
+  timeout: 10s
+
 sys:
   secret_key: ""

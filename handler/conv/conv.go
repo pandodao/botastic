@@ -31,12 +31,7 @@ type (
 func CreateConversation(botz core.BotService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-
 		app := session.AppFrom(ctx)
-		if app == nil {
-			render.Error(w, http.StatusUnauthorized, nil)
-			return
-		}
 
 		body := &CreateConversationPayload{}
 		if err := param.Binding(r, body); err != nil {
@@ -63,10 +58,6 @@ func GetConversation(botz core.BotService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		app := session.AppFrom(ctx)
-		if app == nil {
-			render.Error(w, http.StatusUnauthorized, nil)
-			return
-		}
 
 		conversationID := chi.URLParam(r, "conversationID")
 		if conversationID == "" {
@@ -92,12 +83,7 @@ func GetConversation(botz core.BotService) http.HandlerFunc {
 func PostToConversation(botz core.BotService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-
 		app := session.AppFrom(ctx)
-		if app == nil {
-			render.Error(w, http.StatusUnauthorized, nil)
-			return
-		}
 
 		conversationID := chi.URLParam(r, "conversationID")
 
@@ -127,10 +113,6 @@ func DeleteConversation(botz core.BotService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		app := session.AppFrom(ctx)
-		if app == nil {
-			render.Error(w, http.StatusUnauthorized, nil)
-			return
-		}
 
 		conversationID := chi.URLParam(r, "conversationID")
 		conv, err := botz.GetConversation(ctx, conversationID)
