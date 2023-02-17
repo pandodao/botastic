@@ -32,8 +32,8 @@ func CreateConversation(botz core.BotService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		app, found := session.AppFrom(ctx)
-		if !found {
+		app := session.AppFrom(ctx)
+		if app == nil {
 			render.Error(w, http.StatusUnauthorized, nil)
 			return
 		}
@@ -62,8 +62,8 @@ func CreateConversation(botz core.BotService) http.HandlerFunc {
 func GetConversation(botz core.BotService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		app, found := session.AppFrom(ctx)
-		if !found {
+		app := session.AppFrom(ctx)
+		if app == nil {
 			render.Error(w, http.StatusUnauthorized, nil)
 			return
 		}
@@ -93,8 +93,8 @@ func PostToConversation(botz core.BotService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		app, found := session.AppFrom(ctx)
-		if !found {
+		app := session.AppFrom(ctx)
+		if app == nil {
 			render.Error(w, http.StatusUnauthorized, nil)
 			return
 		}
@@ -126,8 +126,8 @@ func PostToConversation(botz core.BotService) http.HandlerFunc {
 func DeleteConversation(botz core.BotService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		app, found := session.AppFrom(ctx)
-		if !found {
+		app := session.AppFrom(ctx)
+		if app == nil {
 			render.Error(w, http.StatusUnauthorized, nil)
 			return
 		}

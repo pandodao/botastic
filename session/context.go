@@ -23,7 +23,10 @@ func WithApp(ctx context.Context, app *core.App) context.Context {
 	return context.WithValue(ctx, appKey{}, app)
 }
 
-func AppFrom(ctx context.Context) (*core.App, bool) {
+func AppFrom(ctx context.Context) *core.App {
 	u, ok := ctx.Value(appKey{}).(*core.App)
-	return u, ok
+	if ok && u != nil {
+		return u
+	}
+	return nil
 }
