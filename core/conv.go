@@ -12,6 +12,10 @@ const (
 	ConvTurnStatusError
 )
 
+const (
+	MaxTurnCount = 8
+)
+
 type (
 	Conversation struct {
 		ID           string      `yaml:"id" json:"id"`

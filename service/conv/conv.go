@@ -2,7 +2,6 @@ package conv
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -99,8 +98,6 @@ func (s *service) PostToConversation(ctx context.Context, conv *core.Conversatio
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("s.convs: %v\n", s.convs)
-	fmt.Printf("turnID: %v\n", turnID)
 
 	turns, err := s.convs.GetConvTurns(ctx, []uint64{turnID})
 	if err != nil {
@@ -108,6 +105,12 @@ func (s *service) PostToConversation(ctx context.Context, conv *core.Conversatio
 	}
 
 	turn := turns[0]
+
+	if len(conv.History) > core.MaxTurnCount {
+		// reduce to MaxTurnCount
+		conv.History = conv.History[len(conv.History)-core.MaxTurnCount:]
+	}
+
 	conv.History = append(conv.History, turn)
 
 	return turn, nil

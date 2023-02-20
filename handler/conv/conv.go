@@ -104,7 +104,6 @@ func PostToConversation(botz core.BotService, convz core.ConversationService) ht
 			return
 		}
 
-		// @TODO post to conversation
 		turn, err := convz.PostToConversation(ctx, conv, body.Content)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
