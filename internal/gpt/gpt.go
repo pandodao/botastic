@@ -2,12 +2,15 @@ package gpt
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
 	"github.com/fox-one/pkg/logger"
 	gogpt "github.com/sashabaranov/go-gpt3"
 )
+
+var ErrTooManyRequests = errors.New("too many requests")
 
 type Config struct {
 	Keys    []string
@@ -57,6 +60,39 @@ func (h *Handler) CreateEmbeddings(ctx context.Context, request gogpt.EmbeddingR
 	resp, err := client.CreateEmbeddings(ctx, request)
 	if err != nil {
 		logger.FromContext(ctx).WithError(err).Errorln("gpt: create embeddings failed")
+	}
+	return resp, err
+}
+
+func (h *Handler) CreateCompletion(ctx context.Context, request gogpt.CompletionRequest) (gogpt.CompletionResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, h.cfg.Timeout)
+	defer cancel()
+	h.Lock()
+	client := h.clients[h.index]
+	h.index = (h.index + 1) % len(h.clients)
+	h.Unlock()
+
+	resp, err := client.CreateCompletion(ctx, request)
+	if err != nil {
+		var perr *gogpt.APIError
+		if errors.As(err, &perr) {
+			if perr.StatusCode == 429 {
+				return resp, ErrTooManyRequests
+			}
+		}
+
+		var cerr *gogpt.RequestError
+		if errors.As(err, &cerr) {
+			if cerr.StatusCode == 429 {
+				return resp, ErrTooManyRequests
+			}
+		}
+
+		if errors.Is(err, context.DeadlineExceeded) {
+			return resp, ErrTooManyRequests
+		}
+
+		logger.FromContext(ctx).WithError(err).Errorln("gpt: create completion failed")
 	}
 	return resp, err
 }
