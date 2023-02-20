@@ -16,9 +16,11 @@ import (
 	"github.com/pandodao/botastic/internal/gpt"
 	appServ "github.com/pandodao/botastic/service/app"
 	botServ "github.com/pandodao/botastic/service/bot"
+	convServ "github.com/pandodao/botastic/service/conv"
 	"github.com/pandodao/botastic/session"
 	"github.com/pandodao/botastic/store"
 	"github.com/pandodao/botastic/store/app"
+	"github.com/pandodao/botastic/store/conv"
 	"github.com/pandodao/botastic/store/index"
 	"github.com/rs/cors"
 
@@ -47,6 +49,8 @@ func NewCmdHttpd() *cobra.Command {
 			})
 
 			apps := app.New(h.DB)
+			convs := conv.New(h.DB)
+
 			appz := appServ.New(appServ.Config{
 				SecretKey: cfg.Sys.SecretKey,
 			}, apps)
@@ -57,6 +61,7 @@ func NewCmdHttpd() *cobra.Command {
 			}
 
 			botz := botServ.New(botServ.Config{}, apps)
+			convz := convServ.New(convServ.Config{}, apps, convs, botz)
 
 			mux := chi.NewMux()
 			mux.Use(middleware.Recoverer)
@@ -78,7 +83,7 @@ func NewCmdHttpd() *cobra.Command {
 			}
 
 			{
-				svr := handler.New(handler.Config{}, s, apps, appz, botz, indexService)
+				svr := handler.New(handler.Config{}, s, apps, appz, botz, indexService, convz)
 
 				// api v1
 				restHandler := svr.HandleRest()

@@ -28,7 +28,7 @@ type (
 	}
 )
 
-func CreateConversation(botz core.BotService) http.HandlerFunc {
+func CreateConversation(botz core.BotService, convz core.ConversationService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		app := session.AppFrom(ctx)
@@ -44,7 +44,7 @@ func CreateConversation(botz core.BotService) http.HandlerFunc {
 			return
 		}
 
-		conv, err := botz.CreateConversation(ctx, body.BotID, app.ID, body.UserIdentity, body.Lang)
+		conv, err := convz.CreateConversation(ctx, body.BotID, app.ID, body.UserIdentity, body.Lang)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
@@ -54,7 +54,7 @@ func CreateConversation(botz core.BotService) http.HandlerFunc {
 	}
 }
 
-func GetConversation(botz core.BotService) http.HandlerFunc {
+func GetConversation(botz core.BotService, convz core.ConversationService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		app := session.AppFrom(ctx)
@@ -65,7 +65,7 @@ func GetConversation(botz core.BotService) http.HandlerFunc {
 			return
 		}
 
-		conv, err := botz.GetConversation(ctx, conversationID)
+		conv, err := convz.GetConversation(ctx, conversationID)
 		if err != nil {
 			render.Error(w, http.StatusNotFound, err)
 			return
@@ -80,7 +80,7 @@ func GetConversation(botz core.BotService) http.HandlerFunc {
 	}
 }
 
-func PostToConversation(botz core.BotService) http.HandlerFunc {
+func PostToConversation(botz core.BotService, convz core.ConversationService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		app := session.AppFrom(ctx)
@@ -93,7 +93,7 @@ func PostToConversation(botz core.BotService) http.HandlerFunc {
 			return
 		}
 
-		conv, err := botz.GetConversation(ctx, conversationID)
+		conv, err := convz.GetConversation(ctx, conversationID)
 		if err != nil {
 			render.Error(w, http.StatusNotFound, nil)
 		}
@@ -109,13 +109,13 @@ func PostToConversation(botz core.BotService) http.HandlerFunc {
 	}
 }
 
-func DeleteConversation(botz core.BotService) http.HandlerFunc {
+func DeleteConversation(botz core.BotService, convz core.ConversationService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		app := session.AppFrom(ctx)
 
 		conversationID := chi.URLParam(r, "conversationID")
-		conv, err := botz.GetConversation(ctx, conversationID)
+		conv, err := convz.GetConversation(ctx, conversationID)
 		if err != nil {
 			render.Error(w, http.StatusNotFound, nil)
 		}
@@ -125,7 +125,7 @@ func DeleteConversation(botz core.BotService) http.HandlerFunc {
 			return
 		}
 
-		botz.DeleteConversation(ctx, conversationID)
+		convz.DeleteConversation(ctx, conversationID)
 
 		render.JSON(w, nil)
 	}
