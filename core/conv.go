@@ -24,40 +24,49 @@ type (
 	}
 
 	ConvTurn struct {
-		ID           uint64 `yaml:"id" json:"id"`
-		BotID        uint64 `yaml:"bot_id" json:"bot_id"`
-		AppID        uint64 `yaml:"app_id" json:"app_id"`
-		UserIdentity string `yaml:"user_identity" json:"user_identity"`
-		Request      string `yaml:"request" json:"request"`
-		Response     string `yaml:"response" json:"response"`
-		Status       int    `yaml:"status" json:"status"`
-		CreatedAt    int64  `yaml:"created_at" json:"created_at"`
-		UpdatedAt    int64  `yaml:"updated_at" json:"updated_at"`
+		ID             uint64     `yaml:"id" json:"id"`
+		ConversationID string     `yaml:"conversation_id" json:"conversation_id"`
+		BotID          uint64     `yaml:"bot_id" json:"bot_id"`
+		AppID          uint64     `yaml:"app_id" json:"app_id"`
+		UserIdentity   string     `yaml:"user_identity" json:"user_identity"`
+		Request        string     `yaml:"request" json:"request"`
+		Response       string     `yaml:"response" json:"response"`
+		Status         int        `yaml:"status" json:"status"`
+		CreatedAt      *time.Time `yaml:"created_at" json:"created_at"`
+		UpdatedAt      *time.Time `yaml:"updated_at" json:"updated_at"`
 	}
 
 	ConversationStore interface {
 		// INSERT INTO "conv_turns"
 		// 	(
-		//	"bot_id", "app_id", "user_identity",
+		//	"conversation_id", "bot_id", "app_id", "user_identity",
 		//  "request", "response", "status",
 		//  "created_at", "updated_at"
 		//   )
 		// VALUES
 		// 	(
-		//   @botID, @appID, @uid,
-		//   @request, "", 0,
+		//   @convID, @botID, @appID, @uid,
+		//   @request, '', 0,
 		//   NOW(), NOW()
 		//  )
 		// RETURNING "id"
-		CreateConvTurn(ctx context.Context, botID, appID uint64, uid, request string) (uint64, error)
+		CreateConvTurn(ctx context.Context, convID string, botID, appID uint64, uid, request string) (uint64, error)
 
 		// SELECT
-		//	"bot_id", "app_id", "user_identity",
+		//	"id", "conversation_id", "bot_id", "app_id", "user_identity",
 		//  "request", "response", "status",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns" WHERE
 		//  "id" IN (@ids)
 		GetConvTurns(ctx context.Context, ids []uint64) ([]*ConvTurn, error)
+
+		// SELECT
+		//	"id", "conversation_id", "bot_id", "app_id", "user_identity",
+		//  "request", "response", "status",
+		//  "created_at", "updated_at"
+		// FROM "conv_turns" WHERE
+		//  "status"=@status
+		GetConvTurnsByStatus(ctx context.Context, status int) ([]*ConvTurn, error)
 
 		// UPDATE "conv_turns"
 		// 	{{set}}

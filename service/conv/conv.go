@@ -61,18 +61,47 @@ func (s *service) CreateConversation(ctx context.Context, botID, appID uint64, u
 func (s *service) GetConversation(ctx context.Context, convID string) (*core.Conversation, error) {
 	conv, ok := s.conversationMap[convID]
 	if !ok {
-		return nil, fmt.Errorf("conversation not found")
+		return nil, core.ErrConvNotFound
+	}
+
+	ids := []uint64{}
+	for ix := len(conv.History) - 1; ix >= 0; ix-- {
+		turn := conv.History[ix]
+		if turn.Status == core.ConvTurnStatusInit {
+			ids = append(ids, turn.ID)
+		}
+	}
+	if len(ids) != 0 {
+		turns, _ := s.convs.GetConvTurns(ctx, ids)
+		if len(turns) != 0 {
+			turnMap := make(map[uint64]*core.ConvTurn)
+			for _, turn := range turns {
+				turnMap[turn.ID] = turn
+			}
+
+			for ix := len(conv.History) - 1; ix >= 0; ix-- {
+				turn := conv.History[ix]
+				existed, ok := turnMap[turn.ID]
+				if ok && existed.Status != turn.Status {
+					turn.Status = existed.Status
+					turn.Response = existed.Response
+					turn.UpdatedAt = existed.UpdatedAt
+				}
+			}
+		}
 	}
 
 	return conv, nil
 }
 
 func (s *service) PostToConversation(ctx context.Context, conv *core.Conversation, input string) (*core.ConvTurn, error) {
-	// @TODO: add to turn and return the turn
-	turnID, err := s.convs.CreateConvTurn(ctx, conv.Bot.ID, conv.App.ID, conv.UserIdentity, input)
+	turnID, err := s.convs.CreateConvTurn(ctx, conv.ID, conv.Bot.ID, conv.App.ID, conv.UserIdentity, input)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("s.convs: %v\n", s.convs)
+	fmt.Printf("turnID: %v\n", turnID)
+
 	turns, err := s.convs.GetConvTurns(ctx, []uint64{turnID})
 	if err != nil {
 		return nil, err

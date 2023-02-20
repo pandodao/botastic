@@ -5,5 +5,5 @@ INSERT INTO "apps" ("app_id", "app_secret_encrypted", "created_at", "updated_at"
 
 -- +goose Down
 -- +goose StatementBegin
-DELETE FROM "app";
+DELETE FROM "apps";
 -- +goose StatementEnd

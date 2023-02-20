@@ -35,6 +35,7 @@ CREATE UNIQUE INDEX idx_indexes_app_id_object_id ON indexes("app_id", "object_id
 
 CREATE TABLE conv_turns (
     id BIGSERIAL PRIMARY KEY,
+    conversation_id uuid NOT NULL,
     bot_id bigint NOT NULL,
     app_id bigint NOT NULL,
     user_identity varchar(256) NOT NULL,

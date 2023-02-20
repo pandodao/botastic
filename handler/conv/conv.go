@@ -66,7 +66,7 @@ func GetConversation(botz core.BotService, convz core.ConversationService) http.
 		}
 
 		conv, err := convz.GetConversation(ctx, conversationID)
-		if err != nil {
+		if err != nil || conv == nil {
 			render.Error(w, http.StatusNotFound, err)
 			return
 		}
@@ -94,8 +94,9 @@ func PostToConversation(botz core.BotService, convz core.ConversationService) ht
 		}
 
 		conv, err := convz.GetConversation(ctx, conversationID)
-		if err != nil {
+		if err != nil || conv == nil {
 			render.Error(w, http.StatusNotFound, nil)
+			return
 		}
 
 		if conv.App.ID != app.ID {
@@ -104,8 +105,13 @@ func PostToConversation(botz core.BotService, convz core.ConversationService) ht
 		}
 
 		// @TODO post to conversation
+		turn, err := convz.PostToConversation(ctx, conv, body.Content)
+		if err != nil {
+			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
 
-		render.JSON(w, nil)
+		render.JSON(w, turn)
 	}
 }
 
@@ -116,8 +122,9 @@ func DeleteConversation(botz core.BotService, convz core.ConversationService) ht
 
 		conversationID := chi.URLParam(r, "conversationID")
 		conv, err := convz.GetConversation(ctx, conversationID)
-		if err != nil {
+		if err != nil || conv == nil {
 			render.Error(w, http.StatusNotFound, nil)
+			return
 		}
 
 		if conv.App.ID != app.ID {
