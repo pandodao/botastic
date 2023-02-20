@@ -14,6 +14,7 @@ import (
 	"github.com/pandodao/botastic/handler"
 	"github.com/pandodao/botastic/handler/hc"
 	"github.com/pandodao/botastic/internal/gpt"
+	"github.com/pandodao/botastic/internal/milvus"
 	appServ "github.com/pandodao/botastic/service/app"
 	botServ "github.com/pandodao/botastic/service/bot"
 	convServ "github.com/pandodao/botastic/service/conv"
@@ -57,11 +58,12 @@ func NewCmdHttpd() *cobra.Command {
 			appz := appServ.New(appServ.Config{
 				SecretKey: cfg.Sys.SecretKey,
 			}, apps)
-			indexes := index.New(h.DB)
-			indexService, err := index.NewService(ctx, gptHandler, indexes)
+			milvusClient, err := milvus.Init(ctx, cfg.Milvus.Address)
 			if err != nil {
 				return err
 			}
+			indexes := index.New(ctx, milvusClient)
+			indexService := index.NewService(ctx, gptHandler, indexes)
 
 			botz := botServ.New(botServ.Config{}, apps)
 			convz := convServ.New(convServ.Config{}, apps, convs, botz)

@@ -10,8 +10,13 @@ import (
 
 type Config struct {
 	DB      DBConfig     `yaml:"db"`
+	Milvus  Milvus       `yaml:"milvus"`
 	Sys     System       `yaml:"sys"`
 	OpenAPI OpenAIConfig `yaml:"openai"`
+}
+
+type Milvus struct {
+	Address string `yaml:"address"`
 }
 
 type OpenAIConfig struct {

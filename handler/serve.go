@@ -53,8 +53,8 @@ func (s Server) HandleRest() http.Handler {
 	r.Use(render.WrapResponse(true))
 	r.Use(auth.HandleAuthentication(s.session, s.appz))
 
-	r.Route("/indexes", func(r chi.Router) {
-		r.Post("/{indexName}", indexHandler.CreateIndex(s.indexes))
+	r.Route("/indices", func(r chi.Router) {
+		r.Post("/", indexHandler.CreateIndex(s.indexes))
 		r.Get("/search", indexHandler.Search(s.apps, s.indexes))
 	})
 

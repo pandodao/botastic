@@ -2,48 +2,87 @@ package core
 
 import (
 	"context"
-	"time"
 
-	"github.com/lib/pq"
+	"github.com/milvus-io/milvus-sdk-go/v2/entity"
 )
 
 type (
 	Index struct {
-		ID         uint64          `json:"id"`
-		AppID      uint64          `json:"app_id"`
-		Data       string          `json:"data"`
-		Vectors    pq.Float64Array `gorm:"type:numeric[]" json:"vectors"`
-		ObjectID   string          `json:"object_id"`
-		IndexName  string          `json:"index_name"`
-		Category   string          `json:"category"`
-		Properties string          `json:"properties"`
-		CreatedAt  *time.Time      `db:"created_at" json:"created_at"`
-		UpdatedAt  *time.Time      `db:"updated_at" json:"updated_at"`
-		DeletedAt  *time.Time      `db:"deleted_at" json:"-"`
-		Similarity float64         `gorm:"-" json:"similarity"`
+		ID         string    `json:"id"`
+		AppID      string    `json:"app_id"`
+		Data       string    `json:"data"`
+		Vectors    []float32 `json:"vectors"`
+		ObjectID   string    `json:"object_id"`
+		Category   string    `json:"category"`
+		Properties string    `json:"properties"`
+		CreatedAt  int64     `db:"created_at" json:"created_at"`
+		Similarity float64   `gorm:"-" json:"similarity"`
 	}
 
 	IndexStore interface {
-		// INSERT INTO @@table
-		// 	("app_id", "data", "vectors", "object_id", "index_name", "category", "properties", "created_at", "updated_at")
-		// VALUES
-		// 	(@idx.AppID, @idx.Data, @idx.Vectors, @idx.ObjectID, @idx.IndexName, @idx.Category, @idx.Properties, NOW(), NOW())
-		// ON CONFLICT ("app_id", "object_id") DO
-		// 	UPDATE SET "data" = @idx.Data, "vectors" = @idx.Vectors, "index_name" = @idx.IndexName, "category" = @idx.Category, "properties" = @idx.Properties, "updated_at" = NOW()
-		UpsertIndex(ctx context.Context, idx *Index) error
-
-		// SELECT * FROM @@table WHERE
-		// 	"deleted_at" IS NULL
-		GetIndexes(ctx context.Context) ([]*Index, error)
+		CreateIndices(ctx context.Context, idx []*Index) error
+		DeleteByPks(ctx context.Context, items []*Index) error
 	}
 
 	IndexService interface {
-		CreateIndex(ctx context.Context, data string,
-			objectID string, indexName string, category string, properties string) error
+		CreateIndices(ctx context.Context, items []*Index) error
 		SearchIndex(ctx context.Context, indexName, data string, limit int) ([]*Index, error)
 	}
 )
 
-func (i Index) TableName() string {
-	return "indexes"
+func (i Index) CollectionName() string {
+	return "indices"
+}
+
+// func (i Index) PartitionName() string {
+// 	return fmt.Sprintf("%d_%s", i.AppID, i.IndexName)
+// }
+
+func (i Index) Schema() *entity.Schema {
+	return &entity.Schema{
+		CollectionName: i.CollectionName(),
+		AutoID:         true,
+		Fields: []*entity.Field{
+			{
+				Name:       "id",
+				DataType:   entity.FieldTypeVarChar,
+				PrimaryKey: true,
+				TypeParams: map[string]string{"max_length": "64"},
+			},
+			{
+				Name:       "app_id",
+				DataType:   entity.FieldTypeVarChar,
+				TypeParams: map[string]string{"max_length": "32"},
+			},
+			{
+				Name:       "object_id",
+				DataType:   entity.FieldTypeVarChar,
+				TypeParams: map[string]string{"max_length": "32"},
+			},
+			{
+				Name:       "data",
+				DataType:   entity.FieldTypeVarChar,
+				TypeParams: map[string]string{"max_length": "2048"},
+			},
+			{
+				Name:       "vectors",
+				DataType:   entity.FieldTypeFloatVector,
+				TypeParams: map[string]string{"dim": "1536"},
+			},
+			{
+				Name:       "category",
+				DataType:   entity.FieldTypeVarChar,
+				TypeParams: map[string]string{"max_length": "32"},
+			},
+			{
+				Name:       "properties",
+				DataType:   entity.FieldTypeVarChar,
+				TypeParams: map[string]string{"max_length": "1024"},
+			},
+			{
+				Name:     "created_at",
+				DataType: entity.FieldTypeInt64,
+			},
+		},
+	}
 }
