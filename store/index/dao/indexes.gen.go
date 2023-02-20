@@ -159,7 +159,7 @@ func (i indexDo) UpsertIndex(ctx context.Context, idx *core.Index) (err error) {
 	params = append(params, idx.IndexName)
 	params = append(params, idx.Category)
 	params = append(params, idx.Properties)
-	generateSQL.WriteString("INSERT INTO indices (\"app_id\", \"data\", \"vectors\", \"object_id\", \"index_name\", \"category\", \"properties\", \"created_at\", \"updated_at\") VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) ON CONFLICT (\"app_id\", \"object_id\") DO UPDATE SET \"data\" = ?, \"vectors\" = ?, \"index_name\" = ?, \"category\" = ?, \"properties\" = ?, \"updated_at\" = NOW() ")
+	generateSQL.WriteString("INSERT INTO indexes (\"app_id\", \"data\", \"vectors\", \"object_id\", \"index_name\", \"category\", \"properties\", \"created_at\", \"updated_at\") VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) ON CONFLICT (\"app_id\", \"object_id\") DO UPDATE SET \"data\" = ?, \"vectors\" = ?, \"index_name\" = ?, \"category\" = ?, \"properties\" = ?, \"updated_at\" = NOW() ")
 
 	var executeSQL *gorm.DB
 	executeSQL = i.UnderlyingDB().Exec(generateSQL.String(), params...) // ignore_security_alert
@@ -173,7 +173,7 @@ func (i indexDo) UpsertIndex(ctx context.Context, idx *core.Index) (err error) {
 //	"deleted_at" IS NULL
 func (i indexDo) GetIndexes(ctx context.Context) (result []*core.Index, err error) {
 	var generateSQL strings.Builder
-	generateSQL.WriteString("SELECT * FROM indices WHERE \"deleted_at\" IS NULL ")
+	generateSQL.WriteString("SELECT * FROM indexes WHERE \"deleted_at\" IS NULL ")
 
 	var executeSQL *gorm.DB
 	executeSQL = i.UnderlyingDB().Raw(generateSQL.String()).Find(&result) // ignore_security_alert

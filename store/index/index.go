@@ -31,11 +31,11 @@ func init() {
 }
 
 func New(db *gorm.DB) core.IndexStore {
+	dao.SetDefault(db)
 	v, ok := interface{}(dao.Index).(core.IndexStore)
 	if !ok {
 		panic("dao.Index is not core.IndexStore")
 	}
-	dao.SetDefault(db)
 	return &storeImpl{IndexStore: v}
 }
 
@@ -52,7 +52,13 @@ func NewService(ctx context.Context, gptHandler *gpt.Handler, indexes core.Index
 	}
 
 	for _, i := range is {
-		si.indexData[fmt.Sprintf("%d:%s", i.AppID, i.IndexName)][i.ObjectID] = i
+		key := fmt.Sprintf("%d:%s", i.AppID, i.IndexName)
+		m := si.indexData[key]
+		if m == nil {
+			m = map[string]*core.Index{}
+			si.indexData[key] = m
+		}
+		m[i.ObjectID] = i
 	}
 	return si, nil
 }

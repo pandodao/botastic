@@ -3,22 +3,24 @@ package core
 import (
 	"context"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type (
 	Index struct {
-		ID         uint64     `json:"id"`
-		AppID      uint64     `json:"app_id"`
-		Data       string     `json:"data"`
-		Vectors    []float64  `gorm:"type:numeric[]" json:"vectors"`
-		ObjectID   string     `json:"object_id"`
-		IndexName  string     `json:"index_name"`
-		Category   string     `json:"category"`
-		Properties string     `json:"properties"`
-		CreatedAt  *time.Time `db:"created_at" json:"created_at"`
-		UpdatedAt  *time.Time `db:"updated_at" json:"updated_at"`
-		DeletedAt  *time.Time `db:"deleted_at" json:"-"`
-		Similarity float64    `gorm:"-" json:"similarity"`
+		ID         uint64          `json:"id"`
+		AppID      uint64          `json:"app_id"`
+		Data       string          `json:"data"`
+		Vectors    pq.Float64Array `gorm:"type:numeric[]" json:"vectors"`
+		ObjectID   string          `json:"object_id"`
+		IndexName  string          `json:"index_name"`
+		Category   string          `json:"category"`
+		Properties string          `json:"properties"`
+		CreatedAt  *time.Time      `db:"created_at" json:"created_at"`
+		UpdatedAt  *time.Time      `db:"updated_at" json:"updated_at"`
+		DeletedAt  *time.Time      `db:"deleted_at" json:"-"`
+		Similarity float64         `gorm:"-" json:"similarity"`
 	}
 
 	IndexStore interface {
@@ -41,3 +43,7 @@ type (
 		SearchIndex(ctx context.Context, indexName, data string, limit int) ([]*Index, error)
 	}
 )
+
+func (i Index) TableName() string {
+	return "indexes"
+}
