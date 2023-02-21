@@ -16,12 +16,18 @@ import (
 
 func New(cfg Config, s *session.Session,
 	apps core.AppStore,
-	appz core.AppService, bots core.BotService, indexes core.IndexService) Server {
+	appz core.AppService,
+	botz core.BotService,
+	indexes core.IndexService,
+	convz core.ConversationService,
+) Server {
 	return Server{
 		cfg:     cfg,
 		apps:    apps,
 		appz:    appz,
 		indexes: indexes,
+		botz:    botz,
+		convz:   convz,
 		session: s,
 	}
 }
@@ -38,6 +44,7 @@ type (
 		botz    core.BotService
 		appz    core.AppService
 		indexes core.IndexService
+		convz   core.ConversationService
 	}
 )
 
@@ -57,10 +64,10 @@ func (s Server) HandleRest() http.Handler {
 	})
 
 	r.Route("/conversations", func(r chi.Router) {
-		r.Post("/", conv.CreateConversation(s.botz))
-		r.Get("/{conversationID}", conv.GetConversation(s.botz))
-		r.Post("/{conversationID}", conv.PostToConversation(s.botz))
-		r.Delete("/{conversationID}", conv.DeleteConversation(s.botz))
+		r.Post("/", conv.CreateConversation(s.botz, s.convz))
+		r.Get("/{conversationID}", conv.GetConversation(s.botz, s.convz))
+		r.Post("/{conversationID}", conv.PostToConversation(s.botz, s.convz))
+		r.Delete("/{conversationID}", conv.DeleteConversation(s.botz, s.convz))
 		r.Put("/{conversationID}", conv.UpdateConversation())
 	})
 

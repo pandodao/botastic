@@ -22,7 +22,7 @@ func New(
 		panic(err)
 	}
 
-	conversationMap := make(map[string]*core.BotConversation)
+	conversationMap := make(map[string]*core.Conversation)
 
 	return &service{
 		cfg:  cfg,
@@ -41,7 +41,7 @@ type (
 		cfg             Config
 		apps            core.AppStore
 		botMap          map[uint64]*core.Bot
-		conversationMap map[string]*core.BotConversation
+		conversationMap map[string]*core.Conversation
 	}
 )
 

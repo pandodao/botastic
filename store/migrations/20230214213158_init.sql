@@ -32,6 +32,19 @@ CREATE TABLE indexes (
 );
 CREATE INDEX idx_indexes_deleted_at ON "indexes" USING BTREE("deleted_at");
 CREATE UNIQUE INDEX idx_indexes_app_id_object_id ON indexes("app_id", "object_id") WHERE "deleted_at" IS NULL;;
+
+CREATE TABLE conv_turns (
+    id BIGSERIAL PRIMARY KEY,
+    conversation_id uuid NOT NULL,
+    bot_id bigint NOT NULL,
+    app_id bigint NOT NULL,
+    user_identity varchar(256) NOT NULL,
+    request text NOT NULL,
+    response text NOT NULL DEFAULT '',
+    status int NOT NULL DEFAULT 0,
+    created_at timestamptz,
+    updated_at timestamptz
+);
 -- +goose StatementEnd
 
 -- +goose Down
@@ -39,4 +52,5 @@ CREATE UNIQUE INDEX idx_indexes_app_id_object_id ON indexes("app_id", "object_id
 DROP TABLE IF EXISTS properties;
 DROP TABLE IF EXISTS apps;
 DROP TABLE IF EXISTS indexes;
+DROP TABLE IF EXISTS conv_turns;
 -- +goose StatementEnd

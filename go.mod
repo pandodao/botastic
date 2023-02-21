@@ -16,6 +16,7 @@ require (
 	github.com/sashabaranov/go-gpt3 v1.1.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
+	golang.org/x/sync v0.1.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/mysql v1.4.6
 	gorm.io/driver/postgres v1.4.5
