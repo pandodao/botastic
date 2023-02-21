@@ -3,6 +3,7 @@ package rotater
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/fox-one/pkg/logger"
@@ -100,7 +101,9 @@ func (w *Worker) run(ctx context.Context, circle int64) error {
 			continue
 		}
 
-		respText := gptResp.Choices[0].Text
+		prefix := "A:"
+		respText := strings.TrimPrefix(gptResp.Choices[0].Text, prefix)
+		respText = strings.TrimSpace(respText)
 		if err := w.convs.UpdateConvTurn(ctx, turn.ID, respText, core.ConvTurnStatusCompleted); err != nil {
 			continue
 		}
