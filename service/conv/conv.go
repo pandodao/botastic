@@ -70,6 +70,7 @@ func (s *service) GetConversation(ctx context.Context, convID string) (*core.Con
 			ids = append(ids, turn.ID)
 		}
 	}
+
 	if len(ids) != 0 {
 		turns, _ := s.convs.GetConvTurns(ctx, ids)
 		if len(turns) != 0 {

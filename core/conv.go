@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -94,4 +96,26 @@ type (
 
 func (c *Conversation) IsExpired() bool {
 	return c.ExpiredAt.Before(time.Now())
+}
+
+func (c *Conversation) HistoryToText() string {
+	lines := make([]string, 0)
+	for _, turn := range c.History {
+		lines = append(lines, fmt.Sprintf("Q: %s", turn.Request))
+		if turn.Request != "" {
+			lines = append(lines, fmt.Sprintf("A: %s", turn.Response))
+		}
+	}
+	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
+
+func (c *Conversation) GetKey() string {
+	return fmt.Sprintf("%d:%s", c.App.ID, c.ID)
+}
+
+func (c *Conversation) GenerateUserText(text string) string {
+	if text != "" {
+		return fmt.Sprintf("Q: %s", text)
+	}
+	return ""
 }

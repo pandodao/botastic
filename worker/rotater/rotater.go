@@ -2,10 +2,13 @@ package rotater
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/pandodao/botastic/core"
+	"github.com/pandodao/botastic/internal/gpt"
+	gogpt "github.com/sashabaranov/go-gpt3"
 )
 
 type (
@@ -13,19 +16,28 @@ type (
 	}
 
 	Worker struct {
-		cfg   Config
-		convs core.ConversationStore
+		cfg        Config
+		gptHandler *gpt.Handler
+		convs      core.ConversationStore
+		convz      core.ConversationService
+		botz       core.BotService
 	}
 )
 
 func New(
 	cfg Config,
+	gptHandler *gpt.Handler,
 	convs core.ConversationStore,
+	convz core.ConversationService,
+	botz core.BotService,
 ) *Worker {
 
 	return &Worker{
-		cfg:   cfg,
-		convs: convs,
+		cfg:        cfg,
+		gptHandler: gptHandler,
+		convs:      convs,
+		convz:      convz,
+		botz:       botz,
 	}
 }
 
@@ -60,9 +72,46 @@ func (w *Worker) run(ctx context.Context, circle int64) error {
 
 	for _, turn := range turns {
 		// @TODO send to chatGPT and get response
-		if err := w.convs.UpdateConvTurn(ctx, turn.ID, "Pong!", core.ConvTurnStatusCompleted); err != nil {
+		bot, err := w.botz.GetBot(ctx, turn.BotID)
+		if err != nil {
+			w.UpdateConvTurnAsError(ctx, turn.ID, err.Error())
 			continue
 		}
+
+		conv, err := w.convz.GetConversation(ctx, turn.ConversationID)
+		if err != nil {
+			w.UpdateConvTurnAsError(ctx, turn.ID, err.Error())
+			continue
+		}
+
+		prompt := bot.GetPrompt(conv, turn.Request)
+
+		request := gogpt.CompletionRequest{
+			Model:       bot.Model,
+			Prompt:      prompt,
+			MaxTokens:   1024,
+			Temperature: 1,
+			Stop:        []string{},
+			User:        conv.GetKey(),
+		}
+		gptResp, err := w.gptHandler.CreateCompletion(ctx, request)
+		if err != nil {
+			w.UpdateConvTurnAsError(ctx, turn.ID, err.Error())
+			continue
+		}
+
+		respText := gptResp.Choices[0].Text
+		if err := w.convs.UpdateConvTurn(ctx, turn.ID, respText, core.ConvTurnStatusCompleted); err != nil {
+			continue
+		}
+	}
+	return nil
+}
+
+func (w *Worker) UpdateConvTurnAsError(ctx context.Context, id uint64, errMsg string) error {
+	fmt.Printf("errMsg: %v\n", errMsg)
+	if err := w.convs.UpdateConvTurn(ctx, id, "Something wrong happened", core.ConvTurnStatusError); err != nil {
+		return err
 	}
 	return nil
 }
