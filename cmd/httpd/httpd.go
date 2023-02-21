@@ -22,7 +22,10 @@ import (
 	"github.com/pandodao/botastic/store/app"
 	"github.com/pandodao/botastic/store/conv"
 	"github.com/pandodao/botastic/store/index"
+	"github.com/pandodao/botastic/worker"
+	"github.com/pandodao/botastic/worker/rotater"
 	"github.com/rs/cors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/drone/signal"
 	"github.com/sirupsen/logrus"
@@ -63,73 +66,95 @@ func NewCmdHttpd() *cobra.Command {
 			botz := botServ.New(botServ.Config{}, apps)
 			convz := convServ.New(convServ.Config{}, apps, convs, botz)
 
-			mux := chi.NewMux()
-			mux.Use(middleware.Recoverer)
-			mux.Use(middleware.StripSlashes)
-			mux.Use(cors.AllowAll().Handler)
-			mux.Use(logger.WithRequestID)
-			mux.Use(middleware.Logger)
-			mux.Use(middleware.NewCompressor(5).Handler)
+			// httpd's workers
+			workers := []worker.Worker{
+				// rotater
+				rotater.New(rotater.Config{}, gptHandler, convs, convz, botz),
+			}
 
-			{
-				mux.Get("/", func(w http.ResponseWriter, r *http.Request) {
-					w.Write([]byte("hello world"))
+			g, ctx := errgroup.WithContext(ctx)
+			for idx := range workers {
+				w := workers[idx]
+				g.Go(func() error {
+					return w.Run(ctx)
 				})
 			}
 
-			// hc
-			{
-				mux.Mount("/hc", hc.Handle(cmd.Version))
-			}
+			g.Go(func() error {
+				mux := chi.NewMux()
+				mux.Use(middleware.Recoverer)
+				mux.Use(middleware.StripSlashes)
+				mux.Use(cors.AllowAll().Handler)
+				mux.Use(logger.WithRequestID)
+				mux.Use(middleware.Logger)
+				mux.Use(middleware.NewCompressor(5).Handler)
 
-			{
-				svr := handler.New(handler.Config{}, s, apps, appz, botz, indexService, convz)
+				{
+					mux.Get("/", func(w http.ResponseWriter, r *http.Request) {
+						w.Write([]byte("hello world"))
+					})
+				}
 
-				// api v1
-				restHandler := svr.HandleRest()
-				mux.Mount("/api", restHandler)
-			}
+				// hc
+				{
+					mux.Mount("/hc", hc.Handle(cmd.Version))
+				}
 
-			port := 8080
-			if len(args) > 0 {
-				port, err = strconv.Atoi(args[0])
+				{
+					svr := handler.New(handler.Config{}, s, apps, appz, botz, indexService, convz)
+
+					// api v1
+					restHandler := svr.HandleRest()
+					mux.Mount("/api", restHandler)
+				}
+
+				port := 8080
+				if len(args) > 0 {
+					port, err = strconv.Atoi(args[0])
+					if err != nil {
+						port = 8080
+					}
+				}
+
+				// launch server
 				if err != nil {
-					port = 8080
+					panic(err)
 				}
-			}
+				addr := fmt.Sprintf(":%d", port)
 
-			// launch server
-			if err != nil {
-				panic(err)
-			}
-			addr := fmt.Sprintf(":%d", port)
-
-			svr := &http.Server{
-				Addr:    addr,
-				Handler: mux,
-			}
-
-			done := make(chan struct{}, 1)
-			ctx = signal.WithContextFunc(ctx, func() {
-				logrus.Debug("shutdown server...")
-
-				// create context with timeout
-				ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
-				defer cancel()
-
-				if err := svr.Shutdown(ctx); err != nil {
-					logrus.WithError(err).Error("graceful shutdown server failed")
+				svr := &http.Server{
+					Addr:    addr,
+					Handler: mux,
 				}
 
-				close(done)
+				done := make(chan struct{}, 1)
+				ctx = signal.WithContextFunc(ctx, func() {
+					logrus.Debug("shutdown server...")
+
+					// create context with timeout
+					ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+					defer cancel()
+
+					if err := svr.Shutdown(ctx); err != nil {
+						logrus.WithError(err).Error("graceful shutdown server failed")
+					}
+
+					close(done)
+				})
+
+				logrus.Infoln("serve at", addr)
+				if err := svr.ListenAndServe(); err != http.ErrServerClosed {
+					logrus.WithError(err).Fatal("server aborted")
+				}
+
+				<-done
+				return nil
 			})
 
-			logrus.Infoln("serve at", addr)
-			if err := svr.ListenAndServe(); err != http.ErrServerClosed {
-				logrus.WithError(err).Fatal("server aborted")
+			if err := g.Wait(); err != nil {
+				cmd.PrintErrln("run httpd & worker", err)
 			}
 
-			<-done
 			return nil
 		},
 	}

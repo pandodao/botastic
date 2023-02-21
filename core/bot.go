@@ -40,9 +40,6 @@ func (t *Bot) GetPrompt(conv *Conversation, question string) string {
 		"LangHint": langHint,
 		"History":  conv.HistoryToText(),
 	}
-	if question != "" {
-		data["IncomingInput"] = conv.GenerateUserText(question)
-	}
 	t.PromptTpl.Execute(&buf, data)
 
 	str := buf.String()

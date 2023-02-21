@@ -71,7 +71,6 @@ func (w *Worker) run(ctx context.Context, circle int64) error {
 	}
 
 	for _, turn := range turns {
-		// @TODO send to chatGPT and get response
 		bot, err := w.botz.GetBot(ctx, turn.BotID)
 		if err != nil {
 			w.UpdateConvTurnAsError(ctx, turn.ID, err.Error())
@@ -86,12 +85,13 @@ func (w *Worker) run(ctx context.Context, circle int64) error {
 
 		prompt := bot.GetPrompt(conv, turn.Request)
 
+		// @TODO send to OpenAPI concurrently
 		request := gogpt.CompletionRequest{
 			Model:       bot.Model,
 			Prompt:      prompt,
 			MaxTokens:   1024,
 			Temperature: 1,
-			Stop:        []string{},
+			Stop:        []string{"Q:"},
 			User:        conv.GetKey(),
 		}
 		gptResp, err := w.gptHandler.CreateCompletion(ctx, request)
@@ -104,6 +104,8 @@ func (w *Worker) run(ctx context.Context, circle int64) error {
 		if err := w.convs.UpdateConvTurn(ctx, turn.ID, respText, core.ConvTurnStatusCompleted); err != nil {
 			continue
 		}
+		fmt.Printf("prompt: %v\n", prompt)
+		fmt.Printf("resp: %+v\n", respText)
 	}
 	return nil
 }

@@ -5,4 +5,3 @@ prompt: |
   I want to you act as an AI. Your job is to answer my questions. {{.LangHint}}
   Please always give me the answer with prefix "A:".
   {{.History}}
-  {{.IncomingInput}}
