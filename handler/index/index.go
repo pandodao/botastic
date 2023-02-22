@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/fox-one/pkg/httputil/param"
-	"github.com/go-chi/chi"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/handler/render"
 	"github.com/pandodao/botastic/session"
@@ -57,14 +56,14 @@ func CreateIndex(indexes core.IndexService) http.HandlerFunc {
 func Search(apps core.AppStore, indexes core.IndexService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		keywords := chi.URLParam(r, "keywords")
+		keywords := r.URL.Query().Get("keywords")
 		if keywords == "" {
 			render.Error(w, http.StatusBadRequest, fmt.Errorf("keywords is required"))
 			return
 		}
 
 		limit := 1
-		limitStr := chi.URLParam(r, "n")
+		limitStr := r.URL.Query().Get("n")
 		if limitStr != "" {
 			n, err := strconv.Atoi(limitStr)
 			if err == nil {

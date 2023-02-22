@@ -3,6 +3,7 @@ package index
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/milvus-io/milvus-sdk-go/v2/entity"
 	"github.com/pandodao/botastic/core"
@@ -49,8 +50,10 @@ func (s *storeImpl) CreateIndices(ctx context.Context, idx []*core.Index) error 
 	categories := make([]string, 0, l)
 	properties := make([]string, 0, l)
 	createdAts := make([]int64, 0, l)
+	createdAt := time.Now().Unix()
 	for _, ix := range idx {
 		ix.ID = fmt.Sprintf("%s:%s", ix.AppID, ix.ObjectID)
+		ix.CreatedAt = createdAt
 		ids = append(ids, ix.ID)
 		appIds = append(appIds, ix.AppID)
 		datas = append(datas, ix.Data)
@@ -84,13 +87,22 @@ func (s *storeImpl) CreateIndices(ctx context.Context, idx []*core.Index) error 
 
 func (s *storeImpl) Search(ctx context.Context, vectors []float32, n int) ([]*core.Index, error) {
 	idx := &core.Index{}
+	err := s.client.LoadCollection(
+		ctx,                  // ctx
+		idx.CollectionName(), // CollectionName
+		false,                // async
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	sp, _ := entity.NewIndexFlatSearchParam()
 	searchResult, err := s.client.Search(
 		ctx,
 		idx.CollectionName(),
 		[]string{},
 		"",
-		[]string{"data"},
+		[]string{"data", "object_id", "properties", "category", "created_at"},
 		[]entity.Vector{
 			entity.FloatVector(vectors),
 		},
@@ -104,17 +116,40 @@ func (s *storeImpl) Search(ctx context.Context, vectors []float32, n int) ([]*co
 	}
 
 	indices := []*core.Index{}
+	sr := searchResult[0]
 
-	// TODO: parse searchResult to indices
-	_ = searchResult
+	var (
+		dataCol       *entity.ColumnVarChar
+		objectIdCol   *entity.ColumnVarChar
+		propertiesCol *entity.ColumnVarChar
+		categoryCol   *entity.ColumnVarChar
+		createdAtCol  *entity.ColumnInt64
+	)
+	for _, f := range sr.Fields {
+		switch f.Name() {
+		case "data":
+			dataCol = f.(*entity.ColumnVarChar)
+		case "object_id":
+			objectIdCol = f.(*entity.ColumnVarChar)
+		case "properties":
+			propertiesCol = f.(*entity.ColumnVarChar)
+		case "category":
+			categoryCol = f.(*entity.ColumnVarChar)
+		case "created_at":
+			createdAtCol = f.(*entity.ColumnInt64)
+		}
+	}
 
-	// index := &core.Index{}
-	// sr := searchResult[0]
-	// for _, f := range sr.Fields {
-	// 	switch f.Name() {
-	// 	case "id":
-	// 	}
-	// }
-	//
+	index := &core.Index{}
+	for i := 0; i < sr.ResultCount; i++ {
+		index.Data, _ = dataCol.ValueByIdx(i)
+		index.ObjectID, _ = objectIdCol.ValueByIdx(i)
+		index.Properties, _ = propertiesCol.ValueByIdx(i)
+		index.Category, _ = categoryCol.ValueByIdx(i)
+		index.CreatedAt, _ = createdAtCol.ValueByIdx(i)
+		index.Score = sr.Scores[i]
+	}
+	indices = append(indices, index)
+
 	return indices, nil
 }

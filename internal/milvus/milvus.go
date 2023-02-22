@@ -57,3 +57,25 @@ func (c *Client) CreatePartionIfNotExist(ctx context.Context, collName, partionN
 
 	return nil
 }
+
+func (c *Client) BuildIndex(ctx context.Context, collName, fieldName string) error {
+	idx, err := entity.NewIndexIvfFlat(
+		entity.L2,
+		1024,
+	)
+	if err != nil {
+		return err
+	}
+
+	err = c.CreateIndex(
+		ctx,       // ctx
+		collName,  // CollectionName
+		fieldName, // fieldName
+		idx,       // entity.Index
+		false,     // async
+	)
+	if err != nil {
+		return err
+	}
+	return nil
+}

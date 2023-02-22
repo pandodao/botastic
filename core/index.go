@@ -8,15 +8,15 @@ import (
 
 type (
 	Index struct {
-		ID         string    `json:"id"`
-		AppID      string    `json:"app_id"`
+		ID         string    `json:"-"`
+		AppID      string    `json:"-"`
 		Data       string    `json:"data"`
-		Vectors    []float32 `json:"vectors"`
+		Vectors    []float32 `json:"-"`
 		ObjectID   string    `json:"object_id"`
 		Category   string    `json:"category"`
 		Properties string    `json:"properties"`
 		CreatedAt  int64     `db:"created_at" json:"created_at"`
-		Scores     []float32 `json:"scores"`
+		Score      float32   `json:"score"`
 	}
 
 	IndexStore interface {

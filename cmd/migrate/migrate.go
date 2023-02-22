@@ -104,7 +104,10 @@ func NewCmdMigrate() *cobra.Command {
 			}
 
 			index := core.Index{}
-			return client.CreateCollectionIfNotExist(ctx, index.Schema(), 2)
+			if err := client.CreateCollectionIfNotExist(ctx, index.Schema(), 2); err != nil {
+				return err
+			}
+			return client.BuildIndex(ctx, index.CollectionName(), "vectors")
 		},
 	})
 
