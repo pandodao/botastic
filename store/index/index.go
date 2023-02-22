@@ -81,3 +81,40 @@ func (s *storeImpl) CreateIndices(ctx context.Context, idx []*core.Index) error 
 
 	return nil
 }
+
+func (s *storeImpl) Search(ctx context.Context, vectors []float32, n int) ([]*core.Index, error) {
+	idx := &core.Index{}
+	sp, _ := entity.NewIndexFlatSearchParam()
+	searchResult, err := s.client.Search(
+		ctx,
+		idx.CollectionName(),
+		[]string{},
+		"",
+		[]string{"data"},
+		[]entity.Vector{
+			entity.FloatVector(vectors),
+		},
+		"vectors",
+		entity.L2,
+		n,
+		sp,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	indices := []*core.Index{}
+
+	// TODO: parse searchResult to indices
+	_ = searchResult
+
+	// index := &core.Index{}
+	// sr := searchResult[0]
+	// for _, f := range sr.Fields {
+	// 	switch f.Name() {
+	// 	case "id":
+	// 	}
+	// }
+	//
+	return indices, nil
+}

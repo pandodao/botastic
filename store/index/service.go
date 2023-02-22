@@ -25,23 +25,27 @@ type serviceImpl struct {
 	indexes      core.IndexStore
 }
 
-func (s *serviceImpl) SearchIndex(ctx context.Context, indexName, keywords string, limit int) ([]*core.Index, error) {
+func (s *serviceImpl) SearchIndex(ctx context.Context, keywords string, limit int) ([]*core.Index, error) {
 	if limit <= 0 {
 		return nil, errors.New("limit should be greater than 0")
 	}
 
-	// resp, err := s.gptHandler.CreateEmbeddings(ctx, gogpt.EmbeddingRequest{
-	// 	Input: []string{keywords},
-	// 	Model: gogpt.AdaEmbeddingV2,
-	// })
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// if len(resp.Data) == 0 {
-	// 	return nil, fmt.Errorf("no embedding data")
-	// }
+	resp, err := s.gptHandler.CreateEmbeddings(ctx, gogpt.EmbeddingRequest{
+		Input: []string{keywords},
+		Model: gogpt.AdaEmbeddingV2,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(resp.Data) == 0 {
+		return nil, fmt.Errorf("no embedding data")
+	}
+	vs := make([]float32, 0, len(resp.Data[0].Embedding))
+	for _, v := range resp.Data[0].Embedding {
+		vs = append(vs, float32(v))
+	}
 
-	return nil, nil
+	return s.indexes.Search(ctx, vs, limit)
 }
 
 func (s *serviceImpl) CreateIndices(ctx context.Context, items []*core.Index) error {

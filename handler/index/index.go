@@ -57,7 +57,6 @@ func CreateIndex(indexes core.IndexService) http.HandlerFunc {
 func Search(apps core.AppStore, indexes core.IndexService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		indexName := chi.URLParam(r, "indexName")
 		keywords := chi.URLParam(r, "keywords")
 		if keywords == "" {
 			render.Error(w, http.StatusBadRequest, fmt.Errorf("keywords is required"))
@@ -73,7 +72,7 @@ func Search(apps core.AppStore, indexes core.IndexService) http.HandlerFunc {
 			}
 		}
 
-		result, err := indexes.SearchIndex(ctx, indexName, keywords, limit)
+		result, err := indexes.SearchIndex(ctx, keywords, limit)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return

@@ -16,17 +16,18 @@ type (
 		Category   string    `json:"category"`
 		Properties string    `json:"properties"`
 		CreatedAt  int64     `db:"created_at" json:"created_at"`
-		Similarity float64   `gorm:"-" json:"similarity"`
+		Scores     []float32 `json:"scores"`
 	}
 
 	IndexStore interface {
 		CreateIndices(ctx context.Context, idx []*Index) error
 		DeleteByPks(ctx context.Context, items []*Index) error
+		Search(ctx context.Context, vectors []float32, n int) ([]*Index, error)
 	}
 
 	IndexService interface {
 		CreateIndices(ctx context.Context, items []*Index) error
-		SearchIndex(ctx context.Context, indexName, data string, limit int) ([]*Index, error)
+		SearchIndex(ctx context.Context, data string, limit int) ([]*Index, error)
 	}
 )
 
