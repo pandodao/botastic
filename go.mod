@@ -10,6 +10,7 @@ require (
 	github.com/go-chi/chi v1.5.4
 	github.com/google/uuid v1.3.0
 	github.com/lib/pq v1.10.7
+	github.com/milvus-io/milvus-sdk-go/v2 v2.2.0
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
 	github.com/pressly/goose/v3 v3.9.0
 	github.com/rs/cors v1.8.3
@@ -28,9 +29,14 @@ require (
 
 require (
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/schema v1.2.0 // indirect
+	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
+	github.com/milvus-io/milvus-proto/go-api v0.0.0-20221019080323-84e9fa2f9e45 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/twitchtv/twirp v8.1.2+incompatible // indirect
+	google.golang.org/genproto v0.0.0-20220503193339-ba3ae3f07e29 // indirect
+	google.golang.org/grpc v1.48.0 // indirect
 )
 
 require (

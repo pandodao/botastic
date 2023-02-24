@@ -5,6 +5,8 @@ import (
 	"strconv"
 
 	"github.com/pandodao/botastic/config"
+	"github.com/pandodao/botastic/core"
+	"github.com/pandodao/botastic/internal/milvus"
 	"github.com/pandodao/botastic/store"
 	"github.com/spf13/cobra"
 )
@@ -87,6 +89,25 @@ func NewCmdMigrate() *cobra.Command {
 				return fmt.Errorf("create requires a name argument")
 			}
 			return store.WithContext(cmd.Context()).MigrationCreate(args[0])
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "milvus",
+		Short: "Update milvus collection",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := cmd.Context()
+			cfg := config.C()
+			client, err := milvus.Init(ctx, cfg.Milvus.Address)
+			if err != nil {
+				return err
+			}
+
+			index := core.Index{}
+			if err := client.CreateCollectionIfNotExist(ctx, index.Schema(), 2); err != nil {
+				return err
+			}
+			return client.BuildIndex(ctx, index.CollectionName(), "vectors")
 		},
 	})
 
