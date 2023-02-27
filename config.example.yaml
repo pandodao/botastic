@@ -11,3 +11,6 @@ sys:
 
 milvus:
   address: "localhost:19530"
+
+tokencal:
+  addr: "http://localhost:8000"
