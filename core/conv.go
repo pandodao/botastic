@@ -54,7 +54,7 @@ type (
 		// VALUES
 		// 	(
 		//   @convID, @botID, @appID, @uid,
-		//   @request, '', 0,
+		//   @request, @reqToken, '', 0,
 		//   NOW(), NOW()
 		//  )
 		// RETURNING "id"

@@ -153,7 +153,7 @@ type IConvTurnDo interface {
 //
 //		(
 //	 @convID, @botID, @appID, @uid,
-//	 @request, '', 0,
+//	 @request, @reqToken, '', 0,
 //	 NOW(), NOW()
 //
 // )
@@ -167,7 +167,8 @@ func (c convTurnDo) CreateConvTurn(ctx context.Context, convID string, botID uin
 	params = append(params, appID)
 	params = append(params, uid)
 	params = append(params, request)
-	generateSQL.WriteString("INSERT INTO \"conv_turns\" ( \"conversation_id\", \"bot_id\", \"app_id\", \"user_identity\", \"request\", \"request_token\", \"response\", \"status\", \"created_at\", \"updated_at\" ) VALUES ( ?, ?, ?, ?, ?, '', 0, NOW(), NOW() ) RETURNING \"id\" ")
+	params = append(params, reqToken)
+	generateSQL.WriteString("INSERT INTO \"conv_turns\" ( \"conversation_id\", \"bot_id\", \"app_id\", \"user_identity\", \"request\", \"request_token\", \"response\", \"status\", \"created_at\", \"updated_at\" ) VALUES ( ?, ?, ?, ?, ?, ?, '', 0, NOW(), NOW() ) RETURNING \"id\" ")
 
 	var executeSQL *gorm.DB
 	executeSQL = c.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert
