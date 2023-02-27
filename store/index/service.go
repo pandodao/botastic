@@ -9,6 +9,7 @@ import (
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/milvus"
 	"github.com/pandodao/botastic/internal/tokencal"
+	"github.com/pandodao/botastic/session"
 	gogpt "github.com/sashabaranov/go-gpt3"
 )
 
@@ -32,6 +33,7 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, keywords string, limit in
 		return nil, errors.New("limit should be greater than 0")
 	}
 
+	app := session.AppFrom(ctx)
 	resp, err := s.gptHandler.CreateEmbeddings(ctx, gogpt.EmbeddingRequest{
 		Input: []string{keywords},
 		Model: gogpt.AdaEmbeddingV2,
@@ -47,7 +49,7 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, keywords string, limit in
 		vs = append(vs, float32(v))
 	}
 
-	return s.indexes.Search(ctx, vs, limit)
+	return s.indexes.Search(ctx, app.AppID, vs, limit)
 }
 
 func (s *serviceImpl) CreateIndices(ctx context.Context, items []*core.Index) error {

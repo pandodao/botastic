@@ -23,7 +23,7 @@ type (
 	IndexStore interface {
 		CreateIndices(ctx context.Context, idx []*Index) error
 		DeleteByPks(ctx context.Context, items []*Index) error
-		Search(ctx context.Context, vectors []float32, n int) ([]*Index, error)
+		Search(ctx context.Context, appId string, vectors []float32, n int) ([]*Index, error)
 	}
 
 	IndexService interface {

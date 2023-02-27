@@ -43,6 +43,11 @@ func CreateIndex(indexes core.IndexService) http.HandlerFunc {
 			}
 		}
 
+		if len(is) == 0 {
+			render.Error(w, http.StatusBadRequest, fmt.Errorf("empty data"))
+			return
+		}
+
 		err := indexes.CreateIndices(r.Context(), is)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
