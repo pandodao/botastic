@@ -57,15 +57,11 @@ func (s *serviceImpl) CreateIndices(ctx context.Context, items []*core.Index) er
 	for _, item := range items {
 		token, err := s.tokenCal.GetToken(ctx, item.Data)
 		if err != nil {
-			return err
+			return fmt.Errorf("get token: %w", err)
 		}
 
 		item.DataToken = int64(token)
 		input = append(input, item.Data)
-	}
-
-	if err := s.indexes.DeleteByPks(ctx, items); err != nil {
-		return err
 	}
 
 	resp, err := s.gptHandler.CreateEmbeddings(ctx, gogpt.EmbeddingRequest{
@@ -73,7 +69,7 @@ func (s *serviceImpl) CreateIndices(ctx context.Context, items []*core.Index) er
 		Model: gogpt.AdaEmbeddingV2,
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("CreateEmbeddings: %w", err)
 	}
 	if len(resp.Data) == 0 {
 		return fmt.Errorf("no embedding data")
@@ -88,5 +84,9 @@ func (s *serviceImpl) CreateIndices(ctx context.Context, items []*core.Index) er
 	}
 
 	// create index in milvus
-	return s.indexes.CreateIndices(ctx, items)
+	if err := s.indexes.CreateIndices(ctx, items); err != nil {
+		return fmt.Errorf("CreateIndices: %w", err)
+	}
+
+	return nil
 }

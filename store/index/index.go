@@ -24,12 +24,12 @@ func (s *storeImpl) QueryIndex(ctx context.Context, idx *core.Index) error {
 	return nil
 }
 
-func (s *storeImpl) DeleteByPks(ctx context.Context, items []*core.Index) error {
+func (s *storeImpl) deleteByPks(ctx context.Context, items []*core.Index) error {
 	if len(items) == 0 {
 		return nil
 	}
 
-	appId := items[0].AppID
+	partitionName := items[0].PartitionName()
 	ids := make([]string, 0, len(items))
 	for _, item := range items {
 		id := fmt.Sprintf("%s:%s", item.AppID, item.ObjectID)
@@ -38,7 +38,7 @@ func (s *storeImpl) DeleteByPks(ctx context.Context, items []*core.Index) error 
 
 	index := core.Index{}
 	pks := entity.NewColumnVarChar("id", ids)
-	if err := s.client.DeleteByPks(ctx, index.CollectionName(), appId, pks); err != nil {
+	if err := s.client.DeleteByPks(ctx, index.CollectionName(), partitionName, pks); err != nil {
 		return err
 	}
 
@@ -61,13 +61,15 @@ func (s *storeImpl) CreateIndices(ctx context.Context, idx []*core.Index) error 
 	createdAts := make([]int64, 0, l)
 	createdAt := time.Now().Unix()
 
-	appId := idx[0].AppID
-	for _, ix := range idx {
-		// craete partition if not exist
-		if err := s.client.CreatePartition(ctx, ix.CollectionName(), ix.AppID); err != nil {
-			return err
-		}
+	collectionName := idx[0].CollectionName()
+	partitionName := idx[0].PartitionName()
 
+	// craete partition if not exist
+	if err := s.client.CreatePartionIfNotExist(ctx, collectionName, partitionName); err != nil {
+		return fmt.Errorf("CreatePartitionIfNotExist error: %w", err)
+	}
+
+	for _, ix := range idx {
 		ix.ID = fmt.Sprintf("%s:%s", ix.AppID, ix.ObjectID)
 		ix.CreatedAt = createdAt
 		ids = append(ids, ix.ID)
@@ -81,11 +83,15 @@ func (s *storeImpl) CreateIndices(ctx context.Context, idx []*core.Index) error 
 		createdAts = append(createdAts, ix.CreatedAt)
 	}
 
+	if err := s.deleteByPks(ctx, idx); err != nil {
+		return fmt.Errorf("delete by pks: %w", err)
+	}
+
 	ix := &core.Index{}
 	_, err := s.client.Insert(
 		ctx,
 		ix.CollectionName(),
-		appId,
+		partitionName,
 		entity.NewColumnVarChar("id", ids),
 		entity.NewColumnVarChar("app_id", appIds),
 		entity.NewColumnVarChar("data", datas),
@@ -104,7 +110,8 @@ func (s *storeImpl) CreateIndices(ctx context.Context, idx []*core.Index) error 
 }
 
 func (s *storeImpl) Search(ctx context.Context, appID string, vectors []float32, n int) ([]*core.Index, error) {
-	idx := &core.Index{}
+	idx := &core.Index{AppID: appID}
+	partitionName := idx.PartitionName()
 	err := s.client.LoadCollection(
 		ctx,                  // ctx
 		idx.CollectionName(), // CollectionName
@@ -118,8 +125,8 @@ func (s *storeImpl) Search(ctx context.Context, appID string, vectors []float32,
 	searchResult, err := s.client.Search(
 		ctx,
 		idx.CollectionName(),
-		[]string{},
-		appID,
+		[]string{partitionName},
+		"",
 		[]string{"data", "object_id", "properties", "category", "created_at"},
 		[]entity.Vector{
 			entity.FloatVector(vectors),
@@ -158,16 +165,16 @@ func (s *storeImpl) Search(ctx context.Context, appID string, vectors []float32,
 		}
 	}
 
-	index := &core.Index{}
 	for i := 0; i < sr.ResultCount; i++ {
+		index := &core.Index{}
 		index.Data, _ = dataCol.ValueByIdx(i)
 		index.ObjectID, _ = objectIdCol.ValueByIdx(i)
 		index.Properties, _ = propertiesCol.ValueByIdx(i)
 		index.Category, _ = categoryCol.ValueByIdx(i)
 		index.CreatedAt, _ = createdAtCol.ValueByIdx(i)
 		index.Score = sr.Scores[i]
+		indices = append(indices, index)
 	}
-	indices = append(indices, index)
 
 	return indices, nil
 }

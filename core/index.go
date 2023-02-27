@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"strings"
 
 	"github.com/milvus-io/milvus-sdk-go/v2/entity"
 )
@@ -22,7 +23,6 @@ type (
 
 	IndexStore interface {
 		CreateIndices(ctx context.Context, idx []*Index) error
-		DeleteByPks(ctx context.Context, items []*Index) error
 		Search(ctx context.Context, appId string, vectors []float32, n int) ([]*Index, error)
 	}
 
@@ -34,6 +34,10 @@ type (
 
 func (i Index) CollectionName() string {
 	return "indices"
+}
+
+func (i Index) PartitionName() string {
+	return strings.ReplaceAll(i.AppID, "-", "_")
 }
 
 // func (i Index) PartitionName() string {

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -47,7 +46,6 @@ func (h *Handler) GetToken(ctx context.Context, s string) (int, error) {
 		return 0, err
 	}
 
-	fmt.Println(string(respData))
 	if err := json.Unmarshal(respData, &result); err != nil {
 		return 0, err
 	}
