@@ -36,7 +36,9 @@ type (
 		AppID          uint64     `yaml:"app_id" json:"app_id"`
 		UserIdentity   string     `yaml:"user_identity" json:"user_identity"`
 		Request        string     `yaml:"request" json:"request"`
+		RequestToken   int        `yaml:"request_token" json:"request_token"`
 		Response       string     `yaml:"response" json:"response"`
+		ResponseToken  int        `yaml:"response_token" json:"response_token"`
 		Status         int        `yaml:"status" json:"status"`
 		CreatedAt      *time.Time `yaml:"created_at" json:"created_at"`
 		UpdatedAt      *time.Time `yaml:"updated_at" json:"updated_at"`
@@ -46,7 +48,7 @@ type (
 		// INSERT INTO "conv_turns"
 		// 	(
 		//	"conversation_id", "bot_id", "app_id", "user_identity",
-		//  "request", "response", "status",
+		//  "request", "request_token", "response", "status",
 		//  "created_at", "updated_at"
 		//   )
 		// VALUES
@@ -56,7 +58,7 @@ type (
 		//   NOW(), NOW()
 		//  )
 		// RETURNING "id"
-		CreateConvTurn(ctx context.Context, convID string, botID, appID uint64, uid, request string) (uint64, error)
+		CreateConvTurn(ctx context.Context, convID string, botID, appID uint64, uid, request string, reqToken int) (uint64, error)
 
 		// SELECT
 		//	"id", "conversation_id", "bot_id", "app_id", "user_identity",
@@ -77,12 +79,13 @@ type (
 		// UPDATE "conv_turns"
 		// 	{{set}}
 		// 		"response"=@response,
+		// 		"response_token"=@responseToken,
 		// 		"status"=@status,
 		// 		"updated_at"=NOW()
 		// 	{{end}}
 		// WHERE
 		// 	"id"=@id
-		UpdateConvTurn(ctx context.Context, id uint64, response string, status int) error
+		UpdateConvTurn(ctx context.Context, id uint64, response string, responseToken int, status int) error
 	}
 
 	ConversationService interface {

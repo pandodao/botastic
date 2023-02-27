@@ -6,14 +6,15 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pandodao/botastic/core"
+	"github.com/pandodao/botastic/internal/tokencal"
 )
 
 func New(
 	cfg Config,
 	apps core.AppStore,
 	convs core.ConversationStore,
-
 	botz core.BotService,
+	tokencal *tokencal.Handler,
 ) *service {
 
 	conversationMap := make(map[string]*core.Conversation)
@@ -24,6 +25,7 @@ func New(
 		convs:           convs,
 		botz:            botz,
 		conversationMap: conversationMap,
+		tokencal:        tokencal,
 	}
 }
 
@@ -37,6 +39,7 @@ type (
 		convs           core.ConversationStore
 		botz            core.BotService
 		conversationMap map[string]*core.Conversation
+		tokencal        *tokencal.Handler
 	}
 )
 
@@ -95,7 +98,11 @@ func (s *service) GetConversation(ctx context.Context, convID string) (*core.Con
 }
 
 func (s *service) PostToConversation(ctx context.Context, conv *core.Conversation, input string) (*core.ConvTurn, error) {
-	turnID, err := s.convs.CreateConvTurn(ctx, conv.ID, conv.Bot.ID, conv.App.ID, conv.UserIdentity, input)
+	requestToken, err := s.tokencal.GetToken(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+	turnID, err := s.convs.CreateConvTurn(ctx, conv.ID, conv.Bot.ID, conv.App.ID, conv.UserIdentity, input, requestToken)
 	if err != nil {
 		return nil, err
 	}

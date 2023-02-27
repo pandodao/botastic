@@ -45,6 +45,7 @@ func (s *storeImpl) CreateIndices(ctx context.Context, idx []*core.Index) error 
 	ids := make([]string, 0, l)
 	appIds := make([]string, 0, l)
 	datas := make([]string, 0, l)
+	dataTokens := make([]int64, 0, l)
 	vectors := make([][]float32, 0, l)
 	objectIds := make([]string, 0, l)
 	categories := make([]string, 0, l)
@@ -57,6 +58,7 @@ func (s *storeImpl) CreateIndices(ctx context.Context, idx []*core.Index) error 
 		ids = append(ids, ix.ID)
 		appIds = append(appIds, ix.AppID)
 		datas = append(datas, ix.Data)
+		dataTokens = append(dataTokens, ix.DataToken)
 		vectors = append(vectors, ix.Vectors)
 		objectIds = append(objectIds, ix.ObjectID)
 		categories = append(categories, ix.Category)
@@ -72,6 +74,7 @@ func (s *storeImpl) CreateIndices(ctx context.Context, idx []*core.Index) error 
 		entity.NewColumnVarChar("id", ids),
 		entity.NewColumnVarChar("app_id", appIds),
 		entity.NewColumnVarChar("data", datas),
+		entity.NewColumnInt64("data_token", dataTokens),
 		entity.NewColumnFloatVector("vectors", 1536, vectors),
 		entity.NewColumnVarChar("object_id", objectIds),
 		entity.NewColumnVarChar("category", categories),

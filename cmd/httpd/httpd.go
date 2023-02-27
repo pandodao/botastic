@@ -15,6 +15,7 @@ import (
 	"github.com/pandodao/botastic/handler/hc"
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/milvus"
+	"github.com/pandodao/botastic/internal/tokencal"
 	appServ "github.com/pandodao/botastic/service/app"
 	botServ "github.com/pandodao/botastic/service/bot"
 	convServ "github.com/pandodao/botastic/service/conv"
@@ -51,6 +52,7 @@ func NewCmdHttpd() *cobra.Command {
 				Keys:    cfg.OpenAPI.Keys,
 				Timeout: cfg.OpenAPI.Timeout,
 			})
+			tokenCal := tokencal.New(cfg.TokenCal.Addr)
 
 			apps := app.New(h.DB)
 			convs := conv.New(h.DB)
@@ -63,15 +65,15 @@ func NewCmdHttpd() *cobra.Command {
 				return err
 			}
 			indexes := index.New(ctx, milvusClient)
-			indexService := index.NewService(ctx, gptHandler, indexes)
+			indexService := index.NewService(ctx, gptHandler, indexes, tokenCal)
 
 			botz := botServ.New(botServ.Config{}, apps)
-			convz := convServ.New(convServ.Config{}, apps, convs, botz)
+			convz := convServ.New(convServ.Config{}, apps, convs, botz, tokenCal)
 
 			// httpd's workers
 			workers := []worker.Worker{
 				// rotater
-				rotater.New(rotater.Config{}, gptHandler, convs, convz, botz),
+				rotater.New(rotater.Config{}, gptHandler, convs, convz, botz, tokenCal),
 			}
 
 			g, ctx := errgroup.WithContext(ctx)

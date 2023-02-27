@@ -8,13 +8,15 @@ import (
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/milvus"
+	"github.com/pandodao/botastic/internal/tokencal"
 	gogpt "github.com/sashabaranov/go-gpt3"
 )
 
-func NewService(ctx context.Context, gptHandler *gpt.Handler, indexes core.IndexStore) core.IndexService {
+func NewService(ctx context.Context, gptHandler *gpt.Handler, indexes core.IndexStore, tokenCal *tokencal.Handler) core.IndexService {
 	return &serviceImpl{
 		gptHandler: gptHandler,
 		indexes:    indexes,
+		tokenCal:   tokenCal,
 	}
 }
 
@@ -22,6 +24,7 @@ type serviceImpl struct {
 	gptHandler   *gpt.Handler
 	milvusClient *milvus.Client
 	indexes      core.IndexStore
+	tokenCal     *tokencal.Handler
 }
 
 func (s *serviceImpl) SearchIndex(ctx context.Context, keywords string, limit int) ([]*core.Index, error) {
@@ -50,6 +53,12 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, keywords string, limit in
 func (s *serviceImpl) CreateIndices(ctx context.Context, items []*core.Index) error {
 	input := make([]string, 0, len(items))
 	for _, item := range items {
+		token, err := s.tokenCal.GetToken(ctx, item.Data)
+		if err != nil {
+			return err
+		}
+
+		item.DataToken = int64(token)
 		input = append(input, item.Data)
 	}
 
