@@ -10,6 +10,7 @@ import (
 	"github.com/fox-one/pkg/logger"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/internal/gpt"
+	"github.com/pandodao/botastic/internal/tokencal"
 	gogpt "github.com/sashabaranov/go-gpt3"
 )
 
@@ -34,6 +35,7 @@ type (
 		convz       core.ConversationService
 		botz        core.BotService
 		turnReqChan chan TurnRequest
+		tokencal    *tokencal.Handler
 	}
 
 	TurnRequest struct {
@@ -48,6 +50,7 @@ func New(
 	convs core.ConversationStore,
 	convz core.ConversationService,
 	botz core.BotService,
+	tokencal *tokencal.Handler,
 ) *Worker {
 	turnReqChan := make(chan TurnRequest)
 	return &Worker{
@@ -57,6 +60,7 @@ func New(
 		convz:       convz,
 		botz:        botz,
 		turnReqChan: turnReqChan,
+		tokencal:    tokencal,
 	}
 }
 
@@ -124,7 +128,7 @@ func (w *Worker) run(ctx context.Context) error {
 			time.Sleep(time.Second)
 		}
 
-		if err := w.convs.UpdateConvTurn(ctx, turn.ID, "", core.ConvTurnStatusPending); err != nil {
+		if err := w.convs.UpdateConvTurn(ctx, turn.ID, "", 0, core.ConvTurnStatusPending); err != nil {
 			continue
 		}
 
@@ -140,7 +144,7 @@ func (w *Worker) run(ctx context.Context) error {
 
 func (w *Worker) UpdateConvTurnAsError(ctx context.Context, id uint64, errMsg string) error {
 	fmt.Printf("errMsg: %v\n", errMsg)
-	if err := w.convs.UpdateConvTurn(ctx, id, "Something wrong happened", core.ConvTurnStatusError); err != nil {
+	if err := w.convs.UpdateConvTurn(ctx, id, "Something wrong happened", 0, core.ConvTurnStatusError); err != nil {
 		return err
 	}
 	return nil
@@ -160,7 +164,11 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 		prefix := "A:"
 		respText := strings.TrimPrefix(gptResp.Choices[0].Text, prefix)
 		respText = strings.TrimSpace(respText)
-		if err := w.convs.UpdateConvTurn(ctx, turnReq.TurnID, respText, core.ConvTurnStatusCompleted); err != nil {
+		token, err := w.tokencal.GetToken(ctx, respText)
+		if err != nil {
+			continue
+		}
+		if err := w.convs.UpdateConvTurn(ctx, turnReq.TurnID, respText, token, core.ConvTurnStatusCompleted); err != nil {
 			continue
 		}
 

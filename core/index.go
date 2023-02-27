@@ -11,6 +11,7 @@ type (
 		ID         string    `json:"-"`
 		AppID      string    `json:"-"`
 		Data       string    `json:"data"`
+		DataToken  int64     `json:"-"`
 		Vectors    []float32 `json:"-"`
 		ObjectID   string    `json:"object_id"`
 		Category   string    `json:"category"`
@@ -22,7 +23,7 @@ type (
 	IndexStore interface {
 		CreateIndices(ctx context.Context, idx []*Index) error
 		DeleteByPks(ctx context.Context, items []*Index) error
-		Search(ctx context.Context, vectors []float32, n int) ([]*Index, error)
+		Search(ctx context.Context, appId string, vectors []float32, n int) ([]*Index, error)
 	}
 
 	IndexService interface {
@@ -64,6 +65,10 @@ func (i Index) Schema() *entity.Schema {
 				Name:       "data",
 				DataType:   entity.FieldTypeVarChar,
 				TypeParams: map[string]string{"max_length": "2048"},
+			},
+			{
+				Name:     "data_token",
+				DataType: entity.FieldTypeInt64,
 			},
 			{
 				Name:       "vectors",

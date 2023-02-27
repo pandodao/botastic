@@ -25,6 +25,11 @@ func (s *storeImpl) QueryIndex(ctx context.Context, idx *core.Index) error {
 }
 
 func (s *storeImpl) DeleteByPks(ctx context.Context, items []*core.Index) error {
+	if len(items) == 0 {
+		return nil
+	}
+
+	appId := items[0].AppID
 	ids := make([]string, 0, len(items))
 	for _, item := range items {
 		id := fmt.Sprintf("%s:%s", item.AppID, item.ObjectID)
@@ -33,7 +38,7 @@ func (s *storeImpl) DeleteByPks(ctx context.Context, items []*core.Index) error 
 
 	index := core.Index{}
 	pks := entity.NewColumnVarChar("id", ids)
-	if err := s.client.DeleteByPks(ctx, index.CollectionName(), "", pks); err != nil {
+	if err := s.client.DeleteByPks(ctx, index.CollectionName(), appId, pks); err != nil {
 		return err
 	}
 
@@ -41,22 +46,34 @@ func (s *storeImpl) DeleteByPks(ctx context.Context, items []*core.Index) error 
 }
 
 func (s *storeImpl) CreateIndices(ctx context.Context, idx []*core.Index) error {
+	if len(idx) == 0 {
+		return nil
+	}
 	l := len(idx)
 	ids := make([]string, 0, l)
 	appIds := make([]string, 0, l)
 	datas := make([]string, 0, l)
+	dataTokens := make([]int64, 0, l)
 	vectors := make([][]float32, 0, l)
 	objectIds := make([]string, 0, l)
 	categories := make([]string, 0, l)
 	properties := make([]string, 0, l)
 	createdAts := make([]int64, 0, l)
 	createdAt := time.Now().Unix()
+
+	appId := idx[0].AppID
 	for _, ix := range idx {
+		// craete partition if not exist
+		if err := s.client.CreatePartition(ctx, ix.CollectionName(), ix.AppID); err != nil {
+			return err
+		}
+
 		ix.ID = fmt.Sprintf("%s:%s", ix.AppID, ix.ObjectID)
 		ix.CreatedAt = createdAt
 		ids = append(ids, ix.ID)
 		appIds = append(appIds, ix.AppID)
 		datas = append(datas, ix.Data)
+		dataTokens = append(dataTokens, ix.DataToken)
 		vectors = append(vectors, ix.Vectors)
 		objectIds = append(objectIds, ix.ObjectID)
 		categories = append(categories, ix.Category)
@@ -68,10 +85,11 @@ func (s *storeImpl) CreateIndices(ctx context.Context, idx []*core.Index) error 
 	_, err := s.client.Insert(
 		ctx,
 		ix.CollectionName(),
-		"",
+		appId,
 		entity.NewColumnVarChar("id", ids),
 		entity.NewColumnVarChar("app_id", appIds),
 		entity.NewColumnVarChar("data", datas),
+		entity.NewColumnInt64("data_token", dataTokens),
 		entity.NewColumnFloatVector("vectors", 1536, vectors),
 		entity.NewColumnVarChar("object_id", objectIds),
 		entity.NewColumnVarChar("category", categories),
@@ -85,7 +103,7 @@ func (s *storeImpl) CreateIndices(ctx context.Context, idx []*core.Index) error 
 	return nil
 }
 
-func (s *storeImpl) Search(ctx context.Context, vectors []float32, n int) ([]*core.Index, error) {
+func (s *storeImpl) Search(ctx context.Context, appID string, vectors []float32, n int) ([]*core.Index, error) {
 	idx := &core.Index{}
 	err := s.client.LoadCollection(
 		ctx,                  // ctx
@@ -101,7 +119,7 @@ func (s *storeImpl) Search(ctx context.Context, vectors []float32, n int) ([]*co
 		ctx,
 		idx.CollectionName(),
 		[]string{},
-		"",
+		appID,
 		[]string{"data", "object_id", "properties", "category", "created_at"},
 		[]entity.Vector{
 			entity.FloatVector(vectors),
