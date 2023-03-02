@@ -15,17 +15,28 @@ import (
 
 func NewService(ctx context.Context, gptHandler *gpt.Handler, indexes core.IndexStore, tokenCal *tokencal.Handler) core.IndexService {
 	return &serviceImpl{
-		gptHandler: gptHandler,
-		indexes:    indexes,
-		tokenCal:   tokenCal,
+		gptHandler:                gptHandler,
+		indexes:                   indexes,
+		tokenCal:                  tokenCal,
+		createEmbeddingsLimitChan: make(chan struct{}, 20),
 	}
 }
 
 type serviceImpl struct {
-	gptHandler   *gpt.Handler
-	milvusClient *milvus.Client
-	indexes      core.IndexStore
-	tokenCal     *tokencal.Handler
+	gptHandler                *gpt.Handler
+	milvusClient              *milvus.Client
+	indexes                   core.IndexStore
+	tokenCal                  *tokencal.Handler
+	createEmbeddingsLimitChan chan struct{}
+}
+
+func (s *serviceImpl) createEmbeddingsWithLimit(ctx context.Context, req gogpt.EmbeddingRequest) (gogpt.EmbeddingResponse, error) {
+	s.createEmbeddingsLimitChan <- struct{}{}
+	defer func() {
+		<-s.createEmbeddingsLimitChan
+	}()
+
+	return s.gptHandler.CreateEmbeddings(ctx, req)
 }
 
 func (s *serviceImpl) SearchIndex(ctx context.Context, keywords string, limit int) ([]*core.Index, error) {
@@ -34,10 +45,12 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, keywords string, limit in
 	}
 
 	app := session.AppFrom(ctx)
-	resp, err := s.gptHandler.CreateEmbeddings(ctx, gogpt.EmbeddingRequest{
+
+	resp, err := s.createEmbeddingsWithLimit(ctx, gogpt.EmbeddingRequest{
 		Input: []string{keywords},
 		Model: gogpt.AdaEmbeddingV2,
 	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -64,10 +77,11 @@ func (s *serviceImpl) CreateIndices(ctx context.Context, items []*core.Index) er
 		input = append(input, item.Data)
 	}
 
-	resp, err := s.gptHandler.CreateEmbeddings(ctx, gogpt.EmbeddingRequest{
+	resp, err := s.createEmbeddingsWithLimit(ctx, gogpt.EmbeddingRequest{
 		Input: input,
 		Model: gogpt.AdaEmbeddingV2,
 	})
+
 	if err != nil {
 		return fmt.Errorf("CreateEmbeddings: %w", err)
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/fox-one/pkg/logger"
@@ -17,11 +16,6 @@ import (
 const (
 	MAX_SUBWORKERS          = 32
 	MAX_REQUESTS_PER_MINUTE = 3000
-)
-
-var (
-	currentRequests     int
-	currentRequestsLock sync.Mutex
 )
 
 type (
@@ -53,7 +47,7 @@ func New(
 	botz core.BotService,
 	tokencal *tokencal.Handler,
 ) *Worker {
-	turnReqChan := make(chan TurnRequest)
+	turnReqChan := make(chan TurnRequest, MAX_REQUESTS_PER_MINUTE)
 	return &Worker{
 		cfg:         cfg,
 		gptHandler:  gptHandler,
@@ -134,17 +128,6 @@ func (w *Worker) run(ctx context.Context) error {
 			turnReq.Request = &request
 		}
 
-		for {
-			currentRequestsLock.Lock()
-			if currentRequests < MAX_REQUESTS_PER_MINUTE {
-				currentRequests++
-				currentRequestsLock.Unlock()
-				break
-			}
-			currentRequestsLock.Unlock()
-			time.Sleep(time.Second)
-		}
-
 		if err := w.convs.UpdateConvTurn(ctx, turn.ID, "", 0, core.ConvTurnStatusPending); err != nil {
 			continue
 		}
@@ -211,9 +194,5 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 			fmt.Printf("[%03d]prompt: %+v\n", id, strings.Join(msgs, "\n"))
 		}
 		fmt.Printf("[%03d]resp: %+v\n", id, respText)
-
-		currentRequestsLock.Lock()
-		currentRequests--
-		currentRequestsLock.Unlock()
 	}
 }
