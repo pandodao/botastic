@@ -3,9 +3,10 @@ package core
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"strings"
 	"text/template"
+
+	gogpt "github.com/sashabaranov/go-gpt3"
 )
 
 type (
@@ -23,26 +24,46 @@ type (
 )
 
 func (t *Bot) GetPrompt(conv *Conversation, question string) string {
-	langHint := "If no language is explicitly specified, please respond in %s."
-	lang := "Chinese"
-	switch conv.Lang {
-	case "en":
-		lang = "English"
-	case "ja":
-		lang = "Japanese"
-	case "zh":
-		lang = "Chinese"
-	}
-	langHint = fmt.Sprintf(langHint, lang)
-
 	var buf bytes.Buffer
 	data := map[string]interface{}{
-		"LangHint": langHint,
-		"History":  conv.HistoryToText(),
+		"LangHint":    conv.LangHint(),
+		"History":     conv.HistoryToText(),
+		"WithHistory": true,
 	}
 	t.PromptTpl.Execute(&buf, data)
 
 	str := buf.String()
 
 	return strings.TrimSpace(str) + "\n"
+}
+
+func (t *Bot) GetChatMessages(conv *Conversation) []gogpt.ChatCompletionMessage {
+	var buf bytes.Buffer
+	data := map[string]interface{}{
+		"LangHint": conv.LangHint(),
+	}
+	t.PromptTpl.Execute(&buf, data)
+
+	str := buf.String()
+
+	result := []gogpt.ChatCompletionMessage{
+		{
+			Role:    "system",
+			Content: str,
+		},
+	}
+	for _, turn := range conv.History {
+		result = append(result, gogpt.ChatCompletionMessage{
+			Role:    "user",
+			Content: turn.Request,
+		})
+		if turn.Response != "" {
+			result = append(result, gogpt.ChatCompletionMessage{
+				Role:    "assistant",
+				Content: turn.Response,
+			})
+		}
+	}
+
+	return result
 }

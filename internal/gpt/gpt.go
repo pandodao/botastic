@@ -96,3 +96,36 @@ func (h *Handler) CreateCompletion(ctx context.Context, request gogpt.Completion
 	}
 	return resp, err
 }
+
+func (h *Handler) CreateChatCompletion(ctx context.Context, request gogpt.ChatCompletionRequest) (gogpt.ChatCompletionResponse, error) {
+	ctx, cancel := context.WithTimeout(ctx, h.cfg.Timeout)
+	defer cancel()
+	h.Lock()
+	client := h.clients[h.index]
+	h.index = (h.index + 1) % len(h.clients)
+	h.Unlock()
+
+	resp, err := client.CreateChatCompletion(ctx, request)
+	if err != nil {
+		var perr *gogpt.APIError
+		if errors.As(err, &perr) {
+			if perr.StatusCode == 429 {
+				return resp, ErrTooManyRequests
+			}
+		}
+
+		var cerr *gogpt.RequestError
+		if errors.As(err, &cerr) {
+			if cerr.StatusCode == 429 {
+				return resp, ErrTooManyRequests
+			}
+		}
+
+		if errors.Is(err, context.DeadlineExceeded) {
+			return resp, ErrTooManyRequests
+		}
+
+		logger.FromContext(ctx).WithError(err).Errorln("gpt: create chat completion failed")
+	}
+	return resp, err
+}

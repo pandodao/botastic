@@ -26,6 +26,11 @@ func HandleAuthentication(s *session.Session, appz core.AppService) func(http.Ha
 				render.Error(w, http.StatusInternalServerError, err)
 				return
 			}
+			if app == nil {
+				render.Error(w, http.StatusUnauthorized, errors.New("app not found"))
+				return
+			}
+
 			if app.AppSecret != appSecret {
 				render.Error(w, http.StatusUnauthorized, errors.New("invalid app id or secret"))
 				return

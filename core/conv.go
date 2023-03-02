@@ -105,11 +105,26 @@ func (c *Conversation) HistoryToText() string {
 	lines := make([]string, 0)
 	for _, turn := range c.History {
 		lines = append(lines, fmt.Sprintf("Q: %s", turn.Request))
-		if turn.Request != "" {
+		if turn.Response != "" {
 			lines = append(lines, fmt.Sprintf("A: %s", turn.Response))
 		}
 	}
 	return strings.TrimSpace(strings.Join(lines, "\n"))
+}
+
+func (c *Conversation) LangHint() string {
+	langHint := "If no language is explicitly specified, please respond in %s."
+	lang := "Chinese"
+	switch c.Lang {
+	case "en":
+		lang = "English"
+	case "ja":
+		lang = "Japanese"
+	case "zh":
+		lang = "Chinese"
+	}
+
+	return fmt.Sprintf(langHint, lang)
 }
 
 func (c *Conversation) GetKey() string {

@@ -14,7 +14,7 @@ require (
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
 	github.com/pressly/goose/v3 v3.9.0
 	github.com/rs/cors v1.8.3
-	github.com/sashabaranov/go-gpt3 v1.1.0
+	github.com/sashabaranov/go-gpt3 v1.3.1-0.20230301205650-b0b26afd50c8
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
 	golang.org/x/sync v0.1.0
