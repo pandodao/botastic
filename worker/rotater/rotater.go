@@ -39,8 +39,9 @@ type (
 	}
 
 	TurnRequest struct {
-		TurnID  uint64
-		Request gogpt.CompletionRequest
+		TurnID      uint64
+		Request     *gogpt.CompletionRequest
+		ChatRequest *gogpt.ChatCompletionRequest
 	}
 )
 
@@ -106,15 +107,31 @@ func (w *Worker) run(ctx context.Context) error {
 			continue
 		}
 
-		prompt := bot.GetPrompt(conv, turn.Request)
+		turnReq := TurnRequest{
+			TurnID: turn.ID,
+		}
 
-		request := gogpt.CompletionRequest{
-			Model:       bot.Model,
-			Prompt:      prompt,
-			MaxTokens:   1024,
-			Temperature: 1,
-			Stop:        []string{"Q:"},
-			User:        conv.GetKey(),
+		switch bot.Model {
+		case "gpt-3.5-turbo", "gpt-3.5-turbo-0301":
+			// chat completion
+			request := gogpt.ChatCompletionRequest{
+				Model:    bot.Model,
+				Messages: bot.GetChatMessages(conv),
+			}
+
+			turnReq.ChatRequest = &request
+		default:
+			// text completion
+			prompt := bot.GetPrompt(conv, turn.Request)
+			request := gogpt.CompletionRequest{
+				Model:       bot.Model,
+				Prompt:      prompt,
+				MaxTokens:   1024,
+				Temperature: 1,
+				Stop:        []string{"Q:"},
+				User:        conv.GetKey(),
+			}
+			turnReq.Request = &request
 		}
 
 		for {
@@ -130,11 +147,6 @@ func (w *Worker) run(ctx context.Context) error {
 
 		if err := w.convs.UpdateConvTurn(ctx, turn.ID, "", 0, core.ConvTurnStatusPending); err != nil {
 			continue
-		}
-
-		turnReq := TurnRequest{
-			TurnID:  turn.ID,
-			Request: request,
 		}
 
 		w.turnReqChan <- turnReq
@@ -155,24 +167,42 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 		// Wait for a request to handle.
 		turnReq := <-w.turnReqChan
 
-		gptResp, err := w.gptHandler.CreateCompletion(ctx, turnReq.Request)
+		respText := ""
+		var err error
+		switch {
+		case turnReq.Request != nil:
+			var gptResp gogpt.CompletionResponse
+			gptResp, err = w.gptHandler.CreateCompletion(ctx, *turnReq.Request)
+			if err == nil {
+				prefix := "A:"
+				respText := strings.TrimPrefix(gptResp.Choices[0].Text, prefix)
+				respText = strings.TrimSpace(respText)
+			}
+		case turnReq.ChatRequest != nil:
+			var gptResp gogpt.ChatCompletionResponse
+			gptResp, err = w.gptHandler.CreateChatCompletion(ctx, *turnReq.ChatRequest)
+			if err != nil {
+				w.UpdateConvTurnAsError(ctx, turnReq.TurnID, err.Error())
+				continue
+			}
+			respText = strings.TrimSpace(gptResp.Choices[0].Message.Content)
+		}
+
 		if err != nil {
 			w.UpdateConvTurnAsError(ctx, turnReq.TurnID, err.Error())
 			continue
 		}
 
-		prefix := "A:"
-		respText := strings.TrimPrefix(gptResp.Choices[0].Text, prefix)
-		respText = strings.TrimSpace(respText)
+		// TODO use the usage field in response
 		token, err := w.tokencal.GetToken(ctx, respText)
 		if err != nil {
 			continue
 		}
+
 		if err := w.convs.UpdateConvTurn(ctx, turnReq.TurnID, respText, token, core.ConvTurnStatusCompleted); err != nil {
 			continue
 		}
 
-		fmt.Printf("[%03d]prompt: %v\n", id, turnReq.Request.Prompt)
 		fmt.Printf("[%03d]resp: %+v\n", id, respText)
 
 		currentRequestsLock.Lock()

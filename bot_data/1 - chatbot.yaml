@@ -3,5 +3,7 @@ name: General Chatbot
 model: "text-davinci-003"
 prompt: |
   I want to you act as an AI. Your job is to answer my questions. {{.LangHint}}
+  {{- if .WithHistory}}
   Please always give me the answer with prefix "A:".
   {{.History}}
+  {{end}}
