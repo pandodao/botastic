@@ -175,17 +175,15 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 			gptResp, err = w.gptHandler.CreateCompletion(ctx, *turnReq.Request)
 			if err == nil {
 				prefix := "A:"
-				respText := strings.TrimPrefix(gptResp.Choices[0].Text, prefix)
+				respText = strings.TrimPrefix(gptResp.Choices[0].Text, prefix)
 				respText = strings.TrimSpace(respText)
 			}
 		case turnReq.ChatRequest != nil:
 			var gptResp gogpt.ChatCompletionResponse
 			gptResp, err = w.gptHandler.CreateChatCompletion(ctx, *turnReq.ChatRequest)
-			if err != nil {
-				w.UpdateConvTurnAsError(ctx, turnReq.TurnID, err.Error())
-				continue
+			if err == nil {
+				respText = strings.TrimSpace(gptResp.Choices[0].Message.Content)
 			}
-			respText = strings.TrimSpace(gptResp.Choices[0].Message.Content)
 		}
 
 		if err != nil {
@@ -203,6 +201,15 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 			continue
 		}
 
+		if turnReq.Request != nil {
+			fmt.Printf("[%03d]prompt: %+v\n", id, turnReq.Request.Prompt)
+		} else if turnReq.ChatRequest != nil {
+			msgs := []string{}
+			for _, m := range turnReq.ChatRequest.Messages {
+				msgs = append(msgs, m.Content)
+			}
+			fmt.Printf("[%03d]prompt: %+v\n", id, strings.Join(msgs, "\n"))
+		}
 		fmt.Printf("[%03d]resp: %+v\n", id, respText)
 
 		currentRequestsLock.Lock()
