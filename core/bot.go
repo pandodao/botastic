@@ -11,11 +11,13 @@ import (
 
 type (
 	Bot struct {
-		ID        uint64             `yaml:"id" json:"id"`
-		Name      string             `yaml:"name" json:"name"`
-		Prompt    string             `yaml:"prompt" json:"-"`
-		Model     string             `yaml:"model" json:"-"`
-		PromptTpl *template.Template `yaml:"-" json:"-"`
+		ID          uint64             `yaml:"id" json:"id"`
+		Name        string             `yaml:"name" json:"name"`
+		Prompt      string             `yaml:"prompt" json:"-"`
+		Model       string             `yaml:"model" json:"-"`
+		Middleware  *Middleware        `yaml:"middleware" json:"middleware"`
+		Temperature float32            `yaml:"temperature" json:"temperature"`
+		PromptTpl   *template.Template `yaml:"-" json:"-"`
 	}
 
 	BotService interface {
@@ -37,11 +39,16 @@ func (t *Bot) GetPrompt(conv *Conversation, question string) string {
 	return strings.TrimSpace(str) + "\n"
 }
 
-func (t *Bot) GetChatMessages(conv *Conversation) []gogpt.ChatCompletionMessage {
+func (t *Bot) GetChatMessages(conv *Conversation, additionData map[string]interface{}) []gogpt.ChatCompletionMessage {
 	var buf bytes.Buffer
 	data := map[string]interface{}{
 		"LangHint": conv.LangHint(),
 	}
+
+	for k, v := range additionData {
+		data[k] = v
+	}
+
 	t.PromptTpl.Execute(&buf, data)
 
 	str := buf.String()

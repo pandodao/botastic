@@ -1,9 +1,10 @@
 id: 3
 name: 王小波
 model: "gpt-3.5-turbo"
+temperature: 1
 middleware:
-  # use the "botastic-indice-search" middleware
-  name: "botastic-indice-search"
+  # use the "botastic-search" middleware
+  name: "botastic-search"
   options:
     # specify the indice name
     app_id: "a4a25815-029b-42b0-be3f-5d72184a2d09"

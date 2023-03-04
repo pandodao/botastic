@@ -74,7 +74,9 @@ var (
 
 	ErrFailedToAddVerification = errors.New("cannot add verification record")
 
-	ErrBotNotFound  = errors.New("bot not found")
+	ErrBotNotFound = errors.New("bot not found")
 
 	ErrConvNotFound = errors.New("conversation not found")
+
+	ErrMiddlewareNotFound = errors.New("middleware not found")
 )

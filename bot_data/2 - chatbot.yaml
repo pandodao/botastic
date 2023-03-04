@@ -1,5 +1,6 @@
 id: 2
 name: General Chatbot
 model: "gpt-3.5-turbo"
+temperature: 1
 prompt: |
   I want to you act as an AI. Your job is to answer my questions. {{.LangHint}}

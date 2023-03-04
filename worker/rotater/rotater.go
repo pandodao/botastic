@@ -10,6 +10,7 @@ import (
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/tokencal"
+	"github.com/pandodao/botastic/session"
 	gogpt "github.com/sashabaranov/go-gpt3"
 )
 
@@ -23,11 +24,15 @@ type (
 	}
 
 	Worker struct {
-		cfg         Config
-		gptHandler  *gpt.Handler
-		convs       core.ConversationStore
+		cfg        Config
+		gptHandler *gpt.Handler
+		convs      core.ConversationStore
+		apps       core.AppStore
+
 		convz       core.ConversationService
 		botz        core.BotService
+		middlewarez core.MiddlewareService
+
 		turnReqChan chan TurnRequest
 		tokencal    *tokencal.Handler
 	}
@@ -43,8 +48,12 @@ func New(
 	cfg Config,
 	gptHandler *gpt.Handler,
 	convs core.ConversationStore,
+	apps core.AppStore,
+
 	convz core.ConversationService,
 	botz core.BotService,
+	middlewarez core.MiddlewareService,
+
 	tokencal *tokencal.Handler,
 ) *Worker {
 	turnReqChan := make(chan TurnRequest, MAX_REQUESTS_PER_MINUTE)
@@ -52,8 +61,11 @@ func New(
 		cfg:         cfg,
 		gptHandler:  gptHandler,
 		convs:       convs,
+		apps:        apps,
 		convz:       convz,
 		botz:        botz,
+		middlewarez: middlewarez,
+
 		turnReqChan: turnReqChan,
 		tokencal:    tokencal,
 	}
@@ -105,12 +117,26 @@ func (w *Worker) run(ctx context.Context) error {
 			TurnID: turn.ID,
 		}
 
+		additional := map[string]interface{}{}
+
+		if bot.Middleware.Name != "" {
+			app, err := w.apps.GetApp(ctx, turn.AppID)
+			if err == nil {
+				ctx = session.WithApp(ctx, app)
+				result, err := w.middlewarez.Process(ctx, bot.Middleware, turn.Request)
+				if err == nil {
+					additional["MiddlewareOutput"] = result
+				}
+			}
+		}
+
 		switch bot.Model {
 		case "gpt-3.5-turbo", "gpt-3.5-turbo-0301":
 			// chat completion
 			request := gogpt.ChatCompletionRequest{
-				Model:    bot.Model,
-				Messages: bot.GetChatMessages(conv),
+				Model:       bot.Model,
+				Messages:    bot.GetChatMessages(conv, additional),
+				Temperature: bot.Temperature,
 			}
 
 			turnReq.ChatRequest = &request
@@ -121,7 +147,7 @@ func (w *Worker) run(ctx context.Context) error {
 				Model:       bot.Model,
 				Prompt:      prompt,
 				MaxTokens:   1024,
-				Temperature: 1,
+				Temperature: bot.Temperature,
 				Stop:        []string{"Q:"},
 				User:        conv.GetKey(),
 			}

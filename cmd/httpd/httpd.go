@@ -19,6 +19,7 @@ import (
 	appServ "github.com/pandodao/botastic/service/app"
 	botServ "github.com/pandodao/botastic/service/bot"
 	convServ "github.com/pandodao/botastic/service/conv"
+	middlewareServ "github.com/pandodao/botastic/service/middleware"
 	"github.com/pandodao/botastic/session"
 	"github.com/pandodao/botastic/store"
 	"github.com/pandodao/botastic/store/app"
@@ -69,11 +70,12 @@ func NewCmdHttpd() *cobra.Command {
 
 			botz := botServ.New(botServ.Config{}, apps)
 			convz := convServ.New(convServ.Config{}, apps, convs, botz, tokenCal)
+			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
 
 			// httpd's workers
 			workers := []worker.Worker{
 				// rotater
-				rotater.New(rotater.Config{}, gptHandler, convs, convz, botz, tokenCal),
+				rotater.New(rotater.Config{}, gptHandler, convs, apps, convz, botz, middlewarez, tokenCal),
 			}
 
 			g, ctx := errgroup.WithContext(ctx)

@@ -8,12 +8,15 @@ import (
 	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/handler/hc"
 	"github.com/pandodao/botastic/internal/gpt"
+	"github.com/pandodao/botastic/internal/milvus"
 	"github.com/pandodao/botastic/internal/tokencal"
 	botServ "github.com/pandodao/botastic/service/bot"
 	convServ "github.com/pandodao/botastic/service/conv"
+	middlewareServ "github.com/pandodao/botastic/service/middleware"
 	"github.com/pandodao/botastic/store"
 	"github.com/pandodao/botastic/store/app"
 	"github.com/pandodao/botastic/store/conv"
+	"github.com/pandodao/botastic/store/index"
 	"github.com/pandodao/botastic/worker"
 	"github.com/pandodao/botastic/worker/rotater"
 
@@ -50,12 +53,20 @@ func NewCmdWorker() *cobra.Command {
 			apps := app.New(h.DB)
 			convs := conv.New(h.DB)
 
+			milvusClient, err := milvus.Init(ctx, cfg.Milvus.Address)
+			if err != nil {
+				return err
+			}
+			indexes := index.New(ctx, milvusClient)
+			indexService := index.NewService(ctx, gptHandler, indexes, tokenCal)
+
 			botz := botServ.New(botServ.Config{}, apps)
 			convz := convServ.New(convServ.Config{}, apps, convs, botz, tokenCal)
+			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
 
 			workers := []worker.Worker{
 				// rotater
-				rotater.New(rotater.Config{}, gptHandler, convs, convz, botz, tokenCal),
+				rotater.New(rotater.Config{}, gptHandler, convs, apps, convz, botz, middlewarez, tokenCal),
 			}
 
 			// run them all
