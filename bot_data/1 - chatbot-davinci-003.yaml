@@ -1,5 +1,5 @@
 id: 1
-name: General Chatbot
+name: General Chatbot (davinci-003)
 model: "text-davinci-003"
 prompt: |
   I want to you act as an AI. Your job is to answer my questions. {{.LangHint}}

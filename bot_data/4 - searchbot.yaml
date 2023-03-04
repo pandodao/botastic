@@ -1,0 +1,11 @@
+id: 4
+name: Search Assistant
+model: "gpt-3.5-turbo"
+middleware:
+  name: "duckduckgo-search"
+  options:
+    limit: 10
+prompt: |
+  I want to you act as a search assistant. Your job is to answer my questions according to the search result. {{.LangHint}}
+  result:
+  {{.MiddlewareOutput}}
