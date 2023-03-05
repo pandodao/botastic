@@ -118,16 +118,19 @@ func (w *Worker) run(ctx context.Context) error {
 		}
 
 		additional := map[string]interface{}{}
-
-		if bot.Middleware.Name != "" {
+		if len(bot.Middlewares) != 0 {
+			middlewareOutputs := make([]string, 0)
 			app, err := w.apps.GetApp(ctx, turn.AppID)
 			if err == nil {
-				ctx = session.WithApp(ctx, app)
-				result, err := w.middlewarez.Process(ctx, bot.Middleware, turn.Request)
-				if err == nil {
-					additional["MiddlewareOutput"] = result
+				for _, middleware := range bot.Middlewares {
+					ctx = session.WithApp(ctx, app)
+					result, err := w.middlewarez.Process(ctx, middleware, turn.Request)
+					if err == nil && result != nil {
+						middlewareOutputs = append(middlewareOutputs, result.Result)
+					}
 				}
 			}
+			additional["MiddlewareOutput"] = strings.Join(middlewareOutputs, "\n\n")
 		}
 
 		switch bot.Model {

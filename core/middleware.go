@@ -5,8 +5,15 @@ import (
 )
 
 const (
-	MiddlewareBotasticSearch   = "botastic-search"
-	MiddlewareDuckduckgoSearch = "duckduckgo-search"
+	MiddlewareBotasticSearch    = "botastic-search"
+	MiddlewareDuckduckgoSearch  = "duckduckgo-search"
+	MiddlewareIntentRecognition = "intent-recognition"
+)
+
+const MiddlewareProcessCodeUnknown = -1
+
+const (
+	MiddlewareProcessCodeOK = iota
 )
 
 type (

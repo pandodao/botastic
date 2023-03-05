@@ -1,0 +1,22 @@
+id: 3
+name: Pando customer service
+model: "gpt-3.5-turbo"
+temperature: 1
+middlewares:
+  # use the "botastic-search" middleware
+  - name: "botastic-search"
+    options:
+      # specify the indice name
+      app_id: "a4a25815-029b-42b0-be3f-5d72184a2d09"
+      # how many results to return
+      limit: 5
+  - name: "intent-recognition"
+    options:
+      intents:
+        - "1: download app"
+        - "2: try to resolve a network issue"
+        - "3: try to resolve a transfer issue"
+        - "4: general questions"
+prompt: |
+  I want to you act as "Pando Customer Service". Your job is to answer questions according to the context and recognize the intent. {{.LangHint}}
+  {{.MiddlewareOutput}}

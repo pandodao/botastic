@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/pandodao/botastic/core"
@@ -48,21 +49,55 @@ func (s *service) GetMiddlewareByName(ctx context.Context, name string) (*core.M
 	return middleware, nil
 }
 
+func (s *service) ProcessIntentRecognition(ctx context.Context, m *core.Middleware, input string) (*core.MiddlewareProcessResult, error) {
+	prompt := `You will analyze the intent of the request.
+You will output the analyze result at the beginning of your response as json format: {"intent": Here is your intent analyze result}
+The possible intents should be one of following. If you have no confident about the intent, please use "unknown intent":`
+
+	var intents []string
+	val, ok := m.Options["intents"]
+	if ok {
+		_val, ok := val.([]interface{})
+		if ok {
+			for _, v := range _val {
+				str, ok := v.(string)
+				if !ok {
+					continue
+				}
+				intents = append(intents, str)
+			}
+		}
+	} else {
+		return nil, nil
+	}
+
+	ret := &core.MiddlewareProcessResult{
+		Name:   m.Name,
+		Code:   core.MiddlewareProcessCodeOK,
+		Result: fmt.Sprintf("%s\n\n[intents-begin]\n%s\n[intents-end]\n", prompt, strings.Join(intents, "\n")),
+	}
+	return ret, nil
+}
+
 func (s *service) ProcessBotasticSearch(ctx context.Context, m *core.Middleware, input string) (*core.MiddlewareProcessResult, error) {
 	searchResult, err := s.indexz.SearchIndex(ctx, input, 10)
 	if err != nil {
 		return nil, err
 	}
 
-	arr := make([]string, len(searchResult))
-	for _, r := range searchResult {
-		arr = append(arr, r.Data)
+	arr := make([]string, 0)
+	for ix, r := range searchResult {
+		line := strings.ReplaceAll(strings.ReplaceAll(r.Data, "\n", " "), "\r", "")
+		line = strings.TrimSpace(line)
+		if line != "" {
+			arr = append(arr, fmt.Sprintf("%d: %s", ix+1, line))
+		}
 	}
 
 	ret := &core.MiddlewareProcessResult{
 		Name:   m.Name,
-		Code:   200,
-		Result: strings.Join(arr, "\n"),
+		Code:   core.MiddlewareProcessCodeOK,
+		Result: fmt.Sprintf("[context-begin]\n%s\n[context-end]\n", strings.Join(arr, "\n")),
 	}
 	return ret, nil
 }
@@ -70,7 +105,7 @@ func (s *service) ProcessBotasticSearch(ctx context.Context, m *core.Middleware,
 func (s *service) ProcessDuckduckgoSearch(ctx context.Context, m *core.Middleware, input string) (*core.MiddlewareProcessResult, error) {
 	ret := &core.MiddlewareProcessResult{
 		Name:   m.Name,
-		Code:   200,
+		Code:   core.MiddlewareProcessCodeOK,
 		Result: "duckduckgo-search doesn't work yet!",
 	}
 	return ret, nil
@@ -82,6 +117,8 @@ func (s *service) Process(ctx context.Context, m *core.Middleware, input string)
 		return s.ProcessBotasticSearch(ctx, m, input)
 	case core.MiddlewareDuckduckgoSearch:
 		return s.ProcessDuckduckgoSearch(ctx, m, input)
+	case core.MiddlewareIntentRecognition:
+		return s.ProcessIntentRecognition(ctx, m, input)
 	}
 	return nil, nil
 }

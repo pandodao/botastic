@@ -15,8 +15,8 @@ type (
 		Name        string             `yaml:"name" json:"name"`
 		Prompt      string             `yaml:"prompt" json:"-"`
 		Model       string             `yaml:"model" json:"-"`
-		Middleware  *Middleware        `yaml:"middleware" json:"middleware"`
-		Temperature float32            `yaml:"temperature" json:"temperature"`
+		Middlewares []*Middleware      `yaml:"middlewares" json:"-"`
+		Temperature float32            `yaml:"temperature" json:"-"`
 		PromptTpl   *template.Template `yaml:"-" json:"-"`
 	}
 
