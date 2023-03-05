@@ -121,6 +121,14 @@ func (s *storeImpl) Search(ctx context.Context, appID string, vectors []float32,
 		return nil, err
 	}
 
+	partitionExist, err := s.client.HasPartition(ctx, idx.CollectionName(), partitionName)
+	if err != nil {
+		return nil, err
+	}
+	if !partitionExist {
+		return []*core.Index{}, nil
+	}
+
 	sp, _ := entity.NewIndexFlatSearchParam()
 	searchResult, err := s.client.Search(
 		ctx,
