@@ -7,6 +7,7 @@ import (
 
 	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/handler/hc"
+	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/milvus"
 	"github.com/pandodao/botastic/internal/tokencal"
@@ -63,10 +64,11 @@ func NewCmdWorker() *cobra.Command {
 			botz := botServ.New(botServ.Config{}, apps)
 			convz := convServ.New(convServ.Config{}, apps, convs, botz, tokenCal)
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
+			hub := chanhub.New()
 
 			workers := []worker.Worker{
 				// rotater
-				rotater.New(rotater.Config{}, gptHandler, convs, apps, convz, botz, middlewarez, tokenCal),
+				rotater.New(rotater.Config{}, gptHandler, convs, apps, convz, botz, middlewarez, tokenCal, hub),
 			}
 
 			// run them all

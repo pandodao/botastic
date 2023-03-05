@@ -3,11 +3,13 @@ package rotater
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/fox-one/pkg/logger"
 	"github.com/pandodao/botastic/core"
+	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/tokencal"
 	"github.com/pandodao/botastic/session"
@@ -35,6 +37,7 @@ type (
 
 		turnReqChan chan TurnRequest
 		tokencal    *tokencal.Handler
+		hub         *chanhub.Hub
 	}
 
 	TurnRequest struct {
@@ -55,6 +58,7 @@ func New(
 	middlewarez core.MiddlewareService,
 
 	tokencal *tokencal.Handler,
+	hub *chanhub.Hub,
 ) *Worker {
 	turnReqChan := make(chan TurnRequest, MAX_REQUESTS_PER_MINUTE)
 	return &Worker{
@@ -68,6 +72,7 @@ func New(
 
 		turnReqChan: turnReqChan,
 		tokencal:    tokencal,
+		hub:         hub,
 	}
 }
 
@@ -212,6 +217,9 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 		if err := w.convs.UpdateConvTurn(ctx, turnReq.TurnID, respText, token, core.ConvTurnStatusCompleted); err != nil {
 			continue
 		}
+
+		// notify http handler
+		w.hub.Broadcast(strconv.FormatUint(turnReq.TurnID, 10), struct{}{})
 
 		if turnReq.Request != nil {
 			fmt.Printf("[%03d]prompt: %+v\n", id, turnReq.Request.Prompt)

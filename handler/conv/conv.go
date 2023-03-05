@@ -1,6 +1,8 @@
 package conv
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -8,7 +10,9 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/handler/render"
+	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/session"
+	"gorm.io/gorm"
 )
 
 type (
@@ -51,6 +55,62 @@ func CreateConversation(botz core.BotService, convz core.ConversationService) ht
 		}
 
 		render.JSON(w, conv)
+	}
+}
+
+func GetConversationTurn(botz core.BotService, convs core.ConversationStore, hub *chanhub.Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		conversationID := chi.URLParam(r, "conversationID")
+		if conversationID == "" {
+			render.Error(w, http.StatusBadRequest, nil)
+			return
+		}
+
+		turnIDStr := chi.URLParam(r, "turnID")
+		if turnIDStr == "" {
+			render.Error(w, http.StatusBadRequest, nil)
+			return
+		}
+
+		turnId, err := strconv.ParseUint(turnIDStr, 10, 64)
+		if err != nil {
+			render.Error(w, http.StatusBadRequest, nil)
+			return
+		}
+
+		convTurn, err := convs.GetConvTurn(ctx, conversationID, turnId)
+		if err != nil && err != gorm.ErrRecordNotFound {
+			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		if convTurn == nil || convTurn.ID == 0 {
+			render.Error(w, http.StatusBadRequest, fmt.Errorf("no conversation turn"))
+			return
+		}
+
+		switch convTurn.Status {
+		case core.ConvTurnStatusCompleted, core.ConvTurnStatusError:
+			render.JSON(w, convTurn)
+			return
+		}
+
+		_, err = hub.AddAndWait(ctx, turnIDStr)
+		if err != nil {
+			if err == context.Canceled {
+				render.Error(w, http.StatusBadRequest, err)
+				return
+			}
+		}
+		convTurn, err = convs.GetConvTurn(ctx, conversationID, turnId)
+		if err != nil {
+			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		render.JSON(w, convTurn)
+		return
 	}
 }
 

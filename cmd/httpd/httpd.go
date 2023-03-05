@@ -13,6 +13,7 @@ import (
 	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/handler"
 	"github.com/pandodao/botastic/handler/hc"
+	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/milvus"
 	"github.com/pandodao/botastic/internal/tokencal"
@@ -71,11 +72,12 @@ func NewCmdHttpd() *cobra.Command {
 			botz := botServ.New(botServ.Config{}, apps)
 			convz := convServ.New(convServ.Config{}, apps, convs, botz, tokenCal)
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
+			hub := chanhub.New()
 
 			// httpd's workers
 			workers := []worker.Worker{
 				// rotater
-				rotater.New(rotater.Config{}, gptHandler, convs, apps, convz, botz, middlewarez, tokenCal),
+				rotater.New(rotater.Config{}, gptHandler, convs, apps, convz, botz, middlewarez, tokenCal, hub),
 			}
 
 			g, ctx := errgroup.WithContext(ctx)
@@ -107,7 +109,7 @@ func NewCmdHttpd() *cobra.Command {
 				}
 
 				{
-					svr := handler.New(handler.Config{}, s, apps, appz, botz, indexService, convz, indexes)
+					svr := handler.New(handler.Config{}, s, apps, appz, botz, indexService, convz, indexes, convs, hub)
 
 					// api v1
 					restHandler := svr.HandleRest()
