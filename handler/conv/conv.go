@@ -61,6 +61,7 @@ func CreateConversation(botz core.BotService, convz core.ConversationService) ht
 func GetConversationTurn(botz core.BotService, convs core.ConversationStore, hub *chanhub.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		app := session.AppFrom(ctx)
 		conversationID := chi.URLParam(r, "conversationID")
 		if conversationID == "" {
 			render.Error(w, http.StatusBadRequest, nil)
@@ -86,6 +87,11 @@ func GetConversationTurn(botz core.BotService, convs core.ConversationStore, hub
 		}
 
 		if convTurn == nil || convTurn.ID == 0 {
+			render.Error(w, http.StatusBadRequest, fmt.Errorf("no conversation turn"))
+			return
+		}
+
+		if convTurn.AppID != app.ID {
 			render.Error(w, http.StatusBadRequest, fmt.Errorf("no conversation turn"))
 			return
 		}
