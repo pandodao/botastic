@@ -105,7 +105,7 @@ func NewCmdHttpd() *cobra.Command {
 				}
 
 				{
-					svr := handler.New(handler.Config{}, s, apps, appz, botz, indexService, convz)
+					svr := handler.New(handler.Config{}, s, apps, appz, botz, indexService, convz, indexes)
 
 					// api v1
 					restHandler := svr.HandleRest()

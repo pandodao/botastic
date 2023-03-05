@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/fox-one/pkg/httputil/param"
+	"github.com/go-chi/chi"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/handler/render"
 	"github.com/pandodao/botastic/session"
@@ -50,6 +51,31 @@ func CreateIndex(indexes core.IndexService) http.HandlerFunc {
 
 		err := indexes.CreateIndices(r.Context(), is)
 		if err != nil {
+			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		render.JSON(w, map[string]interface{}{})
+	}
+}
+
+func Delete(apps core.AppStore, indexes core.IndexStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		app := session.AppFrom(r.Context())
+
+		objectID := chi.URLParam(r, "objectID")
+		if objectID == "" {
+			render.Error(w, http.StatusBadRequest, nil)
+			return
+		}
+
+		if err := indexes.DeleteByPks(ctx, []*core.Index{
+			{
+				AppID:    app.AppID,
+				ObjectID: objectID,
+			},
+		}); err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
 		}

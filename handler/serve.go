@@ -18,17 +18,19 @@ func New(cfg Config, s *session.Session,
 	apps core.AppStore,
 	appz core.AppService,
 	botz core.BotService,
-	indexes core.IndexService,
+	indexService core.IndexService,
 	convz core.ConversationService,
+	indexs core.IndexStore,
 ) Server {
 	return Server{
-		cfg:     cfg,
-		apps:    apps,
-		appz:    appz,
-		indexes: indexes,
-		botz:    botz,
-		convz:   convz,
-		session: s,
+		cfg:          cfg,
+		apps:         apps,
+		appz:         appz,
+		indexService: indexService,
+		indexes:      indexs,
+		botz:         botz,
+		convz:        convz,
+		session:      s,
 	}
 }
 
@@ -39,12 +41,13 @@ type (
 	Server struct {
 		cfg Config
 
-		session *session.Session
-		apps    core.AppStore
-		botz    core.BotService
-		appz    core.AppService
-		indexes core.IndexService
-		convz   core.ConversationService
+		session      *session.Session
+		apps         core.AppStore
+		botz         core.BotService
+		appz         core.AppService
+		indexService core.IndexService
+		indexes      core.IndexStore
+		convz        core.ConversationService
 	}
 )
 
@@ -54,8 +57,9 @@ func (s Server) HandleRest() http.Handler {
 	r.Use(auth.HandleAuthentication(s.session, s.appz))
 
 	r.Route("/indices", func(r chi.Router) {
-		r.Post("/", indexHandler.CreateIndex(s.indexes))
-		r.Get("/search", indexHandler.Search(s.apps, s.indexes))
+		r.Post("/", indexHandler.CreateIndex(s.indexService))
+		r.Get("/search", indexHandler.Search(s.apps, s.indexService))
+		r.Delete("/{objectID}", indexHandler.Delete(s.apps, s.indexes))
 	})
 
 	r.Route("/bots", func(r chi.Router) {

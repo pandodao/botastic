@@ -24,7 +24,7 @@ func (s *storeImpl) QueryIndex(ctx context.Context, idx *core.Index) error {
 	return nil
 }
 
-func (s *storeImpl) deleteByPks(ctx context.Context, items []*core.Index) error {
+func (s *storeImpl) DeleteByPks(ctx context.Context, items []*core.Index) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -83,7 +83,7 @@ func (s *storeImpl) CreateIndices(ctx context.Context, idx []*core.Index) error 
 		createdAts = append(createdAts, ix.CreatedAt)
 	}
 
-	if err := s.deleteByPks(ctx, idx); err != nil {
+	if err := s.DeleteByPks(ctx, idx); err != nil {
 		return fmt.Errorf("delete by pks: %w", err)
 	}
 
