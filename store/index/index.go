@@ -147,6 +147,9 @@ func (s *storeImpl) Search(ctx context.Context, appID string, vectors []float32,
 	if err != nil {
 		return nil, err
 	}
+	if len(searchResult) == 0 {
+		return []*core.Index{}, nil
+	}
 
 	indices := []*core.Index{}
 	sr := searchResult[0]
