@@ -11,6 +11,7 @@ import (
 	"github.com/pandodao/botastic/handler/conv"
 	indexHandler "github.com/pandodao/botastic/handler/index"
 	"github.com/pandodao/botastic/handler/render"
+	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/session"
 )
 
@@ -21,6 +22,8 @@ func New(cfg Config, s *session.Session,
 	indexService core.IndexService,
 	convz core.ConversationService,
 	indexs core.IndexStore,
+	convs core.ConversationStore,
+	hub *chanhub.Hub,
 ) Server {
 	return Server{
 		cfg:          cfg,
@@ -31,6 +34,8 @@ func New(cfg Config, s *session.Session,
 		botz:         botz,
 		convz:        convz,
 		session:      s,
+		convs:        convs,
+		hub:          hub,
 	}
 }
 
@@ -48,6 +53,8 @@ type (
 		indexService core.IndexService
 		indexes      core.IndexStore
 		convz        core.ConversationService
+		convs        core.ConversationStore
+		hub          *chanhub.Hub
 	}
 )
 
@@ -73,6 +80,7 @@ func (s Server) HandleRest() http.Handler {
 		r.Post("/{conversationID}", conv.PostToConversation(s.botz, s.convz))
 		r.Delete("/{conversationID}", conv.DeleteConversation(s.botz, s.convz))
 		r.Put("/{conversationID}", conv.UpdateConversation())
+		r.Get("/{conversationID}/{turnID}", conv.GetConversationTurn(s.botz, s.convs, s.hub))
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {

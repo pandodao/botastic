@@ -73,6 +73,14 @@ type (
 		//  "request", "response", "status",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns" WHERE
+		//  "id" = @id AND conversation_id = @conversationID
+		GetConvTurn(ctx context.Context, conversationID string, id uint64) (*ConvTurn, error)
+
+		// SELECT
+		//	"id", "conversation_id", "bot_id", "app_id", "user_identity",
+		//  "request", "response", "status",
+		//  "created_at", "updated_at"
+		// FROM "conv_turns" WHERE
 		//  "status"=@status
 		GetConvTurnsByStatus(ctx context.Context, status int) ([]*ConvTurn, error)
 
