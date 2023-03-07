@@ -8,6 +8,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var userID uint64
+var appName string
+
 func NewCmdApp() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "app",
@@ -65,7 +68,7 @@ func NewCmdAppCreate() *cobra.Command {
 				SecretKey: cfg.Sys.SecretKey,
 			}, apps)
 
-			app, err := appz.CreateApp(ctx)
+			app, err := appz.CreateApp(ctx, userID, appName)
 			if err != nil {
 				cmd.PrintErrf("create app failed: %v'n", err)
 				return
@@ -74,6 +77,9 @@ func NewCmdAppCreate() *cobra.Command {
 			cmd.Printf("app_id: %s, app_secret: %s", app.AppID, app.AppSecret)
 		},
 	}
+
+	cmd.Flags().Uint64Var(&userID, "dir", 0, "the user ID to be associated with the app")
+	cmd.Flags().StringVar(&appName, "name", "", "the app name")
 
 	return cmd
 }
