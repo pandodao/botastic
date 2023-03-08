@@ -14,6 +14,7 @@ type Config struct {
 	Sys      System         `yaml:"sys"`
 	OpenAPI  OpenAIConfig   `yaml:"openai"`
 	TokenCal TokenCalConfig `yaml:"tokencal"`
+	Auth     Auth           `yaml:"auth"`
 }
 
 type Milvus struct {
@@ -37,6 +38,11 @@ type DBConfig struct {
 
 type System struct {
 	SecretKey string `yaml:"secret_key"`
+}
+
+type Auth struct {
+	JwtSecret         string `json:"jwt_secret"`
+	MixinClientSecret string `json:"mixin_client_secret"`
 }
 
 func (c Config) validate() error {

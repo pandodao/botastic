@@ -21,11 +21,13 @@ import (
 	botServ "github.com/pandodao/botastic/service/bot"
 	convServ "github.com/pandodao/botastic/service/conv"
 	middlewareServ "github.com/pandodao/botastic/service/middleware"
+	userServ "github.com/pandodao/botastic/service/user"
 	"github.com/pandodao/botastic/session"
 	"github.com/pandodao/botastic/store"
 	"github.com/pandodao/botastic/store/app"
 	"github.com/pandodao/botastic/store/conv"
 	"github.com/pandodao/botastic/store/index"
+	"github.com/pandodao/botastic/store/user"
 	"github.com/pandodao/botastic/worker"
 	"github.com/pandodao/botastic/worker/rotater"
 	"github.com/rs/cors"
@@ -44,8 +46,15 @@ func NewCmdHttpd() *cobra.Command {
 			var err error
 			ctx := cmd.Context()
 			s := session.From(ctx)
+			s.WithJWTSecret([]byte(config.C().Auth.JwtSecret))
 
 			cfg := config.C()
+
+			client, err := s.GetClient()
+			if err != nil {
+				return err
+			}
+
 			h := store.MustInit(store.Config{
 				Driver: cfg.DB.Driver,
 				DSN:    cfg.DB.DSN,
@@ -58,6 +67,8 @@ func NewCmdHttpd() *cobra.Command {
 
 			apps := app.New(h.DB)
 			convs := conv.New(h.DB)
+			users := user.New(h.DB)
+			// var users core.UserStore
 
 			appz := appServ.New(appServ.Config{
 				SecretKey: cfg.Sys.SecretKey,
@@ -73,6 +84,8 @@ func NewCmdHttpd() *cobra.Command {
 			convz := convServ.New(convServ.Config{}, apps, convs, botz, tokenCal)
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
 			hub := chanhub.New()
+			userz := userServ.New(userServ.Config{}, client, users)
+			// var userz core.UserService
 
 			// httpd's workers
 			workers := []worker.Worker{
@@ -109,7 +122,7 @@ func NewCmdHttpd() *cobra.Command {
 				}
 
 				{
-					svr := handler.New(handler.Config{}, s, apps, appz, botz, indexService, convz, indexes, convs, hub)
+					svr := handler.New(handler.Config{}, s, apps, indexes, users, convs, appz, botz, indexService, userz, convz, hub)
 
 					// api v1
 					restHandler := svr.HandleRest()

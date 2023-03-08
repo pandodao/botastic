@@ -69,7 +69,7 @@ func (s *service) GetConversation(ctx context.Context, convID string) (*core.Con
 	ids := []uint64{}
 	for ix := len(conv.History) - 1; ix >= 0; ix-- {
 		turn := conv.History[ix]
-		if turn.Status == core.ConvTurnStatusInit {
+		if turn.Status == core.ConvTurnStatusPending || turn.Status == core.ConvTurnStatusInit {
 			ids = append(ids, turn.ID)
 		}
 	}
