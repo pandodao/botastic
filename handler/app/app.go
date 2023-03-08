@@ -20,6 +20,11 @@ type CreateAppPayload struct {
 func GetApp(appz core.AppService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		user, found := session.UserFrom(ctx)
+		if !found {
+			render.Error(w, http.StatusUnauthorized, core.ErrUnauthorized)
+			return
+		}
 
 		appID := chi.URLParam(r, "appID")
 
@@ -32,6 +37,11 @@ func GetApp(appz core.AppService) http.HandlerFunc {
 		app, err := appz.GetAppByAppID(ctx, appID)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		if app.UserID != user.ID {
+			render.Error(w, http.StatusNotFound, core.ErrAppNotFound)
 			return
 		}
 
@@ -55,13 +65,15 @@ func CreateApp(appz core.AppService) http.HandlerFunc {
 			return
 		}
 
+		body.Name = strings.TrimSpace(body.Name)
+
 		appArr, _ := appz.GetAppsByUser(ctx, user.ID)
 		if len(appArr) >= 10 {
 			render.Error(w, http.StatusBadRequest, core.ErrAppLimitReached)
 			return
 		}
 
-		if strings.TrimSpace(body.Name) == "" {
+		if len(body.Name) > 128 || len(body.Name) == 0 {
 			render.Error(w, http.StatusBadRequest, nil)
 			return
 		}
