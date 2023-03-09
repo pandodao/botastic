@@ -2,6 +2,8 @@ id: 3
 name: Pando customer service
 model: "gpt-3.5-turbo"
 temperature: 1
+max_turn_count: 9
+context_turn_count: 1
 middlewares:
   # use the "botastic-search" middleware
   - name: "botastic-search"

@@ -2,6 +2,8 @@ id: 4
 name: Search Assistant
 model: "gpt-3.5-turbo"
 temperature: 2
+max_turn_count: 9
+context_turn_count: 1
 middlewares:
   - name: "duckduckgo-search"
     options:

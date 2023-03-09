@@ -114,12 +114,17 @@ func (s *service) PostToConversation(ctx context.Context, conv *core.Conversatio
 
 	turn := turns[0]
 
-	if len(conv.History) > core.MaxTurnCount {
-		// reduce to MaxTurnCount
-		conv.History = conv.History[len(conv.History)-core.MaxTurnCount:]
+	bot, err := s.botz.GetBot(ctx, conv.Bot.ID)
+	if err != nil {
+		return nil, err
 	}
 
 	conv.History = append(conv.History, turn)
+
+	if len(conv.History) > bot.MaxTurnCount {
+		// reduce to MaxTurnCount
+		conv.History = conv.History[len(conv.History)-bot.MaxTurnCount:]
+	}
 
 	return turn, nil
 }

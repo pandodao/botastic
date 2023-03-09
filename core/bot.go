@@ -11,13 +11,15 @@ import (
 
 type (
 	Bot struct {
-		ID          uint64             `yaml:"id" json:"id"`
-		Name        string             `yaml:"name" json:"name"`
-		Prompt      string             `yaml:"prompt" json:"-"`
-		Model       string             `yaml:"model" json:"-"`
-		Middlewares []*Middleware      `yaml:"middlewares" json:"-"`
-		Temperature float32            `yaml:"temperature" json:"-"`
-		PromptTpl   *template.Template `yaml:"-" json:"-"`
+		ID               uint64             `yaml:"id" json:"id"`
+		Name             string             `yaml:"name" json:"name"`
+		Prompt           string             `yaml:"prompt" json:"-"`
+		Model            string             `yaml:"model" json:"-"`
+		MaxTurnCount     int                `yaml:"max_turn_count" json:"-"`
+		ContextTurnCount int                `yaml:"context_turn_count" json:"-"`
+		Middlewares      []*Middleware      `yaml:"middlewares" json:"-"`
+		Temperature      float32            `yaml:"temperature" json:"-"`
+		PromptTpl        *template.Template `yaml:"-" json:"-"`
 	}
 
 	BotService interface {
@@ -28,9 +30,8 @@ type (
 func (t *Bot) GetPrompt(conv *Conversation, question string) string {
 	var buf bytes.Buffer
 	data := map[string]interface{}{
-		"LangHint":    conv.LangHint(),
-		"History":     conv.HistoryToText(),
-		"WithHistory": true,
+		"LangHint": conv.LangHint(),
+		"History":  conv.HistoryToText(),
 	}
 	t.PromptTpl.Execute(&buf, data)
 
@@ -59,7 +60,13 @@ func (t *Bot) GetChatMessages(conv *Conversation, additionData map[string]interf
 			Content: str,
 		},
 	}
-	for _, turn := range conv.History {
+
+	history := conv.History
+	if len(history) > conv.Bot.ContextTurnCount {
+		history = history[len(history)-conv.Bot.ContextTurnCount:]
+	}
+
+	for _, turn := range history {
 		result = append(result, gogpt.ChatCompletionMessage{
 			Role:    "user",
 			Content: turn.Request,

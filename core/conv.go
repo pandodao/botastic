@@ -14,10 +14,6 @@ const (
 	ConvTurnStatusError
 )
 
-const (
-	MaxTurnCount = 8
-)
-
 type (
 	Conversation struct {
 		ID           string      `yaml:"id" json:"id"`
@@ -111,7 +107,11 @@ func (c *Conversation) IsExpired() bool {
 
 func (c *Conversation) HistoryToText() string {
 	lines := make([]string, 0)
-	for _, turn := range c.History {
+	history := c.History
+	if len(history) > c.Bot.ContextTurnCount {
+		history = history[len(history)-c.Bot.ContextTurnCount:]
+	}
+	for _, turn := range history {
 		lines = append(lines, fmt.Sprintf("Q: %s", turn.Request))
 		if turn.Response != "" {
 			lines = append(lines, fmt.Sprintf("A: %s", turn.Response))

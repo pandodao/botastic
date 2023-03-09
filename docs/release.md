@@ -60,7 +60,7 @@ networks:
 
 ```
 
-2. Execute the folling command to create the `milvus.yaml` config file.
+2. Execute the following command to create the `milvus.yaml` config file.
 ```shell
 cd milvus
 mkdir -p volumes/milvus_config
@@ -68,7 +68,7 @@ cd volumes/milvus_config
 wget https://raw.githubusercontent.com/milvus-io/milvus/v2.2.3/configs/milvus.yaml
 ```
 
-The `tree` command output as folling,
+The `tree` command output as following,
 ```shell
 cd milvus
 tree
