@@ -170,6 +170,12 @@ func PostToConversation(botz core.BotService, convz core.ConversationService) ht
 			return
 		}
 
+		// check if the conversation has pending turn
+		if len(conv.History) > 0 && !conv.History[len(conv.History)-1].IsProcessed() {
+			render.Error(w, http.StatusTooManyRequests, core.ErrConvTurnNotProcessed)
+			return
+		}
+
 		turn, err := convz.PostToConversation(ctx, conv, body.Content)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)

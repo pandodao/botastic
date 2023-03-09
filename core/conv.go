@@ -145,3 +145,7 @@ func (c *Conversation) GenerateUserText(text string) string {
 	}
 	return ""
 }
+
+func (t ConvTurn) IsProcessed() bool {
+	return t.Status == ConvTurnStatusCompleted || t.Status == ConvTurnStatusError
+}
