@@ -23,7 +23,7 @@ func Text(w http.ResponseWriter, t string) {
 
 func Error(w http.ResponseWriter, status int, err error) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(status)
 	enc := json.NewEncoder(w)
 	msg := "Unknown"
 	if err != nil {

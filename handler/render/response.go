@@ -49,9 +49,10 @@ type dataResponse struct {
 }
 
 type errorResponse struct {
-	Code int    `json:"code"`
-	Msg  string `json:"msg"`
-	Hint string `json:"hint,omitempty"`
+	Timestamp int64  `json:"ts,omitempty"`
+	Code      int    `json:"code"`
+	Msg       string `json:"msg"`
+	Hint      string `json:"hint,omitempty"`
 }
 
 func WrapResponse(wrapData bool) func(http.Handler) http.Handler {
@@ -69,6 +70,7 @@ func WrapResponse(wrapData bool) func(http.Handler) http.Handler {
 
 			next.ServeHTTP(ww, r)
 
+			ts := time.Now().UnixNano() / int64(time.Millisecond)
 			if ww.status >= 300 {
 				var (
 					response errorResponse
@@ -76,12 +78,12 @@ func WrapResponse(wrapData bool) func(http.Handler) http.Handler {
 
 				response.Code = ww.status
 				response.Msg = http.StatusText(ww.status)
-
+				response.Timestamp = ts
 				buf.Reset()
 				_ = json.NewEncoder(buf).Encode(response)
 			} else if wrapData && ww.isJsonContent() {
 				r := dataResponse{
-					Timestamp: time.Now().UnixNano() / int64(time.Millisecond),
+					Timestamp: ts,
 					Data:      buf.Bytes(),
 				}
 				buf.Reset()
