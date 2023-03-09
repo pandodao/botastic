@@ -3,7 +3,7 @@ Botastic service has two dependent services.
 - milvus - save and query vectors of index data embedding result.
 - tokencal - calculate token consumption of OpenAI.
 
-Before deploying botastic service, we need to deploy the dependency services first. Because they are both deployed using docker, make docker installed in our system.
+Before deploying botastic service, we need to deploy the dependency services first. Because they are both deployed using docker, make sure docker installed in our system.
 
 ### milvus
 
