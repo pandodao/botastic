@@ -20,10 +20,10 @@ dockers:
     goarch: amd64
     dockerfile: Dockerfile
     image_templates:
-      - "ghcr.io/zuodaotech/{{ .ProjectName }}/botastic:latest"
-      - "ghcr.io/zuodaotech/{{ .ProjectName }}/botastic:{{ .Major }}"
-      - "ghcr.io/zuodaotech/{{ .ProjectName }}/botastic:{{ .Major }}.{{ .Minor }}"
-      - "ghcr.io/zuodaotech/{{ .ProjectName }}/botastic:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
+      - "ghcr.io/pandodao/{{ .ProjectName }}/botastic:latest"
+      - "ghcr.io/pandodao/{{ .ProjectName }}/botastic:{{ .Major }}"
+      - "ghcr.io/pandodao/{{ .ProjectName }}/botastic:{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/pandodao/{{ .ProjectName }}/botastic:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
 blobs:
   - provider: s3
     region: us-east-2
