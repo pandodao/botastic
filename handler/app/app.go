@@ -102,10 +102,6 @@ func GetMyApps(appz core.AppService) http.HandlerFunc {
 			return
 		}
 
-		for _, app := range appArr {
-			app.AppSecret = ""
-		}
-
 		render.JSON(w, appArr)
 	}
 }
