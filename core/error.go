@@ -99,4 +99,6 @@ var (
 	ErrInvalidAuthParams = errors.New("invalid auth params")
 
 	ErrKeystoreNotProvided = errors.New("keystore not provided")
+
+	ErrConvTurnNotProcessed = errors.New("conversation turn is not processed")
 )
