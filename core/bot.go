@@ -146,6 +146,7 @@ type (
 		GetPublicBots(ctx context.Context) ([]*Bot, error)
 		GetBotsByUserID(ctx context.Context, userID uint64) ([]*Bot, error)
 		CreateBot(ctx context.Context, userID uint64, name, model, prompt string, temperature float32, maxTurnCount, contextTurnCount int, middlewares MiddlewareConfig, public bool) (*Bot, error)
+		UpdateBot(ctx context.Context, id uint64, name, model, prompt string, temperature float32, maxTurnCount, contextTurnCount int, middlewares MiddlewareConfig, public bool) error
 	}
 )
 

@@ -54,6 +54,10 @@ func (s *service) CreateConversation(ctx context.Context, botID, appID uint64, u
 		return nil, err
 	}
 
+	if !bot.Public && app.UserID != bot.UserID {
+		return nil, core.ErrBotNotFound
+	}
+
 	conv := s.getDefaultConversation(app, bot, userIdentity, lang)
 	s.conversationMap[conv.ID] = conv
 

@@ -97,6 +97,8 @@ func (s Server) HandleRest() http.Handler {
 		r.Get("/public", bot.GetPublicBots(s.botz))
 		r.With(s.LoginRequired()).Get("/{botID}", bot.GetBot(s.botz))
 		r.With(s.LoginRequired()).Post("/", bot.CreateBot(s.botz))
+		r.With(s.LoginRequired()).Put("/{botID}", bot.UpdateBot(s.botz))
+		r.With(s.LoginRequired()).Get("/", bot.GetMyBots(s.botz))
 	})
 
 	r.With(s.LoginRequired()).Route("/users", func(r chi.Router) {

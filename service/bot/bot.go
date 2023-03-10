@@ -26,7 +26,7 @@ func New(
 	// if err != nil {
 	// 	panic(err)
 	// }
-	botCache := cache.New(time.Minute*15, time.Minute*15)
+	botCache := cache.New(time.Minute*5, time.Minute*5)
 
 	conversationMap := make(map[string]*core.Conversation)
 
@@ -189,4 +189,30 @@ func (s *service) CreateBot(ctx context.Context,
 	s.botCache.Set(key, bot, cache.DefaultExpiration)
 
 	return bot, nil
+}
+
+func (s *service) UpdateBot(ctx context.Context, id uint64, name, model, prompt string, temperature float32, maxTurnCount, contextTurnCount int, middlewares core.MiddlewareConfig, public bool) error {
+	bytes, err := json.Marshal(middlewares)
+	if err != nil {
+		fmt.Printf("json.Marshal err: %v\n", err)
+		return err
+	}
+
+	jsonb := core.JSONB{}
+	if err := jsonb.Scan(bytes); err != nil {
+		fmt.Printf("jsonb.Scan err: %v\n", err)
+		return err
+	}
+
+	err = s.bots.UpdateBot(ctx, id, name, model, prompt, temperature, maxTurnCount, contextTurnCount, jsonb, public)
+	if err != nil {
+		fmt.Printf("bots.UpdateBot err: %v\n", err)
+		return err
+	}
+
+	key := fmt.Sprintf("bot-%d", id)
+
+	s.botCache.Delete(key)
+
+	return nil
 }

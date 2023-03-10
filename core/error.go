@@ -48,31 +48,11 @@ func MatchFlag(err error, flag int) bool {
 }
 
 var (
-	ErrInsufficientQuota = errors.New("insufficient product quota")
-
-	ErrProductIDNotMatch = errors.New("product id not match")
-
-	ErrCorruptedEventExtra = errors.New("corrupted event extra")
+	ErrInsufficientCredit = errors.New("insufficient credit")
 
 	ErrMinAmountNotSatisfied = errors.New("min amount not satisfied")
 
-	ErrIncorrectExchangeID = errors.New("incorrect exchange id")
-
-	ErrCorruptedSwapFollowID = errors.New("corrupted swap follow id")
-
-	ErrExchangeAndEventNotMatch = errors.New("exchange and event not match")
-
-	ErrJPYCBotNotAvailable = errors.New("the jpyc bot is not available")
-
 	ErrCorruptedUUID = errors.New("corrupted uuid")
-
-	ErrUnsupportedSocialChannel = errors.New("unsupported social channel")
-
-	ErrSocialTransferExpired = errors.New("social transfer expired")
-
-	ErrSelfInvitation = errors.New("cannot invite oneself")
-
-	ErrFailedToAddVerification = errors.New("cannot add verification record")
 
 	ErrBotNotFound = errors.New("bot not found")
 
@@ -101,4 +81,8 @@ var (
 	ErrKeystoreNotProvided = errors.New("keystore not provided")
 
 	ErrConvTurnNotProcessed = errors.New("conversation turn is not processed")
+
+	ErrBotIncorrectField = errors.New("bot incorrect field")
+
+	ErrBotUnsupportedModel = errors.New("bot unsupported model")
 )
