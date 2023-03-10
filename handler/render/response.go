@@ -78,6 +78,7 @@ func WrapResponse(wrapData bool) func(http.Handler) http.Handler {
 
 				response.Code = ww.status
 				response.Msg = http.StatusText(ww.status)
+				response.Hint = buf.String()
 				response.Timestamp = ts
 				buf.Reset()
 				_ = json.NewEncoder(buf).Encode(response)
