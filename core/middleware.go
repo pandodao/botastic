@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 )
 
 const (
@@ -18,9 +20,15 @@ const (
 
 type (
 	Middleware struct {
-		ID      uint64                 `yaml:"id" json:"id"`
-		Name    string                 `yaml:"name" json:"name"`
-		Options map[string]interface{} `yaml:"options" json:"options"`
+		ID      uint64            `yaml:"id" json:"id"`
+		Name    string            `yaml:"name" json:"name"`
+		Options MiddlewareOptions `yaml:"options" json:"options"`
+	}
+
+	MiddlewareOptions map[string]interface{}
+
+	MiddlewareConfig struct {
+		Items []*Middleware `yaml:"items" json:"items"`
 	}
 
 	MiddlewareProcessResult struct {
@@ -34,3 +42,27 @@ type (
 		Process(ctx context.Context, m *Middleware, input string) (*MiddlewareProcessResult, error)
 	}
 )
+
+func (a MiddlewareConfig) Value() ([]byte, error) {
+	return json.Marshal(a)
+}
+
+func (a *MiddlewareConfig) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return json.Unmarshal(b, &a)
+}
+
+func (a MiddlewareOptions) Value() ([]byte, error) {
+	return json.Marshal(a)
+}
+
+func (a *MiddlewareOptions) Scan(value interface{}) error {
+	b, ok := value.([]byte)
+	if !ok {
+		return errors.New("type assertion to []byte failed")
+	}
+	return json.Unmarshal(b, &a)
+}

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pandodao/botastic/core"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -128,4 +129,27 @@ func (s *UserService) LoginWithMixin(ctx context.Context, token, pubkey, lang st
 	}
 
 	return existing, nil
+}
+
+func (s *UserService) Topup(ctx context.Context, user *core.User, amount decimal.Decimal) error {
+	newAmount := user.Credits.Add(amount)
+
+	err := s.users.UpdateCredits(ctx, user.ID, newAmount)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *UserService) ConsumeCredits(ctx context.Context, user *core.User, amount decimal.Decimal) error {
+	newAmount := user.Credits.Sub(amount)
+	if newAmount.LessThan(decimal.Zero) {
+		newAmount = decimal.Zero
+	}
+	err := s.users.UpdateCredits(ctx, user.ID, newAmount)
+	if err != nil {
+		return err
+	}
+	return nil
 }

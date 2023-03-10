@@ -2,13 +2,16 @@ package bot
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/pandodao/botastic/core"
+	"github.com/patrickmn/go-cache"
 
 	"gopkg.in/yaml.v2"
 )
@@ -16,19 +19,23 @@ import (
 func New(
 	cfg Config,
 	apps core.AppStore,
+	bots core.BotStore,
+	middlewarez core.MiddlewareService,
 ) *service {
-	botMap, err := LoadBots()
-	if err != nil {
-		panic(err)
-	}
+	// botMap, err := LoadBots()
+	// if err != nil {
+	// 	panic(err)
+	// }
+	botCache := cache.New(time.Minute*15, time.Minute*15)
 
 	conversationMap := make(map[string]*core.Conversation)
 
 	return &service{
-		cfg:  cfg,
-		apps: apps,
-
-		botMap:          botMap,
+		cfg:             cfg,
+		apps:            apps,
+		bots:            bots,
+		middlewarez:     middlewarez,
+		botCache:        botCache,
 		conversationMap: conversationMap,
 	}
 }
@@ -40,7 +47,9 @@ type (
 	service struct {
 		cfg             Config
 		apps            core.AppStore
-		botMap          map[uint64]*core.Bot
+		bots            core.BotStore
+		middlewarez     core.MiddlewareService
+		botCache        *cache.Cache
 		conversationMap map[string]*core.Conversation
 	}
 )
@@ -82,9 +91,102 @@ func LoadBots() (map[uint64]*core.Bot, error) {
 }
 
 func (s *service) GetBot(ctx context.Context, id uint64) (*core.Bot, error) {
-	bot, found := s.botMap[id]
-	if !found {
-		return nil, core.ErrBotNotFound
+	key := fmt.Sprintf("bot-%d", id)
+	if bot, found := s.botCache.Get(key); found {
+		return bot.(*core.Bot), nil
 	}
+
+	bot, err := s.bots.GetBot(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := bot.DecodeMiddlewares(); err != nil {
+		return nil, err
+	}
+
+	s.botCache.Set(key, bot, cache.DefaultExpiration)
+	return bot, nil
+}
+
+func (s *service) GetPublicBots(ctx context.Context) ([]*core.Bot, error) {
+	key := "public-bots"
+	if bots, found := s.botCache.Get(key); found {
+		return bots.([]*core.Bot), nil
+	}
+
+	bots, err := s.bots.GetPublicBots(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, bot := range bots {
+		if err := bot.DecodeMiddlewares(); err != nil {
+			continue
+		}
+	}
+
+	s.botCache.Set(key, bots, cache.DefaultExpiration)
+
+	return bots, nil
+}
+
+func (s *service) GetBotsByUserID(ctx context.Context, userID uint64) ([]*core.Bot, error) {
+	key := fmt.Sprintf("user-bots-%d", userID)
+	if bots, found := s.botCache.Get(key); found {
+		return bots.([]*core.Bot), nil
+	}
+
+	bots, err := s.bots.GetBotsByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	for _, bot := range bots {
+		if err := bot.DecodeMiddlewares(); err != nil {
+			continue
+		}
+	}
+
+	s.botCache.Set(key, bots, cache.DefaultExpiration)
+
+	return bots, nil
+}
+
+func (s *service) CreateBot(ctx context.Context,
+	id uint64,
+	name, model, prompt string,
+	temperature float32,
+	max_turn_count, context_turn_count int,
+	middlewares core.MiddlewareConfig,
+	public bool,
+) (*core.Bot, error) {
+
+	bytes, err := json.Marshal(middlewares)
+	if err != nil {
+		fmt.Printf("json.Marshal err: %v\n", err)
+		return nil, err
+	}
+
+	jsonb := core.JSONB{}
+	if err := jsonb.Scan(bytes); err != nil {
+		fmt.Printf("jsonb.Scan err: %v\n", err)
+		return nil, err
+	}
+
+	botID, err := s.bots.CreateBot(ctx, id, name, model, prompt, temperature, max_turn_count, context_turn_count, jsonb, public)
+	if err != nil {
+		fmt.Printf("bots.CreateBot err: %v\n", err)
+		return nil, err
+	}
+
+	bot, err := s.bots.GetBot(ctx, botID)
+	if err != nil {
+		fmt.Printf("bots.GetBot err: %v\n", err)
+		return nil, err
+	}
+
+	key := fmt.Sprintf("bot-%d", botID)
+
+	s.botCache.Set(key, bot, cache.DefaultExpiration)
+
 	return bot, nil
 }
