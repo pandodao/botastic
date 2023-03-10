@@ -1,14 +1,13 @@
-Botastic service has two dependent services.
+# Install Milvus
 
-- milvus - save and query vectors of index data embedding result.
-- tokencal - calculate token consumption of OpenAI.
+Botastic uses Milvus as its vector database. To simplify the installation process, we provide a docker-compose file to deploy Milvus.
 
-Before deploying botastic service, we need to deploy the dependency services first. Because they are both deployed using docker, make sure docker installed in our system.
+## Edit `docker-compose.yaml`
 
-### milvus
+Create a folder named `milvus` and put a `docker-compose.yaml` file with the following content in it.
 
-1. Create a folder named `milvus` and put a `docker-compose.yaml` file with the following content in it.
- It exposes two ports, which you can replace with easy-to-manage ports. 
+It exposes two ports, which you can replace with easy-to-manage ports. 
+
 * 19530 - milvus gRPC service port.
 * 19531 - port for management GUI.
 
@@ -60,7 +59,10 @@ networks:
 
 ```
 
-2. Execute the folling command to create the `milvus.yaml` config file.
+## create the `milvus.yaml` config file.
+
+Execute the folling command to download the `milvus.yaml` file.
+
 ```shell
 cd milvus
 mkdir -p volumes/milvus_config
@@ -69,6 +71,7 @@ wget https://raw.githubusercontent.com/milvus-io/milvus/v2.2.3/configs/milvus.ya
 ```
 
 The `tree` command output as folling,
+
 ```shell
 cd milvus
 tree
@@ -79,8 +82,15 @@ tree
         └── milvus.yaml
 ```
 
-Edit the `minio` section of the `milvus.yaml` file to config the S3 storage. If you are not sure about the configuration you can refer to the configuration file of the dev environment, the path is `/home/ubuntu/botastic/milvus/volumes/milvus_config/milvus.yaml` on ptest-dolphin host.
+## Edit the `milvus.yaml` file
+
+Edit the `minio` section of the `milvus.yaml` file to config the S3 storage. 
+
+If you are not sure about the configuration you can refer to MinIO's [documentation](https://docs.min.io/docs/minio-docker-quickstart-guide.html).
+
 ```yaml
+# ...
+
 minio:
   address: CHANGE_ME # Address of MinIO/S3
   port: 80 # Port of MinIO/S3
@@ -93,44 +103,18 @@ minio:
   useIAM: false
   cloudProvider: "aws"
   iamEndpoint: ""
+
+# ...
 ```
 
-3. Start the service, check the service status to ensure that the service started successfully.
-```
+
+## Start the service
+
+check the service status to ensure that the service started successfully.
+
+```bash
 cd milvus
 docker compose up -d
 docker compose ps
 ```
 
-### tokencal
-Create a folder named `tokecal` and put a `docker-compose.yaml` file with the following content in it. 
-It exposes a port, you can replace it with a port that is easy to manage.
-* 9092 - tokencal HTTP service port.
-```yaml
-version: "3"
-services:
-  api:
-    image: ghcr.io/pandodao/tokencal:latest
-    command: uvicorn app.main:app --host 0.0.0.0 --port 80
-    ports:
-      - 9092:80
-```
-
-Then start it,
-```
-cd tokencal
-docker compose up -d
-docker compose ps
-```
-
-### botastic
-The configuration file of botastic contains the connection addresses for the above services,
-```yaml
-milvus:
-  address: "localhost:19530"
-
-tokencal:
-  addr: "http://localhost:9092"
-```
-Now it's ready to deploy botasic service, this is consistent with our other services such as `bazaar`.
-However, note that before starting the service you need to execute `botastic migrate milvus` to create collections in milvus.
