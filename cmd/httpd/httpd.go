@@ -25,6 +25,7 @@ import (
 	"github.com/pandodao/botastic/session"
 	"github.com/pandodao/botastic/store"
 	"github.com/pandodao/botastic/store/app"
+	"github.com/pandodao/botastic/store/bot"
 	"github.com/pandodao/botastic/store/conv"
 	"github.com/pandodao/botastic/store/index"
 	"github.com/pandodao/botastic/store/user"
@@ -68,7 +69,8 @@ func NewCmdHttpd() *cobra.Command {
 			apps := app.New(h.DB)
 			convs := conv.New(h.DB)
 			users := user.New(h.DB)
-			// var users core.UserStore
+			bots := bot.New(h.DB)
+			// bots := interface{}(nil).(core.BotStore)
 
 			appz := appServ.New(appServ.Config{
 				SecretKey: cfg.Sys.SecretKey,
@@ -80,9 +82,9 @@ func NewCmdHttpd() *cobra.Command {
 			indexes := index.New(ctx, milvusClient)
 			indexService := index.NewService(ctx, gptHandler, indexes, tokenCal)
 
-			botz := botServ.New(botServ.Config{}, apps)
-			convz := convServ.New(convServ.Config{}, apps, convs, botz, tokenCal)
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
+			botz := botServ.New(botServ.Config{}, apps, bots, middlewarez)
+			convz := convServ.New(convServ.Config{}, apps, convs, botz, tokenCal)
 			hub := chanhub.New()
 			userz := userServ.New(userServ.Config{}, client, users)
 			// var userz core.UserService

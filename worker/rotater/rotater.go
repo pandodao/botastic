@@ -123,11 +123,11 @@ func (w *Worker) run(ctx context.Context) error {
 		}
 
 		additional := map[string]interface{}{}
-		if len(bot.Middlewares) != 0 {
+		if len(bot.Middlewares.Items) != 0 {
 			middlewareOutputs := make([]string, 0)
 			app, err := w.apps.GetApp(ctx, turn.AppID)
 			if err == nil {
-				for _, middleware := range bot.Middlewares {
+				for _, middleware := range bot.Middlewares.Items {
 					ctx = session.WithApp(ctx, app)
 					result, err := w.middlewarez.Process(ctx, middleware, turn.Request)
 					if err == nil && result != nil {

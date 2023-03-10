@@ -144,7 +144,6 @@ func HandleAppAuthentication(s *session.Session, appz core.AppService) func(http
 
 			appAuthRoutes := []string{
 				"/api/indices",
-				"/api/bots",
 				"/api/conversations",
 			}
 

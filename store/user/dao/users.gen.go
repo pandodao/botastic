@@ -15,6 +15,8 @@ import (
 	"gorm.io/gen/helper"
 
 	"github.com/pandodao/botastic/core"
+
+	"github.com/shopspring/decimal"
 )
 
 func newUser(db *gorm.DB, opts ...gen.DOOption) user {
@@ -32,6 +34,7 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.AvatarURL = field.NewString(tableName, "avatar_url")
 	_user.MvmPublicKey = field.NewString(tableName, "mvm_public_key")
 	_user.Lang = field.NewString(tableName, "lang")
+	_user.Credits = field.NewField(tableName, "credits")
 	_user.CreatedAt = field.NewTime(tableName, "created_at")
 	_user.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_user.DeletedAt = field.NewTime(tableName, "deleted_at")
@@ -52,6 +55,7 @@ type user struct {
 	AvatarURL           field.String
 	MvmPublicKey        field.String
 	Lang                field.String
+	Credits             field.Field
 	CreatedAt           field.Time
 	UpdatedAt           field.Time
 	DeletedAt           field.Time
@@ -78,6 +82,7 @@ func (u *user) updateTableName(table string) *user {
 	u.AvatarURL = field.NewString(table, "avatar_url")
 	u.MvmPublicKey = field.NewString(table, "mvm_public_key")
 	u.Lang = field.NewString(table, "lang")
+	u.Credits = field.NewField(table, "credits")
 	u.CreatedAt = field.NewTime(table, "created_at")
 	u.UpdatedAt = field.NewTime(table, "updated_at")
 	u.DeletedAt = field.NewTime(table, "deleted_at")
@@ -97,7 +102,7 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 10)
+	u.fieldMap = make(map[string]field.Expr, 11)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["mixin_user_id"] = u.MixinUserID
 	u.fieldMap["mixin_identity_number"] = u.MixinIdentityNumber
@@ -105,6 +110,7 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["avatar_url"] = u.AvatarURL
 	u.fieldMap["mvm_public_key"] = u.MvmPublicKey
 	u.fieldMap["lang"] = u.Lang
+	u.fieldMap["credits"] = u.Credits
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
 	u.fieldMap["deleted_at"] = u.DeletedAt
@@ -129,13 +135,14 @@ type IUserDo interface {
 	GetUserByMixinID(ctx context.Context, mixinUserID string) (result *core.User, err error)
 	CreateUser(ctx context.Context, fullName string, avatarURL string, mixinUserID string, mixinIdentityNumber string, lang string, mvmPublicKey string) (result uint64, err error)
 	UpdateInfo(ctx context.Context, id uint64, fullName string, avatarURL string, lang string) (err error)
+	UpdateCredits(ctx context.Context, id uint64, amount decimal.Decimal) (err error)
 }
 
 // SELECT
 //
 //	"id", "mixin_user_id", "mixin_identity_number", "full_name", "avatar_url",
 //	"mvm_public_key",
-//	"lang",
+//	"lang", "credits",
 //	"created_at", "updated_at"
 //
 // FROM @@table WHERE
@@ -148,7 +155,7 @@ func (u userDo) GetUser(ctx context.Context, id uint64) (result *core.User, err 
 
 	var generateSQL strings.Builder
 	params = append(params, id)
-	generateSQL.WriteString("SELECT \"id\", \"mixin_user_id\", \"mixin_identity_number\", \"full_name\", \"avatar_url\", \"mvm_public_key\", \"lang\", \"created_at\", \"updated_at\" FROM users WHERE \"id\"=? AND \"deleted_at\" IS NULL LIMIT 1 ")
+	generateSQL.WriteString("SELECT \"id\", \"mixin_user_id\", \"mixin_identity_number\", \"full_name\", \"avatar_url\", \"mvm_public_key\", \"lang\", \"credits\", \"created_at\", \"updated_at\" FROM users WHERE \"id\"=? AND \"deleted_at\" IS NULL LIMIT 1 ")
 
 	var executeSQL *gorm.DB
 	executeSQL = u.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert
@@ -161,7 +168,7 @@ func (u userDo) GetUser(ctx context.Context, id uint64) (result *core.User, err 
 //
 //	"id", "mixin_user_id", "mixin_identity_number", "full_name", "avatar_url",
 //	"mvm_public_key",
-//	"lang",
+//	"lang", "credits",
 //	"created_at", "updated_at"
 //
 // FROM @@table WHERE
@@ -174,7 +181,7 @@ func (u userDo) GetUserByMixinID(ctx context.Context, mixinUserID string) (resul
 
 	var generateSQL strings.Builder
 	params = append(params, mixinUserID)
-	generateSQL.WriteString("SELECT \"id\", \"mixin_user_id\", \"mixin_identity_number\", \"full_name\", \"avatar_url\", \"mvm_public_key\", \"lang\", \"created_at\", \"updated_at\" FROM users WHERE \"mixin_user_id\"=? AND \"deleted_at\" IS NULL LIMIT 1 ")
+	generateSQL.WriteString("SELECT \"id\", \"mixin_user_id\", \"mixin_identity_number\", \"full_name\", \"avatar_url\", \"mvm_public_key\", \"lang\", \"credits\", \"created_at\", \"updated_at\" FROM users WHERE \"mixin_user_id\"=? AND \"deleted_at\" IS NULL LIMIT 1 ")
 
 	var executeSQL *gorm.DB
 	executeSQL = u.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert
@@ -186,10 +193,11 @@ func (u userDo) GetUserByMixinID(ctx context.Context, mixinUserID string) (resul
 // INSERT INTO @@table
 // (
 //
-//	"full_name", "avatar_url",
-//	"mixin_user_id", "mixin_identity_number",
-//	"lang", "mvm_public_key",
-//	"created_at", "updated_at"
+//		 "full_name", "avatar_url",
+//		 "mixin_user_id", "mixin_identity_number",
+//	 "lang", "credits",
+//	 "mvm_public_key",
+//		 "created_at", "updated_at"
 //
 // )
 // VALUES
@@ -197,7 +205,8 @@ func (u userDo) GetUserByMixinID(ctx context.Context, mixinUserID string) (resul
 //
 //	@fullName, @avatarURL,
 //	@mixinUserID, @mixinIdentityNumber,
-//	@lang, @mvmPublicKey,
+//	@lang, 1,
+//	@mvmPublicKey,
 //	NOW(), NOW()
 //
 // )
@@ -212,7 +221,7 @@ func (u userDo) CreateUser(ctx context.Context, fullName string, avatarURL strin
 	params = append(params, mixinIdentityNumber)
 	params = append(params, lang)
 	params = append(params, mvmPublicKey)
-	generateSQL.WriteString("INSERT INTO users ( \"full_name\", \"avatar_url\", \"mixin_user_id\", \"mixin_identity_number\", \"lang\", \"mvm_public_key\", \"created_at\", \"updated_at\" ) VALUES ( ?, ?, ?, ?, ?, ?, NOW(), NOW() ) RETURNING \"id\" ")
+	generateSQL.WriteString("INSERT INTO users ( \"full_name\", \"avatar_url\", \"mixin_user_id\", \"mixin_identity_number\", \"lang\", \"credits\", \"mvm_public_key\", \"created_at\", \"updated_at\" ) VALUES ( ?, ?, ?, ?, ?, 1, ?, NOW(), NOW() ) RETURNING \"id\" ")
 
 	var executeSQL *gorm.DB
 	executeSQL = u.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert
@@ -243,6 +252,35 @@ func (u userDo) UpdateInfo(ctx context.Context, id uint64, fullName string, avat
 	params = append(params, avatarURL)
 	params = append(params, lang)
 	setSQL0.WriteString("\"full_name\"=?, \"avatar_url\"=?, \"lang\"=?, \"updated_at\"=NOW() ")
+	helper.JoinSetBuilder(&generateSQL, setSQL0)
+	params = append(params, id)
+	generateSQL.WriteString("WHERE \"id\"=? ")
+
+	var executeSQL *gorm.DB
+	executeSQL = u.UnderlyingDB().Exec(generateSQL.String(), params...) // ignore_security_alert
+	err = executeSQL.Error
+
+	return
+}
+
+// UPDATE @@table
+//
+//	{{set}}
+//		"credits"=@amount,
+//		"updated_at"=NOW()
+//	{{end}}
+//
+// WHERE
+//
+//	"id"=@id
+func (u userDo) UpdateCredits(ctx context.Context, id uint64, amount decimal.Decimal) (err error) {
+	var params []interface{}
+
+	var generateSQL strings.Builder
+	generateSQL.WriteString("UPDATE users ")
+	var setSQL0 strings.Builder
+	params = append(params, amount)
+	setSQL0.WriteString("\"credits\"=?, \"updated_at\"=NOW() ")
 	helper.JoinSetBuilder(&generateSQL, setSQL0)
 	params = append(params, id)
 	generateSQL.WriteString("WHERE \"id\"=? ")

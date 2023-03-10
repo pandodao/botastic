@@ -16,6 +16,7 @@ import (
 	middlewareServ "github.com/pandodao/botastic/service/middleware"
 	"github.com/pandodao/botastic/store"
 	"github.com/pandodao/botastic/store/app"
+	"github.com/pandodao/botastic/store/bot"
 	"github.com/pandodao/botastic/store/conv"
 	"github.com/pandodao/botastic/store/index"
 	"github.com/pandodao/botastic/worker"
@@ -53,6 +54,8 @@ func NewCmdWorker() *cobra.Command {
 
 			apps := app.New(h.DB)
 			convs := conv.New(h.DB)
+			bots := bot.New(h.DB)
+			// bots := interface{}(nil).(core.BotStore)
 
 			milvusClient, err := milvus.Init(ctx, cfg.Milvus.Address)
 			if err != nil {
@@ -61,9 +64,9 @@ func NewCmdWorker() *cobra.Command {
 			indexes := index.New(ctx, milvusClient)
 			indexService := index.NewService(ctx, gptHandler, indexes, tokenCal)
 
-			botz := botServ.New(botServ.Config{}, apps)
-			convz := convServ.New(convServ.Config{}, apps, convs, botz, tokenCal)
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
+			botz := botServ.New(botServ.Config{}, apps, bots, middlewarez)
+			convz := convServ.New(convServ.Config{}, apps, convs, botz, tokenCal)
 			hub := chanhub.New()
 
 			workers := []worker.Worker{

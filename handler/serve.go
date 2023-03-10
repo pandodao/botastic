@@ -80,11 +80,6 @@ func (s Server) HandleRest() http.Handler {
 		r.Delete("/{objectID}", indexHandler.Delete(s.apps, s.indexes))
 	})
 
-	r.Route("/bots", func(r chi.Router) {
-		r.Get("/", bot.GetBots())
-		r.Get("/{botID}", bot.GetBot())
-	})
-
 	r.Route("/conversations", func(r chi.Router) {
 		r.Post("/", conv.CreateConversation(s.botz, s.convz))
 		r.Get("/{conversationID}", conv.GetConversation(s.botz, s.convz))
@@ -96,6 +91,12 @@ func (s Server) HandleRest() http.Handler {
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/login", auth.Login(s.session, s.userz))
+	})
+
+	r.Route("/bots", func(r chi.Router) {
+		r.Get("/public", bot.GetPublicBots(s.botz))
+		r.With(s.LoginRequired()).Get("/{botID}", bot.GetBot(s.botz))
+		r.With(s.LoginRequired()).Post("/", bot.CreateBot(s.botz))
 	})
 
 	r.With(s.LoginRequired()).Route("/users", func(r chi.Router) {
