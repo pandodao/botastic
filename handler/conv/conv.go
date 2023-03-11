@@ -263,7 +263,6 @@ func CreateOnewayConversation(convz core.ConversationService, convs core.Convers
 			return
 		}
 
-		body.Content = fmt.Sprintf("%s. You must reply as shorter as possible.", body.Content)
 		turn, err := convz.PostToConversation(ctx, conv, body.Content)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
