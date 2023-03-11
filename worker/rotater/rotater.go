@@ -189,6 +189,7 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 		turnReq := <-w.turnReqChan
 
 		respText := ""
+		var totalTokens int
 		var err error
 		switch {
 		case turnReq.Request != nil:
@@ -198,12 +199,15 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 				prefix := "A:"
 				respText = strings.TrimPrefix(gptResp.Choices[0].Text, prefix)
 				respText = strings.TrimSpace(respText)
+				totalTokens = gptResp.Usage.TotalTokens
 			}
+
 		case turnReq.ChatRequest != nil:
 			var gptResp gogpt.ChatCompletionResponse
 			gptResp, err = w.gptHandler.CreateChatCompletion(ctx, *turnReq.ChatRequest)
 			if err == nil {
 				respText = strings.TrimSpace(gptResp.Choices[0].Message.Content)
+				totalTokens = gptResp.Usage.TotalTokens
 			}
 		}
 
@@ -212,13 +216,7 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 			continue
 		}
 
-		// TODO use the usage field in response
-		token, err := w.tokencal.GetToken(ctx, respText)
-		if err != nil {
-			continue
-		}
-
-		if err := w.convs.UpdateConvTurn(ctx, turnReq.TurnID, respText, token, core.ConvTurnStatusCompleted); err != nil {
+		if err := w.convs.UpdateConvTurn(ctx, turnReq.TurnID, respText, totalTokens, core.ConvTurnStatusCompleted); err != nil {
 			continue
 		}
 
@@ -228,8 +226,8 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 			if err != nil {
 				log.WithError(err).Warningf("users.GetUser: user_id=%v", conv.App.UserID)
 			} else {
-				if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, conv.Bot.Model, uint64(token)); err != nil {
-					log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", conv.Bot.Model, token)
+				if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, conv.Bot.Model, uint64(totalTokens)); err != nil {
+					log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", conv.Bot.Model, totalTokens)
 				}
 			}
 		}

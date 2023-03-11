@@ -107,7 +107,7 @@ func (s *serviceImpl) CreateIndices(ctx context.Context, userID uint64, items []
 		return fmt.Errorf("CreateIndices: %w", err)
 	}
 
-	s.userz.ConsumeCreditsByModel(ctx, userID, "text-embedding-ada-002", totalToken)
+	s.userz.ConsumeCreditsByModel(ctx, userID, "text-embedding-ada-002", uint64(resp.Usage.TotalTokens))
 
 	return nil
 }

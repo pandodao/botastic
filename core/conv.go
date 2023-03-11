@@ -33,9 +33,8 @@ type (
 		UserID         uint64     `yaml:"user_id" json:"user_id"`
 		UserIdentity   string     `yaml:"user_identity" json:"user_identity"`
 		Request        string     `yaml:"request" json:"request"`
-		RequestToken   int        `yaml:"request_token" json:"request_token"`
 		Response       string     `yaml:"response" json:"response"`
-		ResponseToken  int        `yaml:"response_token" json:"response_token"`
+		TotalTokens    int        `yaml:"total_tokens" json:"total_tokens"`
 		Status         int        `yaml:"status" json:"status"`
 		CreatedAt      *time.Time `yaml:"created_at" json:"created_at"`
 		UpdatedAt      *time.Time `yaml:"updated_at" json:"updated_at"`
@@ -46,18 +45,18 @@ type (
 		// 	(
 		//	"conversation_id", "bot_id", "app_id", "user_id",
 		//  "user_identity",
-		//  "request", "request_token", "response", "status",
+		//  "request", "response", "status",
 		//  "created_at", "updated_at"
 		//   )
 		// VALUES
 		// 	(
 		//   @convID, @botID, @appID, @userID,
 		//   @uid,
-		//   @request, @reqToken, '', 0,
+		//   @request, '', 0,
 		//   NOW(), NOW()
 		//  )
 		// RETURNING "id"
-		CreateConvTurn(ctx context.Context, convID string, botID, appID, userID uint64, uid, request string, reqToken int) (uint64, error)
+		CreateConvTurn(ctx context.Context, convID string, botID, appID, userID uint64, uid, request string) (uint64, error)
 
 		// SELECT
 		// 	"id",
@@ -92,13 +91,13 @@ type (
 		// UPDATE "conv_turns"
 		// 	{{set}}
 		// 		"response"=@response,
-		// 		"response_token"=@responseToken,
+		// 		"total_tokens"=@totalTokens,
 		// 		"status"=@status,
 		// 		"updated_at"=NOW()
 		// 	{{end}}
 		// WHERE
 		// 	"id"=@id
-		UpdateConvTurn(ctx context.Context, id uint64, response string, responseToken int, status int) error
+		UpdateConvTurn(ctx context.Context, id uint64, response string, totalTokens int, status int) error
 	}
 
 	ConversationService interface {
