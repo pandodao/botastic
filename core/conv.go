@@ -30,6 +30,7 @@ type (
 		ConversationID string     `yaml:"conversation_id" json:"conversation_id"`
 		BotID          uint64     `yaml:"bot_id" json:"bot_id"`
 		AppID          uint64     `yaml:"app_id" json:"app_id"`
+		UserID         uint64     `yaml:"user_id" json:"user_id"`
 		UserIdentity   string     `yaml:"user_identity" json:"user_identity"`
 		Request        string     `yaml:"request" json:"request"`
 		RequestToken   int        `yaml:"request_token" json:"request_token"`
@@ -43,21 +44,25 @@ type (
 	ConversationStore interface {
 		// INSERT INTO "conv_turns"
 		// 	(
-		//	"conversation_id", "bot_id", "app_id", "user_identity",
+		//	"conversation_id", "bot_id", "app_id", "user_id",
+		//  "user_identity",
 		//  "request", "request_token", "response", "status",
 		//  "created_at", "updated_at"
 		//   )
 		// VALUES
 		// 	(
-		//   @convID, @botID, @appID, @uid,
+		//   @convID, @botID, @appID, @userID,
+		//   @uid,
 		//   @request, @reqToken, '', 0,
 		//   NOW(), NOW()
 		//  )
 		// RETURNING "id"
-		CreateConvTurn(ctx context.Context, convID string, botID, appID uint64, uid, request string, reqToken int) (uint64, error)
+		CreateConvTurn(ctx context.Context, convID string, botID, appID, userID uint64, uid, request string, reqToken int) (uint64, error)
 
 		// SELECT
-		//	"id", "conversation_id", "bot_id", "app_id", "user_identity",
+		// 	"id",
+		//	"conversation_id", "bot_id", "app_id", "user_id",
+		//  "user_identity",
 		//  "request", "response", "status",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns" WHERE
@@ -65,15 +70,19 @@ type (
 		GetConvTurns(ctx context.Context, ids []uint64) ([]*ConvTurn, error)
 
 		// SELECT
-		//	"id", "conversation_id", "bot_id", "app_id", "user_identity",
+		// 	"id",
+		//	"conversation_id", "bot_id", "app_id", "user_id",
+		//  "user_identity",
 		//  "request", "response", "status",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns" WHERE
-		//  "id" = @id AND conversation_id = @conversationID
-		GetConvTurn(ctx context.Context, conversationID string, id uint64) (*ConvTurn, error)
+		//  "id" = @id
+		GetConvTurn(ctx context.Context, id uint64) (*ConvTurn, error)
 
 		// SELECT
-		//	"id", "conversation_id", "bot_id", "app_id", "user_identity",
+		// 	"id",
+		//	"conversation_id", "bot_id", "app_id", "user_id",
+		//  "user_identity",
 		//  "request", "response", "status",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns" WHERE

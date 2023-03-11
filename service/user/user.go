@@ -142,13 +142,37 @@ func (s *UserService) Topup(ctx context.Context, user *core.User, amount decimal
 	return nil
 }
 
-func (s *UserService) ConsumeCredits(ctx context.Context, user *core.User, amount decimal.Decimal) error {
+func (s *UserService) ConsumeCreditsByModel(ctx context.Context, userID uint64, model string, tokenCount uint64) error {
+	price := decimal.Zero
+	switch model {
+	case "gpt-3.5-turbo":
+		// $0.002 per 1000 tokens
+		price = decimal.NewFromFloat(0.000002)
+	case "text-davinci-003":
+		// $0.02 per 1000 tokens
+		price = decimal.NewFromFloat(0.00002)
+	case "text-embedding-ada-002":
+		// $0.0004 per 1000 tokens
+		price = decimal.NewFromFloat(0.0000004)
+	default:
+		return core.ErrInvalidModel
+	}
+
+	credits := price.Mul(decimal.NewFromInt(int64(tokenCount)))
+	fmt.Printf("model: %v, price: $%s, token: %d, credits: $%s\n", model, price.StringFixed(8), tokenCount, credits.StringFixed(8))
+	return s.ConsumeCredits(ctx, userID, credits)
+}
+
+func (s *UserService) ConsumeCredits(ctx context.Context, userID uint64, amount decimal.Decimal) error {
+	user, err := s.users.GetUser(ctx, userID)
+	if err != nil {
+		return err
+	}
 	newAmount := user.Credits.Sub(amount)
 	if newAmount.LessThan(decimal.Zero) {
 		newAmount = decimal.Zero
 	}
-	err := s.users.UpdateCredits(ctx, user.ID, newAmount)
-	if err != nil {
+	if err := s.users.UpdateCredits(ctx, user.ID, newAmount); err != nil {
 		return err
 	}
 	return nil

@@ -85,4 +85,6 @@ var (
 	ErrBotIncorrectField = errors.New("bot incorrect field")
 
 	ErrBotUnsupportedModel = errors.New("bot unsupported model")
+
+	ErrInvalidModel = errors.New("invalid model")
 )

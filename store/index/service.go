@@ -13,10 +13,11 @@ import (
 	gogpt "github.com/sashabaranov/go-gpt3"
 )
 
-func NewService(ctx context.Context, gptHandler *gpt.Handler, indexes core.IndexStore, tokenCal *tokencal.Handler) core.IndexService {
+func NewService(ctx context.Context, gptHandler *gpt.Handler, indexes core.IndexStore, userz core.UserService, tokenCal *tokencal.Handler) core.IndexService {
 	return &serviceImpl{
 		gptHandler:                gptHandler,
 		indexes:                   indexes,
+		userz:                     userz,
 		tokenCal:                  tokenCal,
 		createEmbeddingsLimitChan: make(chan struct{}, 20),
 	}
@@ -26,6 +27,7 @@ type serviceImpl struct {
 	gptHandler                *gpt.Handler
 	milvusClient              *milvus.Client
 	indexes                   core.IndexStore
+	userz                     core.UserService
 	tokenCal                  *tokencal.Handler
 	createEmbeddingsLimitChan chan struct{}
 }
@@ -65,18 +67,21 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, keywords string, limit in
 	return s.indexes.Search(ctx, app.AppID, vs, limit)
 }
 
-func (s *serviceImpl) CreateIndices(ctx context.Context, items []*core.Index) error {
+func (s *serviceImpl) CreateIndices(ctx context.Context, userID uint64, items []*core.Index) error {
 	input := make([]string, 0, len(items))
+	var totalToken uint64
 	for _, item := range items {
 		token, err := s.tokenCal.GetToken(ctx, item.Data)
 		if err != nil {
 			return fmt.Errorf("get token: %w", err)
 		}
 
+		totalToken += uint64(token)
 		item.DataToken = int64(token)
 		input = append(input, item.Data)
 	}
 
+	// @TODO should not pending here
 	resp, err := s.createEmbeddingsWithLimit(ctx, gogpt.EmbeddingRequest{
 		Input: input,
 		Model: gogpt.AdaEmbeddingV2,
@@ -101,6 +106,8 @@ func (s *serviceImpl) CreateIndices(ctx context.Context, items []*core.Index) er
 	if err := s.indexes.CreateIndices(ctx, items); err != nil {
 		return fmt.Errorf("CreateIndices: %w", err)
 	}
+
+	s.userz.ConsumeCreditsByModel(ctx, userID, "text-embedding-ada-002", totalToken)
 
 	return nil
 }

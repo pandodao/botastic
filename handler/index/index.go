@@ -49,7 +49,7 @@ func CreateIndex(indexes core.IndexService) http.HandlerFunc {
 			return
 		}
 
-		err := indexes.CreateIndices(r.Context(), is)
+		err := indexes.CreateIndices(r.Context(), app.UserID, is)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return

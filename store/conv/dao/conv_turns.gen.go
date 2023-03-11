@@ -29,6 +29,7 @@ func newConvTurn(db *gorm.DB, opts ...gen.DOOption) convTurn {
 	_convTurn.ConversationID = field.NewString(tableName, "conversation_id")
 	_convTurn.BotID = field.NewUint64(tableName, "bot_id")
 	_convTurn.AppID = field.NewUint64(tableName, "app_id")
+	_convTurn.UserID = field.NewUint64(tableName, "user_id")
 	_convTurn.UserIdentity = field.NewString(tableName, "user_identity")
 	_convTurn.Request = field.NewString(tableName, "request")
 	_convTurn.RequestToken = field.NewInt(tableName, "request_token")
@@ -51,6 +52,7 @@ type convTurn struct {
 	ConversationID field.String
 	BotID          field.Uint64
 	AppID          field.Uint64
+	UserID         field.Uint64
 	UserIdentity   field.String
 	Request        field.String
 	RequestToken   field.Int
@@ -79,6 +81,7 @@ func (c *convTurn) updateTableName(table string) *convTurn {
 	c.ConversationID = field.NewString(table, "conversation_id")
 	c.BotID = field.NewUint64(table, "bot_id")
 	c.AppID = field.NewUint64(table, "app_id")
+	c.UserID = field.NewUint64(table, "user_id")
 	c.UserIdentity = field.NewString(table, "user_identity")
 	c.Request = field.NewString(table, "request")
 	c.RequestToken = field.NewInt(table, "request_token")
@@ -103,11 +106,12 @@ func (c *convTurn) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (c *convTurn) fillFieldMap() {
-	c.fieldMap = make(map[string]field.Expr, 12)
+	c.fieldMap = make(map[string]field.Expr, 13)
 	c.fieldMap["id"] = c.ID
 	c.fieldMap["conversation_id"] = c.ConversationID
 	c.fieldMap["bot_id"] = c.BotID
 	c.fieldMap["app_id"] = c.AppID
+	c.fieldMap["user_id"] = c.UserID
 	c.fieldMap["user_identity"] = c.UserIdentity
 	c.fieldMap["request"] = c.Request
 	c.fieldMap["request_token"] = c.RequestToken
@@ -133,9 +137,9 @@ type convTurnDo struct{ gen.DO }
 type IConvTurnDo interface {
 	WithContext(ctx context.Context) IConvTurnDo
 
-	CreateConvTurn(ctx context.Context, convID string, botID uint64, appID uint64, uid string, request string, reqToken int) (result uint64, err error)
+	CreateConvTurn(ctx context.Context, convID string, botID uint64, appID uint64, userID uint64, uid string, request string, reqToken int) (result uint64, err error)
 	GetConvTurns(ctx context.Context, ids []uint64) (result []*core.ConvTurn, err error)
-	GetConvTurn(ctx context.Context, conversationID string, id uint64) (result *core.ConvTurn, err error)
+	GetConvTurn(ctx context.Context, id uint64) (result *core.ConvTurn, err error)
 	GetConvTurnsByStatus(ctx context.Context, status int) (result []*core.ConvTurn, err error)
 	UpdateConvTurn(ctx context.Context, id uint64, response string, responseToken int, status int) (err error)
 }
@@ -143,8 +147,9 @@ type IConvTurnDo interface {
 // INSERT INTO "conv_turns"
 //
 //	(
-//	"conversation_id", "bot_id", "app_id", "user_identity",
+//	"conversation_id", "bot_id", "app_id", "user_id",
 //
+// "user_identity",
 // "request", "request_token", "response", "status",
 // "created_at", "updated_at"
 //
@@ -153,23 +158,25 @@ type IConvTurnDo interface {
 // VALUES
 //
 //		(
-//	 @convID, @botID, @appID, @uid,
+//	 @convID, @botID, @appID, @userID,
+//	 @uid,
 //	 @request, @reqToken, '', 0,
 //	 NOW(), NOW()
 //
 // )
 // RETURNING "id"
-func (c convTurnDo) CreateConvTurn(ctx context.Context, convID string, botID uint64, appID uint64, uid string, request string, reqToken int) (result uint64, err error) {
+func (c convTurnDo) CreateConvTurn(ctx context.Context, convID string, botID uint64, appID uint64, userID uint64, uid string, request string, reqToken int) (result uint64, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
 	params = append(params, convID)
 	params = append(params, botID)
 	params = append(params, appID)
+	params = append(params, userID)
 	params = append(params, uid)
 	params = append(params, request)
 	params = append(params, reqToken)
-	generateSQL.WriteString("INSERT INTO \"conv_turns\" ( \"conversation_id\", \"bot_id\", \"app_id\", \"user_identity\", \"request\", \"request_token\", \"response\", \"status\", \"created_at\", \"updated_at\" ) VALUES ( ?, ?, ?, ?, ?, ?, '', 0, NOW(), NOW() ) RETURNING \"id\" ")
+	generateSQL.WriteString("INSERT INTO \"conv_turns\" ( \"conversation_id\", \"bot_id\", \"app_id\", \"user_id\", \"user_identity\", \"request\", \"request_token\", \"response\", \"status\", \"created_at\", \"updated_at\" ) VALUES ( ?, ?, ?, ?, ?, ?, ?, '', 0, NOW(), NOW() ) RETURNING \"id\" ")
 
 	var executeSQL *gorm.DB
 	executeSQL = c.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert
@@ -180,8 +187,10 @@ func (c convTurnDo) CreateConvTurn(ctx context.Context, convID string, botID uin
 
 // SELECT
 //
-//	"id", "conversation_id", "bot_id", "app_id", "user_identity",
+//	"id",
+//	"conversation_id", "bot_id", "app_id", "user_id",
 //
+// "user_identity",
 // "request", "response", "status",
 // "created_at", "updated_at"
 // FROM "conv_turns" WHERE
@@ -191,7 +200,7 @@ func (c convTurnDo) GetConvTurns(ctx context.Context, ids []uint64) (result []*c
 
 	var generateSQL strings.Builder
 	params = append(params, ids)
-	generateSQL.WriteString("SELECT \"id\", \"conversation_id\", \"bot_id\", \"app_id\", \"user_identity\", \"request\", \"response\", \"status\", \"created_at\", \"updated_at\" FROM \"conv_turns\" WHERE \"id\" IN (?) ")
+	generateSQL.WriteString("SELECT \"id\", \"conversation_id\", \"bot_id\", \"app_id\", \"user_id\", \"user_identity\", \"request\", \"response\", \"status\", \"created_at\", \"updated_at\" FROM \"conv_turns\" WHERE \"id\" IN (?) ")
 
 	var executeSQL *gorm.DB
 	executeSQL = c.UnderlyingDB().Raw(generateSQL.String(), params...).Find(&result) // ignore_security_alert
@@ -202,19 +211,20 @@ func (c convTurnDo) GetConvTurns(ctx context.Context, ids []uint64) (result []*c
 
 // SELECT
 //
-//	"id", "conversation_id", "bot_id", "app_id", "user_identity",
+//	"id",
+//	"conversation_id", "bot_id", "app_id", "user_id",
 //
+// "user_identity",
 // "request", "response", "status",
 // "created_at", "updated_at"
 // FROM "conv_turns" WHERE
-// "id" = @id AND conversation_id = @conversationID
-func (c convTurnDo) GetConvTurn(ctx context.Context, conversationID string, id uint64) (result *core.ConvTurn, err error) {
+// "id" = @id
+func (c convTurnDo) GetConvTurn(ctx context.Context, id uint64) (result *core.ConvTurn, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
 	params = append(params, id)
-	params = append(params, conversationID)
-	generateSQL.WriteString("SELECT \"id\", \"conversation_id\", \"bot_id\", \"app_id\", \"user_identity\", \"request\", \"response\", \"status\", \"created_at\", \"updated_at\" FROM \"conv_turns\" WHERE \"id\" = ? AND conversation_id = ? ")
+	generateSQL.WriteString("SELECT \"id\", \"conversation_id\", \"bot_id\", \"app_id\", \"user_id\", \"user_identity\", \"request\", \"response\", \"status\", \"created_at\", \"updated_at\" FROM \"conv_turns\" WHERE \"id\" = ? ")
 
 	var executeSQL *gorm.DB
 	executeSQL = c.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert
@@ -225,8 +235,10 @@ func (c convTurnDo) GetConvTurn(ctx context.Context, conversationID string, id u
 
 // SELECT
 //
-//	"id", "conversation_id", "bot_id", "app_id", "user_identity",
+//	"id",
+//	"conversation_id", "bot_id", "app_id", "user_id",
 //
+// "user_identity",
 // "request", "response", "status",
 // "created_at", "updated_at"
 // FROM "conv_turns" WHERE
@@ -236,7 +248,7 @@ func (c convTurnDo) GetConvTurnsByStatus(ctx context.Context, status int) (resul
 
 	var generateSQL strings.Builder
 	params = append(params, status)
-	generateSQL.WriteString("SELECT \"id\", \"conversation_id\", \"bot_id\", \"app_id\", \"user_identity\", \"request\", \"response\", \"status\", \"created_at\", \"updated_at\" FROM \"conv_turns\" WHERE \"status\"=? ")
+	generateSQL.WriteString("SELECT \"id\", \"conversation_id\", \"bot_id\", \"app_id\", \"user_id\", \"user_identity\", \"request\", \"response\", \"status\", \"created_at\", \"updated_at\" FROM \"conv_turns\" WHERE \"status\"=? ")
 
 	var executeSQL *gorm.DB
 	executeSQL = c.UnderlyingDB().Raw(generateSQL.String(), params...).Find(&result) // ignore_security_alert

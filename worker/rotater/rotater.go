@@ -34,6 +34,7 @@ type (
 		convz       core.ConversationService
 		botz        core.BotService
 		middlewarez core.MiddlewareService
+		userz       core.UserService
 
 		turnReqChan chan TurnRequest
 		tokencal    *tokencal.Handler
@@ -56,6 +57,7 @@ func New(
 	convz core.ConversationService,
 	botz core.BotService,
 	middlewarez core.MiddlewareService,
+	userz core.UserService,
 
 	tokencal *tokencal.Handler,
 	hub *chanhub.Hub,
@@ -69,6 +71,7 @@ func New(
 		convz:       convz,
 		botz:        botz,
 		middlewarez: middlewarez,
+		userz:       userz,
 
 		turnReqChan: turnReqChan,
 		tokencal:    tokencal,
@@ -172,7 +175,7 @@ func (w *Worker) run(ctx context.Context) error {
 }
 
 func (w *Worker) UpdateConvTurnAsError(ctx context.Context, id uint64, errMsg string) error {
-	fmt.Printf("errMsg: %v\n", errMsg)
+	fmt.Printf("errMsg: %v, %d\n", errMsg, id)
 	if err := w.convs.UpdateConvTurn(ctx, id, "Something wrong happened", 0, core.ConvTurnStatusError); err != nil {
 		return err
 	}
@@ -180,6 +183,7 @@ func (w *Worker) UpdateConvTurnAsError(ctx context.Context, id uint64, errMsg st
 }
 
 func (w *Worker) subworker(ctx context.Context, id int) {
+	log := logger.FromContext(ctx).WithField("worker", "rotater.subworker")
 	for {
 		// Wait for a request to handle.
 		turnReq := <-w.turnReqChan
@@ -216,6 +220,18 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 
 		if err := w.convs.UpdateConvTurn(ctx, turnReq.TurnID, respText, token, core.ConvTurnStatusCompleted); err != nil {
 			continue
+		}
+
+		turn, err := w.convs.GetConvTurn(ctx, turnReq.TurnID)
+		if err == nil {
+			conv, err := w.convz.GetConversation(ctx, turn.ConversationID)
+			if err != nil {
+				log.WithError(err).Warningf("users.GetUser: user_id=%v", conv.App.UserID)
+			} else {
+				if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, conv.Bot.Model, uint64(token)); err != nil {
+					log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", conv.Bot.Model, token)
+				}
+			}
 		}
 
 		// notify http handler

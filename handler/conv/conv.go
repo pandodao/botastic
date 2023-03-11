@@ -88,13 +88,13 @@ func GetConversationTurn(botz core.BotService, convs core.ConversationStore, hub
 			return
 		}
 
-		convTurn, err := convs.GetConvTurn(ctx, conversationID, turnId)
+		convTurn, err := convs.GetConvTurn(ctx, turnId)
 		if err != nil && err != gorm.ErrRecordNotFound {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		if convTurn == nil || convTurn.ID == 0 {
+		if convTurn == nil || convTurn.ID == 0 || convTurn.ConversationID != conversationID {
 			render.Error(w, http.StatusBadRequest, fmt.Errorf("no conversation turn"))
 			return
 		}
@@ -117,7 +117,7 @@ func GetConversationTurn(botz core.BotService, convs core.ConversationStore, hub
 				return
 			}
 		}
-		convTurn, err = convs.GetConvTurn(ctx, conversationID, turnId)
+		convTurn, err = convs.GetConvTurn(ctx, turnId)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
@@ -287,7 +287,7 @@ func CreateOnewayConversation(convz core.ConversationService, convs core.Convers
 			}
 		}
 
-		turn, err = convs.GetConvTurn(ctx, conv.ID, turn.ID)
+		turn, err = convs.GetConvTurn(ctx, turn.ID)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return

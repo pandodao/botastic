@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/fox-one/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/internal/tokencal"
@@ -13,7 +14,9 @@ func New(
 	cfg Config,
 	apps core.AppStore,
 	convs core.ConversationStore,
+	users core.UserStore,
 	botz core.BotService,
+	userz core.UserService,
 	tokencal *tokencal.Handler,
 ) *service {
 
@@ -23,7 +26,9 @@ func New(
 		cfg:             cfg,
 		apps:            apps,
 		convs:           convs,
+		users:           users,
 		botz:            botz,
+		userz:           userz,
 		conversationMap: conversationMap,
 		tokencal:        tokencal,
 	}
@@ -37,7 +42,9 @@ type (
 		cfg             Config
 		apps            core.AppStore
 		convs           core.ConversationStore
+		users           core.UserStore
 		botz            core.BotService
+		userz           core.UserService
 		conversationMap map[string]*core.Conversation
 		tokencal        *tokencal.Handler
 	}
@@ -102,11 +109,12 @@ func (s *service) GetConversation(ctx context.Context, convID string) (*core.Con
 }
 
 func (s *service) PostToConversation(ctx context.Context, conv *core.Conversation, input string) (*core.ConvTurn, error) {
+	log := logger.FromContext(ctx).WithField("service", "converation service")
 	requestToken, err := s.tokencal.GetToken(ctx, input)
 	if err != nil {
 		return nil, err
 	}
-	turnID, err := s.convs.CreateConvTurn(ctx, conv.ID, conv.Bot.ID, conv.App.ID, conv.UserIdentity, input, requestToken)
+	turnID, err := s.convs.CreateConvTurn(ctx, conv.ID, conv.Bot.ID, conv.App.ID, conv.App.UserID, conv.UserIdentity, input, requestToken)
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +136,10 @@ func (s *service) PostToConversation(ctx context.Context, conv *core.Conversatio
 	if len(conv.History) > bot.MaxTurnCount {
 		// reduce to MaxTurnCount
 		conv.History = conv.History[len(conv.History)-bot.MaxTurnCount:]
+	}
+
+	if err := s.userz.ConsumeCreditsByModel(ctx, turn.UserID, bot.Model, uint64(requestToken)); err != nil {
+		log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", bot.Model, requestToken)
 	}
 
 	return turn, nil

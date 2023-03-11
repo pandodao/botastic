@@ -80,19 +80,20 @@ func NewCmdHttpd() *cobra.Command {
 				return err
 			}
 			indexes := index.New(ctx, milvusClient)
-			indexService := index.NewService(ctx, gptHandler, indexes, tokenCal)
+
+			userz := userServ.New(userServ.Config{}, client, users)
+			indexService := index.NewService(ctx, gptHandler, indexes, userz, tokenCal)
 
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
 			botz := botServ.New(botServ.Config{}, apps, bots, middlewarez)
-			convz := convServ.New(convServ.Config{}, apps, convs, botz, tokenCal)
+			convz := convServ.New(convServ.Config{}, apps, convs, users, botz, userz, tokenCal)
 			hub := chanhub.New()
-			userz := userServ.New(userServ.Config{}, client, users)
 			// var userz core.UserService
 
 			// httpd's workers
 			workers := []worker.Worker{
 				// rotater
-				rotater.New(rotater.Config{}, gptHandler, convs, apps, convz, botz, middlewarez, tokenCal, hub),
+				rotater.New(rotater.Config{}, gptHandler, convs, apps, convz, botz, middlewarez, userz, tokenCal, hub),
 			}
 
 			g, ctx := errgroup.WithContext(ctx)
