@@ -2,6 +2,10 @@
 
 An AI framework for building cool things.
 
+## 👀 Overview
+
+![architecture](docs/arch.png)
+
 ## 💡 Motivation
 
 - LLMs are fantastic for knowledge generation and reasoning as they're pre-trained on large amounts of publicly available data.
