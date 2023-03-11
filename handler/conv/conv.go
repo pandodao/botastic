@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/fox-one/pkg/httputil/param"
 	"github.com/go-chi/chi"
+	"github.com/google/uuid"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/handler/render"
 	"github.com/pandodao/botastic/internal/chanhub"
@@ -29,6 +31,12 @@ type (
 	PostToConversationPayload struct {
 		Content  string `json:"content"`
 		Category string `json:"category"`
+	}
+
+	CreateOnewayConversationPayload struct {
+		BotID   uint64 `json:"bot_id"`
+		Content string `json:"content"`
+		Lang    string `json:"lang"`
 	}
 )
 
@@ -116,7 +124,6 @@ func GetConversationTurn(botz core.BotService, convs core.ConversationStore, hub
 		}
 
 		render.JSON(w, convTurn)
-		return
 	}
 }
 
@@ -226,5 +233,67 @@ func UpdateConversation() http.HandlerFunc {
 
 		// @TODO update conversation
 		render.JSON(w, nil)
+	}
+}
+
+func CreateOnewayConversation(convz core.ConversationService, convs core.ConversationStore, hub *chanhub.Hub) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		app := session.AppFrom(ctx)
+
+		body := &CreateOnewayConversationPayload{}
+		if err := param.Binding(r, body); err != nil {
+			render.Error(w, http.StatusBadRequest, err)
+			return
+		}
+
+		if body.BotID <= 0 {
+			render.Error(w, http.StatusBadRequest, nil)
+			return
+		}
+
+		uid := uuid.New().String()
+
+		conv, err := convz.CreateConversation(ctx, body.BotID, app.ID, uid, body.Lang)
+		if err != nil {
+			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		body.Content = fmt.Sprintf("%s. You must reply as shorter as possible.", body.Content)
+		turn, err := convz.PostToConversation(ctx, conv, body.Content)
+		if err != nil {
+			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		// wait for the turn to be processed
+		switch turn.Status {
+		case core.ConvTurnStatusCompleted, core.ConvTurnStatusError:
+			render.JSON(w, turn)
+			return
+		}
+
+		turnIDStr := strconv.FormatUint(turn.ID, 10)
+
+		_, err = hub.AddAndWait(ctx, turnIDStr)
+		if err != nil {
+			if err == context.Canceled {
+				render.Error(w, http.StatusBadRequest, err)
+				return
+			}
+		}
+
+		turn, err = convs.GetConvTurn(ctx, conv.ID, turn.ID)
+		if err != nil {
+			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		render.JSON(w, turn)
+
 	}
 }

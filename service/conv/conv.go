@@ -148,6 +148,9 @@ func (s *service) DeleteConversation(ctx context.Context, convID string) error {
 }
 
 func (s *service) getDefaultConversation(app *core.App, bot *core.Bot, uid, lang string) *core.Conversation {
+	if lang == "" {
+		lang = "en"
+	}
 	return &core.Conversation{
 		ID:           uuid.New().String(),
 		App:          app,
