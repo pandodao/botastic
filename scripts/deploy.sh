@@ -3,7 +3,7 @@
 set -e
 
 echo "build..."
-GOOS=linux GOARCH=amd64 go build -o botastic
+GOOS=linux GOARCH=amd64 go build -trimpath -o botastic
 echo "scp..."
 scp botastic ptest-dolphin:/home/ubuntu/botastic/botastic-new
 read -p "Do you need to synchronize the database migration? Enter Y/N to continue." -n 1 -r

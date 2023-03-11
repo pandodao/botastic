@@ -129,7 +129,7 @@ func (s *storeImpl) Search(ctx context.Context, appID string, vectors []float32,
 		return []*core.Index{}, nil
 	}
 
-	sp, _ := entity.NewIndexFlatSearchParam()
+	sp, _ := entity.NewIndexIvfFlatSearchParam(10)
 	searchResult, err := s.client.Search(
 		ctx,
 		idx.CollectionName(),
