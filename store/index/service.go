@@ -41,7 +41,7 @@ func (s *serviceImpl) createEmbeddingsWithLimit(ctx context.Context, req gogpt.E
 	return s.gptHandler.CreateEmbeddings(ctx, req)
 }
 
-func (s *serviceImpl) SearchIndex(ctx context.Context, keywords string, limit int) ([]*core.Index, error) {
+func (s *serviceImpl) SearchIndex(ctx context.Context, query string, limit int) ([]*core.Index, error) {
 	if limit <= 0 {
 		return nil, errors.New("limit should be greater than 0")
 	}
@@ -49,7 +49,7 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, keywords string, limit in
 	app := session.AppFrom(ctx)
 
 	resp, err := s.createEmbeddingsWithLimit(ctx, gogpt.EmbeddingRequest{
-		Input: []string{keywords},
+		Input: []string{query},
 		Model: gogpt.AdaEmbeddingV2,
 	})
 

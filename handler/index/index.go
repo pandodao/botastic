@@ -87,9 +87,12 @@ func Delete(apps core.AppStore, indexes core.IndexStore) http.HandlerFunc {
 func Search(apps core.AppStore, indexes core.IndexService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		keywords := r.URL.Query().Get("keywords")
-		if keywords == "" {
-			render.Error(w, http.StatusBadRequest, fmt.Errorf("keywords is required"))
+		query := r.URL.Query().Get("query")
+		if query == "" {
+			query = r.URL.Query().Get("keywords")
+		}
+		if query == "" {
+			render.Error(w, http.StatusBadRequest, fmt.Errorf("query is required"))
 			return
 		}
 
@@ -102,7 +105,7 @@ func Search(apps core.AppStore, indexes core.IndexService) http.HandlerFunc {
 			}
 		}
 
-		result, err := indexes.SearchIndex(ctx, keywords, limit)
+		result, err := indexes.SearchIndex(ctx, query, limit)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
