@@ -27,11 +27,12 @@ An AI framework for building cool things.
 - [x] 💾 Store and manage your own data as LLM's external brain
 - [x] 🌐 Restful APIs 
 - [x] 💬 Conversations management to help you build dialogue interface based applications
-- [ ] 🤖 Builtin wildly useful bots: emotion recognition, sentiment analysis, spam checker, etc. Please refer to [TBD].
-- [ ] 🧠 Intent recognition
-- [ ] 🤖 Bot/Avatar management
-- [ ] 💾 Store vectors in Postgres
+- [x] 🤖 Bot/Avatar management and builtin useful bots: emotion recognition, sentiment analysis, spam checker, etc. Please refer to [TBD].
+- [ ] 🧩 Customize Middlewares to extend Botastic's functionality
+- [ ] 💾 Store vectors in Postgres and other databases
 - [ ] 📤 Export data
+- [ ] 🙋‍♂️ Support other LLMs
+- [ ] 📚 Fine-tune own models
 
 ## Getting Started
 
@@ -44,7 +45,7 @@ curl --location --request POST 'https://botastic-api.pando.im/api/conversations/
 --header 'X-BOTASTIC-SECRET: your botastic app secret' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "bot_id": 5,
+  "bot_id": 1,
   "content": "How do you view the future of blockchain, and what benefits does it have for human being? Respond as short as possible like a Zen Master.",
   "category": "plain-text"
 }'
