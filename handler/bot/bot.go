@@ -20,7 +20,6 @@ type CreateOrUpdateBotPayload struct {
 	MaxTurnCount     int                   `json:"max_turn_count"`
 	ContextTurnCount int                   `json:"context_turn_count"`
 	Middlewares      core.MiddlewareConfig `json:"middlewares"`
-	Public           bool                  `json:"public"`
 }
 
 func (body *CreateOrUpdateBotPayload) Formalize(defaultValue *core.Bot) error {
@@ -173,7 +172,7 @@ func UpdateBot(botz core.BotService) http.HandlerFunc {
 			return
 		}
 
-		err = botz.UpdateBot(ctx, botID, body.Name, body.Model, body.Prompt, body.Temperature, body.MaxTurnCount, body.ContextTurnCount, body.Middlewares, body.Public)
+		err = botz.UpdateBot(ctx, botID, body.Name, body.Model, body.Prompt, body.Temperature, body.MaxTurnCount, body.ContextTurnCount, body.Middlewares, false)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
