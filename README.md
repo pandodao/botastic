@@ -30,6 +30,7 @@ An AI framework for building cool things.
 - [x] 🤖 Bot/Avatar management and builtin useful bots: emotion recognition, sentiment analysis, spam checker, etc. Please refer to [TBD].
 - [ ] 🧩 Customize Middlewares to extend Botastic's functionality
 - [ ] 💾 Store vectors in Postgres and other databases
+- [ ] 📦 Better strategies to split the data and build text chunks
 - [ ] 📤 Export data
 - [ ] 🙋‍♂️ Support other LLMs
 - [ ] 📚 Fine-tune own models
