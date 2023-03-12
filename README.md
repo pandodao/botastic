@@ -39,8 +39,20 @@ An AI framework for building cool things.
 2. run the following command to talk to Botastic
 
 ```bash
-TBD
+curl --location --request POST 'https://botastic-api.pando.im/api/conversations/oneway' \
+--header 'X-BOTASTIC-APPID: your botastic app id' \
+--header 'X-BOTASTIC-SECRET: your botastic app secret' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "bot_id": 5,
+  "content": "How do you view the future of blockchain, and what benefits does it have for human being? Respond as short as possible like a Zen Master.",
+  "category": "plain-text"
+}'
 ```
+
+## Showcases
+
+TBD
 
 ## Installation 
 
