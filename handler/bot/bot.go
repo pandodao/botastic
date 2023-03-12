@@ -209,7 +209,7 @@ func CreateBot(botz core.BotService) http.HandlerFunc {
 			return
 		}
 
-		bot, err := botz.CreateBot(ctx, user.ID, body.Name, body.Model, body.Prompt, body.Temperature, body.MaxTurnCount, body.ContextTurnCount, body.Middlewares, body.Public)
+		bot, err := botz.CreateBot(ctx, user.ID, body.Name, body.Model, body.Prompt, body.Temperature, body.MaxTurnCount, body.ContextTurnCount, body.Middlewares, false)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
