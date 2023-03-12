@@ -87,4 +87,6 @@ var (
 	ErrBotUnsupportedModel = errors.New("bot unsupported model")
 
 	ErrInvalidModel = errors.New("invalid model")
+
+	ErrTokenExceedLimit = errors.New("token exceed limit")
 )

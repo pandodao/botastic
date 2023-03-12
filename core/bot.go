@@ -45,11 +45,11 @@ type (
 		ID               uint64  `json:"id"`
 		Name             string  `json:"name"`
 		UserID           uint64  `json:"user_id"`
-		Prompt           string  `json:"-"`
-		Model            string  `json:"-"`
-		MaxTurnCount     int     `json:"-"`
-		ContextTurnCount int     `json:"-"`
-		Temperature      float32 `json:"-"`
+		Prompt           string  `json:"prompt"`
+		Model            string  `json:"model"`
+		MaxTurnCount     int     `json:"max_turn_count"`
+		ContextTurnCount int     `json:"context_turn_count"`
+		Temperature      float32 `json:"temperature"`
 		MiddlewareJson   JSONB   `gorm:"type:jsonb" json:"-"`
 		Public           bool    `json:"public"`
 
@@ -58,7 +58,7 @@ type (
 		DeletedAt *time.Time `json:"deleted_at"`
 
 		PromptTpl   *template.Template `gorm:"-" json:"-"`
-		Middlewares MiddlewareConfig   `gorm:"-" json:"-"`
+		Middlewares MiddlewareConfig   `gorm:"-" json:"middlewares"`
 	}
 
 	BotStore interface {

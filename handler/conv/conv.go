@@ -269,13 +269,6 @@ func CreateOnewayConversation(convz core.ConversationService, convs core.Convers
 			return
 		}
 
-		// wait for the turn to be processed
-		switch turn.Status {
-		case core.ConvTurnStatusCompleted, core.ConvTurnStatusError:
-			render.JSON(w, turn)
-			return
-		}
-
 		turnIDStr := strconv.FormatUint(turn.ID, 10)
 
 		_, err = hub.AddAndWait(ctx, turnIDStr)

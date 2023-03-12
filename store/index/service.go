@@ -81,6 +81,11 @@ func (s *serviceImpl) CreateIndices(ctx context.Context, userID uint64, items []
 		input = append(input, item.Data)
 	}
 
+	// @TODO calculate token limit according to the model
+	if totalToken > 8191 {
+		return core.ErrTokenExceedLimit
+	}
+
 	// @TODO should not pending here
 	resp, err := s.createEmbeddingsWithLimit(ctx, gogpt.EmbeddingRequest{
 		Input: input,
