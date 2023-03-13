@@ -126,7 +126,7 @@ func (w *Worker) run(ctx context.Context) error {
 		}
 
 		additional := map[string]interface{}{}
-		if len(bot.Middlewares.Items) != 0 {
+		if bot.Middlewares.Items != nil && len(bot.Middlewares.Items) != 0 {
 			middlewareOutputs := make([]string, 0)
 			app, err := w.apps.GetApp(ctx, turn.AppID)
 			if err == nil {
