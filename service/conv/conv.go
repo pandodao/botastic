@@ -7,28 +7,20 @@ import (
 	"github.com/google/uuid"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/internal/tokencal"
+	"github.com/pandodao/botastic/session"
 )
 
 func New(
 	cfg Config,
-	apps core.AppStore,
 	convs core.ConversationStore,
-	users core.UserStore,
 	botz core.BotService,
-	userz core.UserService,
 	tokencal *tokencal.Handler,
 ) *service {
-
-	conversationMap := make(map[string]*core.Conversation)
-
 	return &service{
 		cfg:             cfg,
-		apps:            apps,
 		convs:           convs,
-		users:           users,
 		botz:            botz,
-		userz:           userz,
-		conversationMap: conversationMap,
+		conversationMap: make(map[string]*core.Conversation),
 		tokencal:        tokencal,
 	}
 }
@@ -39,21 +31,19 @@ type (
 
 	service struct {
 		cfg             Config
-		apps            core.AppStore
 		convs           core.ConversationStore
-		users           core.UserStore
 		botz            core.BotService
-		userz           core.UserService
 		conversationMap map[string]*core.Conversation
 		tokencal        *tokencal.Handler
 	}
 )
 
+func (s *service) ReplaceStore(convs core.ConversationStore) core.ConversationService {
+	return New(s.cfg, convs, s.botz, s.tokencal)
+}
+
 func (s *service) CreateConversation(ctx context.Context, botID, appID uint64, userIdentity, lang string) (*core.Conversation, error) {
-	app, err := s.apps.GetApp(ctx, appID)
-	if err != nil {
-		return nil, err
-	}
+	app := session.AppFrom(ctx)
 
 	bot, err := s.botz.GetBot(ctx, botID)
 	if err != nil {

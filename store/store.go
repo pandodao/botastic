@@ -5,15 +5,15 @@ import (
 	"embed"
 
 	"github.com/pressly/goose/v3"
-	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gen"
 	"gorm.io/gorm"
 )
 
 //go:embed migrations/*.sql
 var embedMigrations embed.FS
+
+var defaultHandler *Handler
 
 const migrationsDir = "migrations"
 
@@ -46,17 +46,17 @@ func MustInit(cfg Config) *Handler {
 }
 
 func Init(cfg Config) (*Handler, error) {
+	if defaultHandler != nil {
+		return defaultHandler, nil
+	}
+
 	var (
 		err error
 		db  *gorm.DB
 	)
 	switch cfg.Driver {
-	case "mysql":
-		db, err = gorm.Open(mysql.Open(cfg.DSN), &gorm.Config{})
 	case "postgres":
 		db, err = gorm.Open(postgres.Open(cfg.DSN), &gorm.Config{})
-	case "sqlite":
-		db, err = gorm.Open(sqlite.Open(cfg.DSN), &gorm.Config{})
 	default:
 		panic("unknown driver")
 	}
@@ -68,9 +68,10 @@ func Init(cfg Config) (*Handler, error) {
 		return nil, err
 	}
 
-	return &Handler{
+	defaultHandler = &Handler{
 		DB: db,
-	}, err
+	}
+	return defaultHandler, err
 }
 
 type generateModel struct {
@@ -139,4 +140,12 @@ func (h *Handler) MigrationStatus() error {
 	db, _ := h.DB.DB()
 	goose.SetBaseFS(embedMigrations)
 	return goose.Status(db, migrationsDir)
+}
+
+func Transaction(f func(tx *Handler) error) error {
+	return defaultHandler.Transaction(func(db *gorm.DB) error {
+		return f(&Handler{
+			DB: db,
+		})
+	})
 }

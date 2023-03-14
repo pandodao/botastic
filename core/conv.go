@@ -106,6 +106,7 @@ type (
 		DeleteConversation(ctx context.Context, convID string) error
 		GetConversation(ctx context.Context, convID string) (*Conversation, error)
 		PostToConversation(ctx context.Context, conv *Conversation, input string) (*ConvTurn, error)
+		ReplaceStore(store ConversationStore) ConversationService
 	}
 )
 

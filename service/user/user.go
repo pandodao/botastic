@@ -37,6 +37,10 @@ type UserService struct {
 	users  core.UserStore
 }
 
+func (s *UserService) ReplaceStore(users core.UserStore) core.UserService {
+	return New(s.cfg, s.client, users)
+}
+
 func (s *UserService) LoginWithMixin(ctx context.Context, token, pubkey, lang string) (*core.User, error) {
 	var cli *mixin.Client
 	if lang == "" {

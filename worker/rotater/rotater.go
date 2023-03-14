@@ -13,6 +13,9 @@ import (
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/tokencal"
 	"github.com/pandodao/botastic/session"
+	"github.com/pandodao/botastic/store"
+	"github.com/pandodao/botastic/store/conv"
+	"github.com/pandodao/botastic/store/user"
 	gogpt "github.com/sashabaranov/go-gpt3"
 )
 
@@ -216,20 +219,34 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 			continue
 		}
 
-		if err := w.convs.UpdateConvTurn(ctx, turnReq.TurnID, respText, totalTokens, core.ConvTurnStatusCompleted); err != nil {
-			continue
-		}
+		if err := store.Transaction(func(tx *store.Handler) error {
+			convs := conv.New(tx)
+			convz := w.convz.ReplaceStore(convs)
+			userz := w.userz.ReplaceStore(user.New(tx))
 
-		turn, err := w.convs.GetConvTurn(ctx, turnReq.TurnID)
-		if err == nil {
-			conv, err := w.convz.GetConversation(ctx, turn.ConversationID)
-			if err != nil {
-				log.WithError(err).Warningf("users.GetUser: user_id=%v", conv.App.UserID)
-			} else {
-				if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, conv.Bot.Model, uint64(totalTokens)); err != nil {
-					log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", conv.Bot.Model, totalTokens)
-				}
+			if err := convs.UpdateConvTurn(ctx, turnReq.TurnID, respText, totalTokens, core.ConvTurnStatusCompleted); err != nil {
+				return err
 			}
+
+			turn, err := convs.GetConvTurn(ctx, turnReq.TurnID)
+			if err != nil {
+				return err
+			}
+
+			conv, err := convz.GetConversation(ctx, turn.ConversationID)
+			if err != nil {
+				return err
+			}
+
+			if err := userz.ConsumeCreditsByModel(ctx, turn.UserID, conv.Bot.Model, uint64(totalTokens)); err != nil {
+				log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", conv.Bot.Model, totalTokens)
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			log.WithError(err).Error("subworker: transaction failed")
+			continue
 		}
 
 		// notify http handler

@@ -66,10 +66,10 @@ func NewCmdHttpd() *cobra.Command {
 			})
 			tokenCal := tokencal.New(cfg.TokenCal.Addr)
 
-			apps := app.New(h.DB)
-			convs := conv.New(h.DB)
-			users := user.New(h.DB)
-			bots := bot.New(h.DB)
+			apps := app.New(h)
+			convs := conv.New(h)
+			users := user.New(h)
+			bots := bot.New(h)
 			// bots := interface{}(nil).(core.BotStore)
 
 			appz := appServ.New(appServ.Config{
@@ -86,7 +86,7 @@ func NewCmdHttpd() *cobra.Command {
 
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
 			botz := botServ.New(botServ.Config{}, apps, bots, middlewarez)
-			convz := convServ.New(convServ.Config{}, apps, convs, users, botz, userz, tokenCal)
+			convz := convServ.New(convServ.Config{}, convs, botz, tokenCal)
 			hub := chanhub.New()
 			// var userz core.UserService
 

@@ -27,6 +27,10 @@ type service struct {
 	apps core.AppStore
 }
 
+func (s *service) ReplaceStore(apps core.AppStore) core.AppService {
+	return New(s.cfg, apps)
+}
+
 func (s *service) CreateApp(ctx context.Context, userID uint64, name string) (*core.App, error) {
 	var err error
 	app := &core.App{}

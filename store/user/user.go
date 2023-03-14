@@ -5,30 +5,36 @@ import (
 	"github.com/pandodao/botastic/store"
 	"github.com/pandodao/botastic/store/user/dao"
 	"gorm.io/gen"
-	"gorm.io/gorm"
 )
 
 func init() {
-	cfg := gen.Config{
-		OutPath: "store/user/dao",
-	}
 	store.RegistGenerate(
-		cfg,
+		gen.Config{
+			OutPath: "store/user/dao",
+		},
 		func(g *gen.Generator) {
 			g.ApplyInterface(func(core.UserStore) {}, core.User{})
 		},
 	)
 }
 
-func New(db *gorm.DB) core.UserStore {
-	dao.SetDefault(db)
-	s := &storeImpl{}
-	v, ok := interface{}(dao.User).(core.UserStore)
+func New(h *store.Handler) core.UserStore {
+	var q *dao.Query
+	if !dao.Q.Available() {
+		dao.SetDefault(h.DB)
+		q = dao.Q
+	} else {
+		q = dao.Use(h.DB)
+	}
+
+	v, ok := interface{}(q.User).(core.UserStore)
 	if !ok {
 		panic("dao.User is not core.UserStore")
 	}
-	s.UserStore = v
-	return s
+
+	return &storeImpl{
+		UserStore: v,
+	}
 }
 
 type storeImpl struct {
