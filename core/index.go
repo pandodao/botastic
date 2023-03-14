@@ -29,7 +29,7 @@ type (
 
 	IndexService interface {
 		CreateIndices(ctx context.Context, userID uint64, items []*Index) error
-		SearchIndex(ctx context.Context, data string, limit int) ([]*Index, error)
+		SearchIndex(ctx context.Context, userID uint64, data string, limit int) ([]*Index, error)
 	}
 )
 

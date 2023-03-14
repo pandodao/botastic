@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pandodao/botastic/core"
+	"github.com/pandodao/botastic/session"
 )
 
 func New(
@@ -86,7 +87,8 @@ func (s *service) ProcessBotasticSearch(ctx context.Context, m *core.Middleware,
 		limit = int(val.(float64))
 	}
 
-	searchResult, err := s.indexz.SearchIndex(ctx, input, limit)
+	app := session.AppFrom(ctx)
+	searchResult, err := s.indexz.SearchIndex(ctx, app.UserID, input, limit)
 	if err != nil {
 		return nil, err
 	}

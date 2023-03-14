@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/internal/gpt"
@@ -32,16 +33,23 @@ type serviceImpl struct {
 	createEmbeddingsLimitChan chan struct{}
 }
 
-func (s *serviceImpl) createEmbeddingsWithLimit(ctx context.Context, req gogpt.EmbeddingRequest) (gogpt.EmbeddingResponse, error) {
+func (s *serviceImpl) createEmbeddingsWithLimit(ctx context.Context, req gogpt.EmbeddingRequest, userID uint64) (gogpt.EmbeddingResponse, error) {
 	s.createEmbeddingsLimitChan <- struct{}{}
 	defer func() {
 		<-s.createEmbeddingsLimitChan
 	}()
 
-	return s.gptHandler.CreateEmbeddings(ctx, req)
+	resp, err := s.gptHandler.CreateEmbeddings(ctx, req)
+	if err == nil {
+		if err := s.userz.ConsumeCreditsByModel(ctx, userID, "text-embedding-ada-002", uint64(resp.Usage.TotalTokens)); err != nil {
+			log.Printf("ConsumeCredits error: %v\n", err)
+		}
+	}
+
+	return resp, err
 }
 
-func (s *serviceImpl) SearchIndex(ctx context.Context, query string, limit int) ([]*core.Index, error) {
+func (s *serviceImpl) SearchIndex(ctx context.Context, userID uint64, query string, limit int) ([]*core.Index, error) {
 	if limit <= 0 {
 		return nil, errors.New("limit should be greater than 0")
 	}
@@ -51,7 +59,7 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, query string, limit int) 
 	resp, err := s.createEmbeddingsWithLimit(ctx, gogpt.EmbeddingRequest{
 		Input: []string{query},
 		Model: gogpt.AdaEmbeddingV2,
-	})
+	}, userID)
 
 	if err != nil {
 		return nil, err
@@ -90,7 +98,7 @@ func (s *serviceImpl) CreateIndices(ctx context.Context, userID uint64, items []
 	resp, err := s.createEmbeddingsWithLimit(ctx, gogpt.EmbeddingRequest{
 		Input: input,
 		Model: gogpt.AdaEmbeddingV2,
-	})
+	}, userID)
 
 	if err != nil {
 		return fmt.Errorf("CreateEmbeddings: %w", err)
@@ -111,8 +119,6 @@ func (s *serviceImpl) CreateIndices(ctx context.Context, userID uint64, items []
 	if err := s.indexes.CreateIndices(ctx, items); err != nil {
 		return fmt.Errorf("CreateIndices: %w", err)
 	}
-
-	s.userz.ConsumeCreditsByModel(ctx, userID, "text-embedding-ada-002", uint64(resp.Usage.TotalTokens))
 
 	return nil
 }
