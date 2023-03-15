@@ -137,6 +137,24 @@ func HandleAuthentication(s *session.Session, users core.UserStore) func(http.Ha
 	}
 }
 
+func HandleAppSecretRequired() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			app := session.AppFrom(ctx)
+			appSecret := getAuthAppSecret(r)
+
+			if appSecret == "" || app.AppSecret != appSecret {
+				render.Error(w, http.StatusUnauthorized, errors.New("invalid app_secret"))
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
 func HandleAppAuthentication(s *session.Session, appz core.AppService) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
@@ -160,9 +178,9 @@ func HandleAppAuthentication(s *session.Session, appz core.AppService) func(http
 				return
 			}
 
-			appID, appSecret := getAuthInfo(r)
-			if appID == "" || appSecret == "" {
-				render.Error(w, http.StatusUnauthorized, errors.New("missing app id or secret"))
+			appID := getAuthAppID(r)
+			if appID == "" {
+				render.Error(w, http.StatusUnauthorized, errors.New("app_id is required"))
 				return
 			}
 
@@ -176,11 +194,6 @@ func HandleAppAuthentication(s *session.Session, appz core.AppService) func(http
 				return
 			}
 
-			if app.AppSecret != appSecret {
-				render.Error(w, http.StatusUnauthorized, errors.New("invalid app id or secret"))
-				return
-			}
-
 			next.ServeHTTP(w, r.WithContext(
 				session.WithApp(r.Context(), app),
 			))
@@ -190,10 +203,12 @@ func HandleAppAuthentication(s *session.Session, appz core.AppService) func(http
 	}
 }
 
-func getAuthInfo(r *http.Request) (string, string) {
-	appID := r.Header.Get("X-BOTASTIC-APPID")
-	appSecret := r.Header.Get("X-BOTASTIC-SECRET")
-	return appID, appSecret
+func getAuthAppID(r *http.Request) string {
+	return r.Header.Get("X-BOTASTIC-APPID")
+}
+
+func getAuthAppSecret(r *http.Request) string {
+	return r.Header.Get("X-BOTASTIC-SECRET")
 }
 
 func getBearerToken(r *http.Request) string {

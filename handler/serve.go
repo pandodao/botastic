@@ -75,9 +75,9 @@ func (s Server) HandleRest() http.Handler {
 	r.Use(auth.HandleAuthentication(s.session, s.users))
 
 	r.Route("/indices", func(r chi.Router) {
-		r.Post("/", indexHandler.CreateIndex(s.indexService))
+		r.With(auth.HandleAppSecretRequired()).Post("/", indexHandler.CreateIndex(s.indexService))
 		r.Get("/search", indexHandler.Search(s.apps, s.indexService))
-		r.Delete("/{objectID}", indexHandler.Delete(s.apps, s.indexes))
+		r.With(auth.HandleAppSecretRequired()).Delete("/{objectID}", indexHandler.Delete(s.apps, s.indexes))
 	})
 
 	r.Route("/conversations", func(r chi.Router) {
