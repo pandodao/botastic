@@ -13,9 +13,6 @@ import (
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/tokencal"
 	"github.com/pandodao/botastic/session"
-	"github.com/pandodao/botastic/store"
-	"github.com/pandodao/botastic/store/conv"
-	"github.com/pandodao/botastic/store/user"
 	gogpt "github.com/sashabaranov/go-gpt3"
 )
 
@@ -106,7 +103,7 @@ func (w *Worker) Run(ctx context.Context) error {
 }
 
 func (w *Worker) run(ctx context.Context) error {
-	turns, err := w.convs.GetConvTurnsByStatus(ctx, core.ConvTurnStatusInit)
+	turns, err := w.convs.GetConvTurnsByStatus(ctx, []int{core.ConvTurnStatusInit, core.ConvTurnStatusPending})
 	if err != nil {
 		return err
 	}
@@ -168,8 +165,10 @@ func (w *Worker) run(ctx context.Context) error {
 			turnReq.Request = &request
 		}
 
-		if err := w.convs.UpdateConvTurn(ctx, turn.ID, "", 0, core.ConvTurnStatusPending); err != nil {
-			continue
+		if turn.Status == core.ConvTurnStatusInit {
+			if err := w.convs.UpdateConvTurn(ctx, turn.ID, "", 0, core.ConvTurnStatusPending); err != nil {
+				continue
+			}
 		}
 
 		w.turnReqChan <- turnReq
@@ -219,34 +218,20 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 			continue
 		}
 
-		if err := store.Transaction(func(tx *store.Handler) error {
-			convs := conv.New(tx)
-			convz := w.convz.ReplaceStore(convs)
-			userz := w.userz.ReplaceStore(user.New(tx))
-
-			if err := convs.UpdateConvTurn(ctx, turnReq.TurnID, respText, totalTokens, core.ConvTurnStatusCompleted); err != nil {
-				return err
-			}
-
-			turn, err := convs.GetConvTurn(ctx, turnReq.TurnID)
-			if err != nil {
-				return err
-			}
-
-			conv, err := convz.GetConversation(ctx, turn.ConversationID)
-			if err != nil {
-				return err
-			}
-
-			if err := userz.ConsumeCreditsByModel(ctx, turn.UserID, conv.Bot.Model, uint64(totalTokens)); err != nil {
-				log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", conv.Bot.Model, totalTokens)
-				return err
-			}
-
-			return nil
-		}); err != nil {
-			log.WithError(err).Error("subworker: transaction failed")
+		if err := w.convs.UpdateConvTurn(ctx, turnReq.TurnID, respText, totalTokens, core.ConvTurnStatusCompleted); err != nil {
 			continue
+		}
+
+		turn, err := w.convs.GetConvTurn(ctx, turnReq.TurnID)
+		if err == nil {
+			conv, err := w.convz.GetConversation(ctx, turn.ConversationID)
+			if err != nil {
+				log.WithError(err).Warningf("convz.GetConversation error")
+			} else {
+				if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, conv.Bot.Model, uint64(totalTokens)); err != nil {
+					log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", conv.Bot.Model, totalTokens)
+				}
+			}
 		}
 
 		// notify http handler

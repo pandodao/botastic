@@ -136,7 +136,7 @@ type IConvTurnDo interface {
 	CreateConvTurn(ctx context.Context, convID string, botID uint64, appID uint64, userID uint64, uid string, request string) (result uint64, err error)
 	GetConvTurns(ctx context.Context, ids []uint64) (result []*core.ConvTurn, err error)
 	GetConvTurn(ctx context.Context, id uint64) (result *core.ConvTurn, err error)
-	GetConvTurnsByStatus(ctx context.Context, status int) (result []*core.ConvTurn, err error)
+	GetConvTurnsByStatus(ctx context.Context, status []int) (result []*core.ConvTurn, err error)
 	UpdateConvTurn(ctx context.Context, id uint64, response string, totalTokens int, status int) (err error)
 }
 
@@ -237,13 +237,13 @@ func (c convTurnDo) GetConvTurn(ctx context.Context, id uint64) (result *core.Co
 // "request", "response", "status",
 // "created_at", "updated_at"
 // FROM "conv_turns" WHERE
-// "status"=@status
-func (c convTurnDo) GetConvTurnsByStatus(ctx context.Context, status int) (result []*core.ConvTurn, err error) {
+// "status" IN (@status)
+func (c convTurnDo) GetConvTurnsByStatus(ctx context.Context, status []int) (result []*core.ConvTurn, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
 	params = append(params, status)
-	generateSQL.WriteString("SELECT \"id\", \"conversation_id\", \"bot_id\", \"app_id\", \"user_id\", \"user_identity\", \"request\", \"response\", \"status\", \"created_at\", \"updated_at\" FROM \"conv_turns\" WHERE \"status\"=? ")
+	generateSQL.WriteString("SELECT \"id\", \"conversation_id\", \"bot_id\", \"app_id\", \"user_id\", \"user_identity\", \"request\", \"response\", \"status\", \"created_at\", \"updated_at\" FROM \"conv_turns\" WHERE \"status\" IN (?) ")
 
 	var executeSQL *gorm.DB
 	executeSQL = c.UnderlyingDB().Raw(generateSQL.String(), params...).Find(&result) // ignore_security_alert

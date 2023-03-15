@@ -85,8 +85,8 @@ type (
 		//  "request", "response", "status",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns" WHERE
-		//  "status"=@status
-		GetConvTurnsByStatus(ctx context.Context, status int) ([]*ConvTurn, error)
+		//  "status" IN (@status)
+		GetConvTurnsByStatus(ctx context.Context, status []int) ([]*ConvTurn, error)
 
 		// UPDATE "conv_turns"
 		// 	{{set}}
