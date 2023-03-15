@@ -5,6 +5,7 @@ go 1.20
 replace gorm.io/gen v0.3.22-0.20230213112745-6dc1af4c110b => github.com/pandodao/gen v0.0.0-20230215020331-916e2ec8363e
 
 require (
+	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/drone/signal v1.0.0
 	github.com/ethereum/go-ethereum v1.11.2
 	github.com/fox-one/pkg/logger v0.0.2
@@ -21,9 +22,7 @@ require (
 	github.com/spf13/cobra v1.6.1
 	golang.org/x/sync v0.1.0
 	gopkg.in/yaml.v3 v3.0.1
-	gorm.io/driver/mysql v1.4.6
 	gorm.io/driver/postgres v1.4.5
-	gorm.io/driver/sqlite v1.4.3
 	gorm.io/gen v0.3.22-0.20230213112745-6dc1af4c110b
 	gorm.io/gorm v1.24.5
 	gorm.io/plugin/dbresolver v1.4.1
@@ -31,6 +30,7 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.0.0 // indirect
+	github.com/andybalholm/cascadia v1.3.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.2 // indirect
@@ -59,6 +59,7 @@ require (
 	google.golang.org/genproto v0.0.0-20221227171554-f9683d7f8bef // indirect
 	google.golang.org/grpc v1.52.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
+	gorm.io/driver/mysql v1.4.6 // indirect
 )
 
 require (
@@ -89,13 +90,12 @@ require (
 	github.com/json-iterator/go v1.1.12
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
-	github.com/mattn/go-sqlite3 v1.14.15 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
-	github.com/shopspring/decimal v1.3.1 // indirect
+	github.com/shopspring/decimal v1.3.1
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.15.0
 	github.com/ugorji/go/codec v1.2.7 // indirect
