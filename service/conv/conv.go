@@ -7,24 +7,20 @@ import (
 	"github.com/google/uuid"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/internal/tokencal"
+	"github.com/pandodao/botastic/session"
 )
 
 func New(
 	cfg Config,
-	apps core.AppStore,
 	convs core.ConversationStore,
 	botz core.BotService,
 	tokencal *tokencal.Handler,
 ) *service {
-
-	conversationMap := make(map[string]*core.Conversation)
-
 	return &service{
 		cfg:             cfg,
-		apps:            apps,
 		convs:           convs,
 		botz:            botz,
-		conversationMap: conversationMap,
+		conversationMap: make(map[string]*core.Conversation),
 		tokencal:        tokencal,
 	}
 }
@@ -35,7 +31,6 @@ type (
 
 	service struct {
 		cfg             Config
-		apps            core.AppStore
 		convs           core.ConversationStore
 		botz            core.BotService
 		conversationMap map[string]*core.Conversation
@@ -43,11 +38,12 @@ type (
 	}
 )
 
+func (s *service) ReplaceStore(convs core.ConversationStore) core.ConversationService {
+	return New(s.cfg, convs, s.botz, s.tokencal)
+}
+
 func (s *service) CreateConversation(ctx context.Context, botID, appID uint64, userIdentity, lang string) (*core.Conversation, error) {
-	app, err := s.apps.GetApp(ctx, appID)
-	if err != nil {
-		return nil, err
-	}
+	app := session.AppFrom(ctx)
 
 	bot, err := s.botz.GetBot(ctx, botID)
 	if err != nil {
@@ -102,11 +98,7 @@ func (s *service) GetConversation(ctx context.Context, convID string) (*core.Con
 }
 
 func (s *service) PostToConversation(ctx context.Context, conv *core.Conversation, input string) (*core.ConvTurn, error) {
-	requestToken, err := s.tokencal.GetToken(ctx, input)
-	if err != nil {
-		return nil, err
-	}
-	turnID, err := s.convs.CreateConvTurn(ctx, conv.ID, conv.Bot.ID, conv.App.ID, conv.UserIdentity, input, requestToken)
+	turnID, err := s.convs.CreateConvTurn(ctx, conv.ID, conv.Bot.ID, conv.App.ID, conv.App.UserID, conv.UserIdentity, input)
 	if err != nil {
 		return nil, err
 	}
@@ -148,6 +140,9 @@ func (s *service) DeleteConversation(ctx context.Context, convID string) error {
 }
 
 func (s *service) getDefaultConversation(app *core.App, bot *core.Bot, uid, lang string) *core.Conversation {
+	if lang == "" {
+		lang = "en"
+	}
 	return &core.Conversation{
 		ID:           uuid.New().String(),
 		App:          app,

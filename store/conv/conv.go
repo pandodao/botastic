@@ -6,30 +6,36 @@ import (
 	"github.com/pandodao/botastic/store/conv/dao"
 
 	"gorm.io/gen"
-	"gorm.io/gorm"
 )
 
 func init() {
-	cfg := gen.Config{
-		OutPath: "store/conv/dao",
-	}
 	store.RegistGenerate(
-		cfg,
+		gen.Config{
+			OutPath: "store/conv/dao",
+		},
 		func(g *gen.Generator) {
 			g.ApplyInterface(func(core.ConversationStore) {}, core.ConvTurn{})
 		},
 	)
 }
 
-func New(db *gorm.DB) core.ConversationStore {
-	dao.SetDefault(db)
-	s := &storeImpl{}
-	v, ok := interface{}(dao.ConvTurn).(core.ConversationStore)
+func New(h *store.Handler) core.ConversationStore {
+	var q *dao.Query
+	if !dao.Q.Available() {
+		dao.SetDefault(h.DB)
+		q = dao.Q
+	} else {
+		q = dao.Use(h.DB)
+	}
+
+	v, ok := interface{}(q.ConvTurn).(core.ConversationStore)
 	if !ok {
 		panic("dao.Conv is not core.ConversationStore")
 	}
-	s.ConversationStore = v
-	return s
+
+	return &storeImpl{
+		ConversationStore: v,
+	}
 }
 
 type storeImpl struct {

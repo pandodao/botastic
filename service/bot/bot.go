@@ -90,6 +90,10 @@ func LoadBots() (map[uint64]*core.Bot, error) {
 	return avatarMap, nil
 }
 
+func (s *service) ReplaceStore(bots core.BotStore) core.BotService {
+	return New(s.cfg, s.apps, bots, s.middlewarez)
+}
+
 func (s *service) GetBot(ctx context.Context, id uint64) (*core.Bot, error) {
 	key := fmt.Sprintf("bot-%d", id)
 	if bot, found := s.botCache.Get(key); found {

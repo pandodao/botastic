@@ -1,7 +1,8 @@
 -- +goose Up
 -- +goose StatementBegin
 SELECT 'up SQL query';
-ALTER TABLE users ADD COLUMN "credits" bigint;
+ALTER TABLE users ADD COLUMN "credits" numeric(64,8);
+ALTER TABLE conv_turns ADD COLUMN "user_id" bigint;
 
 CREATE TABLE "bots" (
   "id" BIGSERIAL PRIMARY KEY,
@@ -26,6 +27,7 @@ CREATE INDEX idx_bots_user_id ON "bots" USING BTREE("user_id");
 -- +goose StatementBegin
 SELECT 'down SQL query';
 ALTER TABLE users DROP COLUMN IF EXISTS "credits";
+ALTER TABLE conv_turns DROP COLUMN IF EXISTS "user_id";
 
 DROP TABLE IF EXISTS "bots";
 -- +goose StatementEnd

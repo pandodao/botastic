@@ -88,7 +88,9 @@ type (
 	UserService interface {
 		LoginWithMixin(ctx context.Context, token, pubkey, lang string) (*User, error)
 		Topup(ctx context.Context, user *User, amount decimal.Decimal) error
-		ConsumeCredits(ctx context.Context, user *User, amount decimal.Decimal) error
+		ConsumeCredits(ctx context.Context, userID uint64, amount decimal.Decimal) error
+		ConsumeCreditsByModel(ctx context.Context, userID uint64, model string, amount uint64) error
+		ReplaceStore(store UserStore) UserService
 	}
 )
 

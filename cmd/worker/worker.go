@@ -14,11 +14,14 @@ import (
 	botServ "github.com/pandodao/botastic/service/bot"
 	convServ "github.com/pandodao/botastic/service/conv"
 	middlewareServ "github.com/pandodao/botastic/service/middleware"
+	userServ "github.com/pandodao/botastic/service/user"
+	"github.com/pandodao/botastic/session"
 	"github.com/pandodao/botastic/store"
 	"github.com/pandodao/botastic/store/app"
 	"github.com/pandodao/botastic/store/bot"
 	"github.com/pandodao/botastic/store/conv"
 	"github.com/pandodao/botastic/store/index"
+	"github.com/pandodao/botastic/store/user"
 	"github.com/pandodao/botastic/worker"
 	"github.com/pandodao/botastic/worker/rotater"
 
@@ -39,6 +42,12 @@ func NewCmdWorker() *cobra.Command {
 			var err error
 			ctx := cmd.Context()
 			cfg := config.C()
+			s := session.From(ctx)
+
+			client, err := s.GetClient()
+			if err != nil {
+				return err
+			}
 
 			h := store.MustInit(store.Config{
 				Driver: cfg.DB.Driver,
@@ -52,9 +61,10 @@ func NewCmdWorker() *cobra.Command {
 
 			tokenCal := tokencal.New(cfg.TokenCal.Addr)
 
-			apps := app.New(h.DB)
-			convs := conv.New(h.DB)
-			bots := bot.New(h.DB)
+			apps := app.New(h)
+			convs := conv.New(h)
+			users := user.New(h)
+			bots := bot.New(h)
 			// bots := interface{}(nil).(core.BotStore)
 
 			milvusClient, err := milvus.Init(ctx, cfg.Milvus.Address)
@@ -62,16 +72,17 @@ func NewCmdWorker() *cobra.Command {
 				return err
 			}
 			indexes := index.New(ctx, milvusClient)
-			indexService := index.NewService(ctx, gptHandler, indexes, tokenCal)
 
+			userz := userServ.New(userServ.Config{}, client, users)
+			indexService := index.NewService(ctx, gptHandler, indexes, userz, tokenCal)
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
 			botz := botServ.New(botServ.Config{}, apps, bots, middlewarez)
-			convz := convServ.New(convServ.Config{}, apps, convs, botz, tokenCal)
+			convz := convServ.New(convServ.Config{}, convs, botz, tokenCal)
 			hub := chanhub.New()
 
 			workers := []worker.Worker{
 				// rotater
-				rotater.New(rotater.Config{}, gptHandler, convs, apps, convz, botz, middlewarez, tokenCal, hub),
+				rotater.New(rotater.Config{}, gptHandler, convs, apps, convz, botz, middlewarez, userz, tokenCal, hub),
 			}
 
 			// run them all

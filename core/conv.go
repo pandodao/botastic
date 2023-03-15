@@ -30,11 +30,11 @@ type (
 		ConversationID string     `yaml:"conversation_id" json:"conversation_id"`
 		BotID          uint64     `yaml:"bot_id" json:"bot_id"`
 		AppID          uint64     `yaml:"app_id" json:"app_id"`
+		UserID         uint64     `yaml:"user_id" json:"user_id"`
 		UserIdentity   string     `yaml:"user_identity" json:"user_identity"`
 		Request        string     `yaml:"request" json:"request"`
-		RequestToken   int        `yaml:"request_token" json:"request_token"`
 		Response       string     `yaml:"response" json:"response"`
-		ResponseToken  int        `yaml:"response_token" json:"response_token"`
+		TotalTokens    int        `yaml:"total_tokens" json:"total_tokens"`
 		Status         int        `yaml:"status" json:"status"`
 		CreatedAt      *time.Time `yaml:"created_at" json:"created_at"`
 		UpdatedAt      *time.Time `yaml:"updated_at" json:"updated_at"`
@@ -43,21 +43,25 @@ type (
 	ConversationStore interface {
 		// INSERT INTO "conv_turns"
 		// 	(
-		//	"conversation_id", "bot_id", "app_id", "user_identity",
-		//  "request", "request_token", "response", "status",
+		//	"conversation_id", "bot_id", "app_id", "user_id",
+		//  "user_identity",
+		//  "request", "response", "status",
 		//  "created_at", "updated_at"
 		//   )
 		// VALUES
 		// 	(
-		//   @convID, @botID, @appID, @uid,
-		//   @request, @reqToken, '', 0,
+		//   @convID, @botID, @appID, @userID,
+		//   @uid,
+		//   @request, '', 0,
 		//   NOW(), NOW()
 		//  )
 		// RETURNING "id"
-		CreateConvTurn(ctx context.Context, convID string, botID, appID uint64, uid, request string, reqToken int) (uint64, error)
+		CreateConvTurn(ctx context.Context, convID string, botID, appID, userID uint64, uid, request string) (uint64, error)
 
 		// SELECT
-		//	"id", "conversation_id", "bot_id", "app_id", "user_identity",
+		// 	"id",
+		//	"conversation_id", "bot_id", "app_id", "user_id",
+		//  "user_identity",
 		//  "request", "response", "status",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns" WHERE
@@ -65,15 +69,19 @@ type (
 		GetConvTurns(ctx context.Context, ids []uint64) ([]*ConvTurn, error)
 
 		// SELECT
-		//	"id", "conversation_id", "bot_id", "app_id", "user_identity",
+		// 	"id",
+		//	"conversation_id", "bot_id", "app_id", "user_id",
+		//  "user_identity",
 		//  "request", "response", "status",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns" WHERE
-		//  "id" = @id AND conversation_id = @conversationID
-		GetConvTurn(ctx context.Context, conversationID string, id uint64) (*ConvTurn, error)
+		//  "id" = @id
+		GetConvTurn(ctx context.Context, id uint64) (*ConvTurn, error)
 
 		// SELECT
-		//	"id", "conversation_id", "bot_id", "app_id", "user_identity",
+		// 	"id",
+		//	"conversation_id", "bot_id", "app_id", "user_id",
+		//  "user_identity",
 		//  "request", "response", "status",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns" WHERE
@@ -83,13 +91,13 @@ type (
 		// UPDATE "conv_turns"
 		// 	{{set}}
 		// 		"response"=@response,
-		// 		"response_token"=@responseToken,
+		// 		"total_tokens"=@totalTokens,
 		// 		"status"=@status,
 		// 		"updated_at"=NOW()
 		// 	{{end}}
 		// WHERE
 		// 	"id"=@id
-		UpdateConvTurn(ctx context.Context, id uint64, response string, responseToken int, status int) error
+		UpdateConvTurn(ctx context.Context, id uint64, response string, totalTokens int, status int) error
 	}
 
 	ConversationService interface {
@@ -98,6 +106,7 @@ type (
 		DeleteConversation(ctx context.Context, convID string) error
 		GetConversation(ctx context.Context, convID string) (*Conversation, error)
 		PostToConversation(ctx context.Context, conv *Conversation, input string) (*ConvTurn, error)
+		ReplaceStore(store ConversationStore) ConversationService
 	}
 )
 

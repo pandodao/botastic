@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pandodao/botastic/core"
+	"github.com/pandodao/botastic/session"
 )
 
 func New(
@@ -80,7 +81,14 @@ The possible intents should be one of following. If you have no confident about 
 }
 
 func (s *service) ProcessBotasticSearch(ctx context.Context, m *core.Middleware, input string) (*core.MiddlewareProcessResult, error) {
-	searchResult, err := s.indexz.SearchIndex(ctx, input, 10)
+	limit := 3
+	val, ok := m.Options["limit"]
+	if ok {
+		limit = int(val.(float64))
+	}
+
+	app := session.AppFrom(ctx)
+	searchResult, err := s.indexz.SearchIndex(ctx, app.UserID, input, limit)
 	if err != nil {
 		return nil, err
 	}

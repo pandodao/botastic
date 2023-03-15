@@ -34,7 +34,7 @@ func NewCmdAppList() *cobra.Command {
 				Driver: cfg.DB.Driver,
 				DSN:    cfg.DB.DSN,
 			})
-			apps := app.New(h.DB)
+			apps := app.New(h)
 
 			items, _ := apps.GetApps(ctx)
 			for _, item := range items {
@@ -63,7 +63,7 @@ func NewCmdAppCreate() *cobra.Command {
 				Driver: cfg.DB.Driver,
 				DSN:    cfg.DB.DSN,
 			})
-			apps := app.New(h.DB)
+			apps := app.New(h)
 			appz := appServ.New(appServ.Config{
 				SecretKey: cfg.Sys.SecretKey,
 			}, apps)

@@ -82,6 +82,7 @@ func (s Server) HandleRest() http.Handler {
 
 	r.Route("/conversations", func(r chi.Router) {
 		r.Post("/", conv.CreateConversation(s.botz, s.convz))
+		r.Post("/oneway", conv.CreateOnewayConversation(s.convz, s.convs, s.hub))
 		r.Get("/{conversationID}", conv.GetConversation(s.botz, s.convz))
 		r.Post("/{conversationID}", conv.PostToConversation(s.botz, s.convz))
 		r.Delete("/{conversationID}", conv.DeleteConversation(s.botz, s.convz))
