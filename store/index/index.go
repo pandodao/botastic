@@ -45,7 +45,7 @@ func (s *storeImpl) DeleteByPks(ctx context.Context, items []*core.Index) error 
 	return nil
 }
 
-func (s *storeImpl) CreateIndices(ctx context.Context, idx []*core.Index) error {
+func (s *storeImpl) CreateIndexes(ctx context.Context, idx []*core.Index) error {
 	if len(idx) == 0 {
 		return nil
 	}
@@ -151,7 +151,7 @@ func (s *storeImpl) Search(ctx context.Context, appID string, vectors []float32,
 		return []*core.Index{}, nil
 	}
 
-	indices := []*core.Index{}
+	indexes := []*core.Index{}
 	sr := searchResult[0]
 
 	var (
@@ -184,8 +184,8 @@ func (s *storeImpl) Search(ctx context.Context, appID string, vectors []float32,
 		index.Category, _ = categoryCol.ValueByIdx(i)
 		index.CreatedAt, _ = createdAtCol.ValueByIdx(i)
 		index.Score = sr.Scores[i]
-		indices = append(indices, index)
+		indexes = append(indexes, index)
 	}
 
-	return indices, nil
+	return indexes, nil
 }

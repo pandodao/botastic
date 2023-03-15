@@ -157,7 +157,6 @@ func (w *Worker) run(ctx context.Context) error {
 			request := gogpt.CompletionRequest{
 				Model:       bot.Model,
 				Prompt:      prompt,
-				MaxTokens:   1024,
 				Temperature: bot.Temperature,
 				Stop:        []string{"Q:"},
 				User:        conv.GetKey(),
