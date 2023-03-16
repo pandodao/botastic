@@ -191,6 +191,7 @@ func (s *service) CreateBot(ctx context.Context,
 	key := fmt.Sprintf("bot-%d", botID)
 
 	s.botCache.Set(key, bot, cache.DefaultExpiration)
+	s.botCache.Delete(fmt.Sprintf("user-bots-%d", id))
 
 	return bot, nil
 }
