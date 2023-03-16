@@ -99,7 +99,7 @@ func (s *service) ProcessBotasticSearch(ctx context.Context, m *core.Middleware,
 		line := strings.ReplaceAll(strings.ReplaceAll(r.Data, "\n", " "), "\r", "")
 		line = strings.TrimSpace(line)
 		if line != "" {
-			arr = append(arr, fmt.Sprintf("%d: %s\nproperties: %s\n", ix+1, line, strings.TrimSpace(r.Properties)))
+			arr = append(arr, fmt.Sprintf("%d: %s\n", ix+1, line))
 		}
 	}
 
