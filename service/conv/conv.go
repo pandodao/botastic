@@ -14,14 +14,12 @@ func New(
 	cfg Config,
 	convs core.ConversationStore,
 	botz core.BotService,
-	tokencal *tokencal.Handler,
 ) *service {
 	return &service{
 		cfg:             cfg,
 		convs:           convs,
 		botz:            botz,
 		conversationMap: make(map[string]*core.Conversation),
-		tokencal:        tokencal,
 	}
 }
 
@@ -39,7 +37,7 @@ type (
 )
 
 func (s *service) ReplaceStore(convs core.ConversationStore) core.ConversationService {
-	return New(s.cfg, convs, s.botz, s.tokencal)
+	return New(s.cfg, convs, s.botz)
 }
 
 func (s *service) CreateConversation(ctx context.Context, botID, appID uint64, userIdentity, lang string) (*core.Conversation, error) {

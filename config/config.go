@@ -9,12 +9,11 @@ import (
 )
 
 type Config struct {
-	DB       DBConfig       `yaml:"db"`
-	Milvus   Milvus         `yaml:"milvus"`
-	Sys      System         `yaml:"sys"`
-	OpenAPI  OpenAIConfig   `yaml:"openai"`
-	TokenCal TokenCalConfig `yaml:"tokencal"`
-	Auth     Auth           `yaml:"auth"`
+	DB      DBConfig     `yaml:"db"`
+	Milvus  Milvus       `yaml:"milvus"`
+	Sys     System       `yaml:"sys"`
+	OpenAPI OpenAIConfig `yaml:"openai"`
+	Auth    Auth         `yaml:"auth"`
 }
 
 type Milvus struct {
@@ -24,10 +23,6 @@ type Milvus struct {
 type OpenAIConfig struct {
 	Keys    []string      `yaml:"keys"`
 	Timeout time.Duration `yaml:"timeout"`
-}
-
-type TokenCalConfig struct {
-	Addr string `yaml:"addr"`
 }
 
 type DBConfig struct {
