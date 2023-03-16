@@ -47,6 +47,10 @@ func (s *serviceImpl) createEmbeddingsWithLimit(ctx context.Context, req gogpt.E
 	return resp, err
 }
 
+func (s *serviceImpl) ResetIndexes(ctx context.Context, appID string) error {
+	return s.indexes.Reset(ctx, appID)
+}
+
 func (s *serviceImpl) SearchIndex(ctx context.Context, userID uint64, query string, limit int) ([]*core.Index, error) {
 	if limit <= 0 {
 		return nil, errors.New("limit should be greater than 0")

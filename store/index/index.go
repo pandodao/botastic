@@ -109,24 +109,31 @@ func (s *storeImpl) CreateIndexes(ctx context.Context, idx []*core.Index) error 
 	return nil
 }
 
+func (s *storeImpl) Reset(ctx context.Context, appID string) error {
+	idx := &core.Index{AppID: appID}
+	return s.client.DropPartionIfExist(ctx, idx.CollectionName(), idx.PartitionName())
+}
+
 func (s *storeImpl) Search(ctx context.Context, appID string, vectors []float32, n int) ([]*core.Index, error) {
 	idx := &core.Index{AppID: appID}
+	collectionName := idx.CollectionName()
 	partitionName := idx.PartitionName()
-	err := s.client.LoadCollection(
-		ctx,                  // ctx
-		idx.CollectionName(), // CollectionName
-		false,                // async
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	partitionExist, err := s.client.HasPartition(ctx, idx.CollectionName(), partitionName)
+	partitionExist, err := s.client.HasPartition(ctx, collectionName, partitionName)
 	if err != nil {
 		return nil, err
 	}
 	if !partitionExist {
 		return []*core.Index{}, nil
+	}
+
+	err = s.client.LoadPartitions(
+		ctx,                     // ctx
+		collectionName,          // CollectionName
+		[]string{partitionName}, // PartitionNames
+		false,                   // async
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	sp, _ := entity.NewIndexIvfFlatSearchParam(10)

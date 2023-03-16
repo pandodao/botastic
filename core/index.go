@@ -24,12 +24,14 @@ type (
 	IndexStore interface {
 		CreateIndexes(ctx context.Context, idx []*Index) error
 		Search(ctx context.Context, appId string, vectors []float32, n int) ([]*Index, error)
+		Reset(ctx context.Context, appId string) error
 		DeleteByPks(ctx context.Context, items []*Index) error
 	}
 
 	IndexService interface {
 		CreateIndexes(ctx context.Context, userID uint64, items []*Index) error
 		SearchIndex(ctx context.Context, userID uint64, data string, limit int) ([]*Index, error)
+		ResetIndexes(ctx context.Context, appID string) error
 	}
 )
 
