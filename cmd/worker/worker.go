@@ -10,7 +10,6 @@ import (
 	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/milvus"
-	"github.com/pandodao/botastic/internal/tokencal"
 	botServ "github.com/pandodao/botastic/service/bot"
 	convServ "github.com/pandodao/botastic/service/conv"
 	indexServ "github.com/pandodao/botastic/service/index"
@@ -60,8 +59,6 @@ func NewCmdWorker() *cobra.Command {
 				Timeout: cfg.OpenAPI.Timeout,
 			})
 
-			tokenCal := tokencal.New(cfg.TokenCal.Addr)
-
 			apps := app.New(h)
 			convs := conv.New(h)
 			users := user.New(h)
@@ -75,15 +72,15 @@ func NewCmdWorker() *cobra.Command {
 			indexes := index.New(ctx, milvusClient)
 
 			userz := userServ.New(userServ.Config{}, client, users)
-			indexService := indexServ.NewService(ctx, gptHandler, indexes, userz, tokenCal)
+			indexService := indexServ.NewService(ctx, gptHandler, indexes, userz)
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
 			botz := botServ.New(botServ.Config{}, apps, bots, middlewarez)
-			convz := convServ.New(convServ.Config{}, convs, botz, tokenCal)
+			convz := convServ.New(convServ.Config{}, convs, botz)
 			hub := chanhub.New()
 
 			workers := []worker.Worker{
 				// rotater
-				rotater.New(rotater.Config{}, gptHandler, convs, apps, convz, botz, middlewarez, userz, tokenCal, hub),
+				rotater.New(rotater.Config{}, gptHandler, convs, apps, convz, botz, middlewarez, userz, hub),
 			}
 
 			// run them all

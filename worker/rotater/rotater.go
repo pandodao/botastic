@@ -11,7 +11,6 @@ import (
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/internal/gpt"
-	"github.com/pandodao/botastic/internal/tokencal"
 	"github.com/pandodao/botastic/session"
 	gogpt "github.com/sashabaranov/go-gpt3"
 )
@@ -37,7 +36,6 @@ type (
 		userz       core.UserService
 
 		turnReqChan chan TurnRequest
-		tokencal    *tokencal.Handler
 		hub         *chanhub.Hub
 	}
 
@@ -59,7 +57,6 @@ func New(
 	middlewarez core.MiddlewareService,
 	userz core.UserService,
 
-	tokencal *tokencal.Handler,
 	hub *chanhub.Hub,
 ) *Worker {
 	turnReqChan := make(chan TurnRequest, MAX_REQUESTS_PER_MINUTE)
@@ -74,7 +71,6 @@ func New(
 		userz:       userz,
 
 		turnReqChan: turnReqChan,
-		tokencal:    tokencal,
 		hub:         hub,
 	}
 }
