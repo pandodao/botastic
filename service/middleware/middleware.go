@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pandodao/botastic/core"
+	"github.com/pandodao/botastic/internal/ddg"
 	"github.com/pandodao/botastic/session"
 )
 
@@ -111,10 +112,23 @@ func (s *service) ProcessBotasticSearch(ctx context.Context, m *core.Middleware,
 }
 
 func (s *service) ProcessDuckduckgoSearch(ctx context.Context, m *core.Middleware, input string) (*core.MiddlewareProcessResult, error) {
+	limit := 3
+	val, ok := m.Options["limit"]
+	if ok {
+		limit = int(val.(float64))
+	}
+	r, err := ddg.WebSearch(ctx, input, limit)
+	if err != nil {
+		return nil, err
+	}
+	result, err := r.Text()
+	if err != nil {
+		return nil, err
+	}
 	ret := &core.MiddlewareProcessResult{
 		Name:   m.Name,
 		Code:   core.MiddlewareProcessCodeOK,
-		Result: "duckduckgo-search doesn't work yet!",
+		Result: result,
 	}
 	return ret, nil
 }

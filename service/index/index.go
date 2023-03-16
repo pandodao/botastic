@@ -75,7 +75,7 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, userID uint64, query stri
 	return s.indexes.Search(ctx, app.AppID, vs, limit)
 }
 
-func (s *serviceImpl) CreateIndices(ctx context.Context, userID uint64, items []*core.Index) error {
+func (s *serviceImpl) CreateIndexes(ctx context.Context, userID uint64, items []*core.Index) error {
 	input := make([]string, 0, len(items))
 	var totalToken uint64
 	for _, item := range items {
@@ -116,8 +116,8 @@ func (s *serviceImpl) CreateIndices(ctx context.Context, userID uint64, items []
 	}
 
 	// create index in milvus
-	if err := s.indexes.CreateIndices(ctx, items); err != nil {
-		return fmt.Errorf("CreateIndices: %w", err)
+	if err := s.indexes.CreateIndexes(ctx, items); err != nil {
+		return fmt.Errorf("indexes.CreateIndexes: %w", err)
 	}
 
 	return nil

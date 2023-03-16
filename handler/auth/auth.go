@@ -161,7 +161,7 @@ func HandleAppAuthentication(s *session.Session, appz core.AppService) func(http
 			ctx := r.Context()
 
 			appAuthRoutes := []string{
-				"/api/indices",
+				"/api/indexes",
 				"/api/conversations",
 			}
 

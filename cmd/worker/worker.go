@@ -13,6 +13,7 @@ import (
 	"github.com/pandodao/botastic/internal/tokencal"
 	botServ "github.com/pandodao/botastic/service/bot"
 	convServ "github.com/pandodao/botastic/service/conv"
+	indexServ "github.com/pandodao/botastic/service/index"
 	middlewareServ "github.com/pandodao/botastic/service/middleware"
 	userServ "github.com/pandodao/botastic/service/user"
 	"github.com/pandodao/botastic/session"
@@ -74,7 +75,7 @@ func NewCmdWorker() *cobra.Command {
 			indexes := index.New(ctx, milvusClient)
 
 			userz := userServ.New(userServ.Config{}, client, users)
-			indexService := index.NewService(ctx, gptHandler, indexes, userz, tokenCal)
+			indexService := indexServ.NewService(ctx, gptHandler, indexes, userz, tokenCal)
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
 			botz := botServ.New(botServ.Config{}, apps, bots, middlewarez)
 			convz := convServ.New(convServ.Config{}, convs, botz, tokenCal)

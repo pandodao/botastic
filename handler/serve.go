@@ -74,7 +74,7 @@ func (s Server) HandleRest() http.Handler {
 	r.Use(auth.HandleAppAuthentication(s.session, s.appz))
 	r.Use(auth.HandleAuthentication(s.session, s.users))
 
-	r.Route("/indices", func(r chi.Router) {
+	r.Route("/indexes", func(r chi.Router) {
 		r.With(auth.HandleAppSecretRequired()).Post("/", indexHandler.CreateIndex(s.indexService))
 		r.Get("/search", indexHandler.Search(s.apps, s.indexService))
 		r.With(auth.HandleAppSecretRequired()).Delete("/{objectID}", indexHandler.Delete(s.apps, s.indexes))
