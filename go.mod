@@ -4,6 +4,8 @@ go 1.20
 
 replace gorm.io/gen v0.3.22-0.20230213112745-6dc1af4c110b => github.com/pandodao/gen v0.0.0-20230215020331-916e2ec8363e
 
+replace github.com/milvus-io/milvus-sdk-go/v2 v2.2.0 => github.com/pandodao/milvus-sdk-go/v2 v2.0.0-20230316122547-3d438936c43b
+
 require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/drone/signal v1.0.0
@@ -36,6 +38,9 @@ require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.2 // indirect
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
+	github.com/cockroachdb/errors v1.9.1 // indirect
+	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
+	github.com/cockroachdb/redact v1.1.3 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/dlclark/regexp2 v1.8.1 // indirect
 	github.com/dop251/goja v0.0.0-20230304130813-e2f543bf4b4c // indirect
@@ -43,18 +48,24 @@ require (
 	github.com/fkgi/abnf v1.0.0 // indirect
 	github.com/fox-one/msgpack v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/getsentry/sentry-go v0.18.0 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/pprof v0.0.0-20230309165930-d61513b1440d // indirect
 	github.com/gorilla/schema v1.2.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
-	github.com/milvus-io/milvus-proto/go-api v0.0.0-20221019080323-84e9fa2f9e45 // indirect
+	github.com/milvus-io/milvus-proto/go-api v0.0.0-20230303054144-16f081962572 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/relvacode/iso8601 v1.3.0 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/spf13/afero v1.9.3 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
@@ -77,9 +88,9 @@ require (
 	github.com/gin-gonic/gin v1.8.1 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
-	github.com/go-playground/validator/v10 v10.10.1 // indirect
+	github.com/go-playground/validator/v10 v10.11.1 // indirect
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
-	github.com/goccy/go-json v0.9.7 // indirect
+	github.com/goccy/go-json v0.9.11 // indirect
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect

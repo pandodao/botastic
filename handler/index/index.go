@@ -19,6 +19,20 @@ type CreateIndexPayload struct {
 	Properties string `json:"properties"`
 }
 
+func ResetIndexes(indexes core.IndexService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		app := session.AppFrom(ctx)
+		err := indexes.ResetIndexes(ctx, app.AppID)
+		if err != nil {
+			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		render.JSON(w, map[string]interface{}{})
+	}
+}
+
 func CreateIndex(indexes core.IndexService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var data struct {
