@@ -13,6 +13,7 @@ import (
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/handler/render"
 	"github.com/pandodao/botastic/session"
+	"github.com/pandodao/botastic/util"
 	"gorm.io/gorm"
 )
 
@@ -214,4 +215,51 @@ func getAuthAppSecret(r *http.Request) string {
 func getBearerToken(r *http.Request) string {
 	s := r.Header.Get("Authorization")
 	return strings.TrimPrefix(s, "Bearer ")
+}
+
+func LoginRequired() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			if _, found := session.UserFrom(ctx); !found {
+				render.Error(w, http.StatusUnauthorized, core.ErrUnauthorized)
+				return
+			}
+			next.ServeHTTP(w, r)
+		}
+		return http.HandlerFunc(fn)
+	}
+}
+
+func UserCreditRequired(users core.UserStore) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		fn := func(w http.ResponseWriter, r *http.Request) {
+			ctx := r.Context()
+			var user *core.User
+			user, found := session.UserFrom(ctx)
+			app := session.AppFrom(ctx)
+			if !found && app != nil {
+				var err error
+				user, err = users.GetUser(ctx, app.UserID)
+				if err != nil {
+					fmt.Printf("users.GetUser err: %v, appID: %d\n", err, app.ID)
+					render.Error(w, http.StatusUnauthorized, core.ErrUnauthorized)
+					return
+				}
+				r = r.WithContext(session.WithUser(ctx, user))
+			}
+
+			if user == nil || user.ID == 0 {
+				render.Error(w, http.StatusUnauthorized, core.ErrUnauthorized)
+				return
+			}
+
+			if user.Credits.LessThan(util.OneSatoshi) {
+				render.Error(w, http.StatusPaymentRequired, core.ErrInsufficientCredit)
+				return
+			}
+		}
+
+		return http.HandlerFunc(fn)
+	}
 }
