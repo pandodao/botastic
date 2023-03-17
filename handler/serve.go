@@ -75,17 +75,17 @@ func (s Server) HandleRest() http.Handler {
 	r.Use(auth.HandleAuthentication(s.session, s.users))
 
 	r.Route("/indexes", func(r chi.Router) {
-		r.With(auth.HandleAppSecretRequired()).Post("/", indexHandler.CreateIndex(s.indexService))
+		r.With(auth.HandleAppSecretRequired(), auth.UserCreditRequired(s.users)).Post("/", indexHandler.CreateIndex(s.indexService))
 		r.With(auth.HandleAppSecretRequired()).Post("/reset", indexHandler.ResetIndexes(s.indexService))
-		r.Get("/search", indexHandler.Search(s.apps, s.indexService))
+		r.With(auth.UserCreditRequired(s.users)).Get("/search", indexHandler.Search(s.apps, s.indexService))
 		r.With(auth.HandleAppSecretRequired()).Delete("/{objectID}", indexHandler.Delete(s.apps, s.indexes))
 	})
 
 	r.Route("/conversations", func(r chi.Router) {
 		r.Post("/", conv.CreateConversation(s.botz, s.convz))
-		r.Post("/oneway", conv.CreateOnewayConversation(s.convz, s.convs, s.hub))
+		r.With(auth.UserCreditRequired(s.users)).Post("/oneway", conv.CreateOnewayConversation(s.convz, s.convs, s.hub))
 		r.Get("/{conversationID}", conv.GetConversation(s.botz, s.convz))
-		r.Post("/{conversationID}", conv.PostToConversation(s.botz, s.convz))
+		r.With(auth.UserCreditRequired(s.users)).Post("/{conversationID}", conv.PostToConversation(s.botz, s.convz))
 		r.Delete("/{conversationID}", conv.DeleteConversation(s.botz, s.convz))
 		r.Put("/{conversationID}", conv.UpdateConversation())
 		r.Get("/{conversationID}/{turnID}", conv.GetConversationTurn(s.botz, s.convs, s.hub))
@@ -97,21 +97,21 @@ func (s Server) HandleRest() http.Handler {
 
 	r.Route("/bots", func(r chi.Router) {
 		r.Get("/public", bot.GetPublicBots(s.botz))
-		r.With(s.LoginRequired()).Get("/{botID}", bot.GetBot(s.botz))
-		r.With(s.LoginRequired()).Post("/", bot.CreateBot(s.botz))
-		r.With(s.LoginRequired()).Put("/{botID}", bot.UpdateBot(s.botz))
-		r.With(s.LoginRequired()).Get("/", bot.GetMyBots(s.botz))
+		r.With(auth.LoginRequired()).Get("/{botID}", bot.GetBot(s.botz))
+		r.With(auth.LoginRequired()).Post("/", bot.CreateBot(s.botz))
+		r.With(auth.LoginRequired()).Put("/{botID}", bot.UpdateBot(s.botz))
+		r.With(auth.LoginRequired()).Get("/", bot.GetMyBots(s.botz))
 	})
 
-	r.With(s.LoginRequired()).Route("/users", func(r chi.Router) {
+	r.With(auth.LoginRequired()).Route("/users", func(r chi.Router) {
 		r.Get("/{userID}", user.GetUser(s.users))
 	})
 
-	r.With(s.LoginRequired()).Route("/me", func(r chi.Router) {
+	r.With(auth.LoginRequired()).Route("/me", func(r chi.Router) {
 		r.Get("/", user.GetMe(s.users))
 	})
 
-	r.With(s.LoginRequired()).Route("/apps", func(r chi.Router) {
+	r.With(auth.LoginRequired()).Route("/apps", func(r chi.Router) {
 		r.Get("/{appID}", app.GetApp(s.appz))
 		r.Post("/", app.CreateApp(s.appz))
 		r.Get("/", app.GetMyApps(s.appz))
@@ -123,18 +123,4 @@ func (s Server) HandleRest() http.Handler {
 	})
 
 	return r
-}
-
-func (s Server) LoginRequired() func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		fn := func(w http.ResponseWriter, r *http.Request) {
-			ctx := r.Context()
-			if _, found := session.UserFrom(ctx); !found {
-				render.Error(w, http.StatusUnauthorized, core.ErrUnauthorized)
-				return
-			}
-			next.ServeHTTP(w, r)
-		}
-		return http.HandlerFunc(fn)
-	}
 }
