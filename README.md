@@ -48,7 +48,7 @@ curl --location --request POST 'https://botastic-api.pando.im/api/conversations/
 
 ## Showcases
 
-TBD
+- [Ask Vitalik](https://ask-vitalik.xingchi.dev): A digital avatar of Vitalik Buterin.
 
 ## Installation 
 
