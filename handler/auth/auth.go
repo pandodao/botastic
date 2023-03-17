@@ -258,6 +258,8 @@ func UserCreditRequired(users core.UserStore) func(http.Handler) http.Handler {
 				render.Error(w, http.StatusPaymentRequired, core.ErrInsufficientCredit)
 				return
 			}
+
+			next.ServeHTTP(w, r)
 		}
 
 		return http.HandlerFunc(fn)
