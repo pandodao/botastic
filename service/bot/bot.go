@@ -209,6 +209,12 @@ func (s *service) UpdateBot(ctx context.Context, id uint64, name, model, prompt 
 		return err
 	}
 
+	bot, err := s.bots.GetBot(ctx, id)
+	if err != nil {
+		fmt.Printf("bots.GetBot err: %v\n", err)
+		return err
+	}
+
 	err = s.bots.UpdateBot(ctx, id, name, model, prompt, temperature, maxTurnCount, contextTurnCount, jsonb, public)
 	if err != nil {
 		fmt.Printf("bots.UpdateBot err: %v\n", err)
@@ -218,6 +224,6 @@ func (s *service) UpdateBot(ctx context.Context, id uint64, name, model, prompt 
 	key := fmt.Sprintf("bot-%d", id)
 
 	s.botCache.Delete(key)
-
+	s.botCache.Delete(fmt.Sprintf("user-bots-%d", bot.UserID))
 	return nil
 }
