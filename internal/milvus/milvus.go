@@ -40,28 +40,6 @@ func (c *Client) CreateCollectionIfNotExist(ctx context.Context, s *entity.Schem
 	return nil
 }
 
-func (c *Client) DropPartionIfExist(ctx context.Context, collName, partionName string) error {
-	exists, err := c.HasPartition(ctx, collName, partionName)
-	if err != nil {
-		return err
-	}
-
-	if !exists {
-		return nil
-	}
-
-	if err := c.ReleasePartitions(ctx, collName, []string{partionName}); err != nil {
-		return err
-	}
-
-	err = c.DropPartition(ctx, collName, partionName)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (c *Client) CreatePartionIfNotExist(ctx context.Context, collName, partionName string) error {
 	exists, err := c.HasPartition(ctx, collName, partionName)
 	if err != nil {

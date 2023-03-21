@@ -111,7 +111,30 @@ func (s *storeImpl) CreateIndexes(ctx context.Context, idx []*core.Index) error 
 
 func (s *storeImpl) Reset(ctx context.Context, appID string) error {
 	idx := &core.Index{AppID: appID}
-	return s.client.DropPartionIfExist(ctx, idx.CollectionName(), idx.PartitionName())
+	collectionName := idx.CollectionName()
+	partitionName := idx.PartitionName()
+
+	// if partition not exist, return nil
+	exists, err := s.client.HasPartition(ctx, collectionName, partitionName)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return nil
+	}
+
+	// query data by app_id
+	es, err := s.client.Query(ctx, collectionName, []string{partitionName}, fmt.Sprintf(`app_id == "%s"`, appID), []string{"id"})
+	if err != nil {
+		return err
+	}
+	e := es[0]
+	data := e.FieldData().GetScalars().GetStringData().Data
+	if len(data) == 0 {
+		return nil
+	}
+
+	return s.client.DeleteByPks(ctx, collectionName, partitionName, e)
 }
 
 func (s *storeImpl) Search(ctx context.Context, appID string, vectors []float32, n int) ([]*core.Index, error) {
@@ -126,13 +149,7 @@ func (s *storeImpl) Search(ctx context.Context, appID string, vectors []float32,
 		return []*core.Index{}, nil
 	}
 
-	err = s.client.LoadPartitions(
-		ctx,                     // ctx
-		collectionName,          // CollectionName
-		[]string{partitionName}, // PartitionNames
-		false,                   // async
-	)
-	if err != nil {
+	if err = s.client.LoadCollection(ctx, collectionName, false); err != nil {
 		return nil, err
 	}
 
