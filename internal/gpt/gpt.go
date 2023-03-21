@@ -98,6 +98,8 @@ func (h *Handler) CreateCompletion(ctx context.Context, request gogpt.Completion
 }
 
 func (h *Handler) CreateChatCompletion(ctx context.Context, request gogpt.ChatCompletionRequest) (gogpt.ChatCompletionResponse, error) {
+	log := logger.FromContext(ctx).WithField("worker", "rotater.subworker")
+
 	ctx, cancel := context.WithTimeout(ctx, h.cfg.Timeout)
 	defer cancel()
 	h.Lock()
@@ -110,18 +112,27 @@ func (h *Handler) CreateChatCompletion(ctx context.Context, request gogpt.ChatCo
 		var perr *gogpt.APIError
 		if errors.As(err, &perr) {
 			if perr.StatusCode == 429 {
+				log.WithError(err).Println("gpt: create chat completion failed, APIError, too many requests")
 				return resp, ErrTooManyRequests
+			} else {
+				log.WithError(err).Println("gpt: create chat completion failed")
+				return resp, err
 			}
 		}
 
 		var cerr *gogpt.RequestError
 		if errors.As(err, &cerr) {
 			if cerr.StatusCode == 429 {
+				log.WithError(err).Println("gpt: create chat completion failed, RequestError, too many requests")
 				return resp, ErrTooManyRequests
+			} else {
+				log.WithError(err).Println("gpt: create chat completion failed")
+				return resp, err
 			}
 		}
 
 		if errors.Is(err, context.DeadlineExceeded) {
+			log.WithError(err).Println("gpt: create chat completion failed, DeadlineExceeded, too many requests")
 			return resp, ErrTooManyRequests
 		}
 
