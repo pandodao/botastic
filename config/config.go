@@ -9,11 +9,26 @@ import (
 )
 
 type Config struct {
-	DB      DBConfig     `yaml:"db"`
-	Milvus  Milvus       `yaml:"milvus"`
-	Sys     System       `yaml:"sys"`
-	OpenAPI OpenAIConfig `yaml:"openai"`
-	Auth    Auth         `yaml:"auth"`
+	DB          DBConfig          `yaml:"db"`
+	Milvus      Milvus            `yaml:"milvus"`
+	Sys         System            `yaml:"sys"`
+	OpenAPI     OpenAIConfig      `yaml:"openai"`
+	Auth        Auth              `yaml:"auth"`
+	Mixpay      Mixpay            `yaml:"mixpay"`
+	OrderSyncer OrderSyncerConfig `yaml:"order_syncer"`
+}
+
+type OrderSyncerConfig struct {
+	Interval       time.Duration
+	CheckInterval  time.Duration
+	CancelInterval time.Duration
+}
+
+type Mixpay struct {
+	PayeeId           string `yaml:"payee_id"`
+	QuoteAssetId      string `yaml:"quote_asset_id"`
+	SettlementAssetId string `yaml:"settlement_asset_id"`
+	CallbackUrl       string `yaml:"callback_url"`
 }
 
 type Milvus struct {
@@ -51,7 +66,13 @@ func DefaultConfigString() string {
 }
 
 func defaultConfig() *Config {
-	return &Config{}
+	return &Config{
+		OrderSyncer: OrderSyncerConfig{
+			Interval:       time.Second,
+			CheckInterval:  10 * time.Second,
+			CancelInterval: 24 * time.Hour,
+		},
+	}
 }
 
 var cfg *Config
