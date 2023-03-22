@@ -84,9 +84,14 @@ type (
 		//  "user_identity",
 		//  "request", "response", "status",
 		//  "created_at", "updated_at"
-		// FROM "conv_turns" WHERE
-		//  "status" IN (@status)
-		GetConvTurnsByStatus(ctx context.Context, status []int) ([]*ConvTurn, error)
+		// FROM "conv_turns"
+		// {{where}}
+		// "status" IN (@status)
+		//    {{if len(excludeIDs)>0}}
+		//      AND "id" NOT IN (@excludeIDs)
+		//    {{end}}
+		// {{end}}
+		GetConvTurnsByStatus(ctx context.Context, excludeIDs []uint64, status []int) ([]*ConvTurn, error)
 
 		// UPDATE "conv_turns"
 		// 	{{set}}

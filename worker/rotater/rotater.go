@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fox-one/pkg/logger"
@@ -37,6 +38,8 @@ type (
 
 		turnReqChan chan TurnRequest
 		hub         *chanhub.Hub
+
+		processingMap sync.Map
 	}
 
 	TurnRequest struct {
@@ -99,7 +102,13 @@ func (w *Worker) Run(ctx context.Context) error {
 }
 
 func (w *Worker) run(ctx context.Context) error {
-	turns, err := w.convs.GetConvTurnsByStatus(ctx, []int{core.ConvTurnStatusInit, core.ConvTurnStatusPending})
+	processinngIds := make([]uint64, 0)
+	w.processingMap.Range(func(key, value interface{}) bool {
+		processinngIds = append(processinngIds, key.(uint64))
+		return true
+	})
+
+	turns, err := w.convs.GetConvTurnsByStatus(ctx, processinngIds, []int{core.ConvTurnStatusInit, core.ConvTurnStatusPending})
 	if err != nil {
 		return err
 	}
@@ -185,62 +194,69 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 		// Wait for a request to handle.
 		turnReq := <-w.turnReqChan
 
-		respText := ""
-		var totalTokens int
-		var err error
-		switch {
-		case turnReq.Request != nil:
-			var gptResp gogpt.CompletionResponse
-			gptResp, err = w.gptHandler.CreateCompletion(ctx, *turnReq.Request)
-			if err == nil {
-				prefix := "A:"
-				respText = strings.TrimPrefix(gptResp.Choices[0].Text, prefix)
-				respText = strings.TrimSpace(respText)
-				totalTokens = gptResp.Usage.TotalTokens
+		func() {
+			if _, loaded := w.processingMap.LoadOrStore(turnReq.TurnID, struct{}{}); loaded {
+				return
 			}
+			defer w.processingMap.Delete(turnReq.TurnID)
 
-		case turnReq.ChatRequest != nil:
-			var gptResp gogpt.ChatCompletionResponse
-			gptResp, err = w.gptHandler.CreateChatCompletion(ctx, *turnReq.ChatRequest)
-			if err == nil {
-				respText = strings.TrimSpace(gptResp.Choices[0].Message.Content)
-				totalTokens = gptResp.Usage.TotalTokens
-			}
-		}
+			respText := ""
+			var totalTokens int
+			var err error
+			switch {
+			case turnReq.Request != nil:
+				var gptResp gogpt.CompletionResponse
+				gptResp, err = w.gptHandler.CreateCompletion(ctx, *turnReq.Request)
+				if err == nil {
+					prefix := "A:"
+					respText = strings.TrimPrefix(gptResp.Choices[0].Text, prefix)
+					respText = strings.TrimSpace(respText)
+					totalTokens = gptResp.Usage.TotalTokens
+				}
 
-		if err != nil {
-			w.UpdateConvTurnAsError(ctx, turnReq.TurnID, err.Error())
-			continue
-		}
-
-		if err := w.convs.UpdateConvTurn(ctx, turnReq.TurnID, respText, totalTokens, core.ConvTurnStatusCompleted); err != nil {
-			continue
-		}
-
-		turn, err := w.convs.GetConvTurn(ctx, turnReq.TurnID)
-		if err == nil {
-			conv, err := w.convz.GetConversation(ctx, turn.ConversationID)
-			if err != nil {
-				log.WithError(err).Warningf("convz.GetConversation error")
-			} else {
-				if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, conv.Bot.Model, uint64(totalTokens)); err != nil {
-					log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", conv.Bot.Model, totalTokens)
+			case turnReq.ChatRequest != nil:
+				var gptResp gogpt.ChatCompletionResponse
+				gptResp, err = w.gptHandler.CreateChatCompletion(ctx, *turnReq.ChatRequest)
+				if err == nil {
+					respText = strings.TrimSpace(gptResp.Choices[0].Message.Content)
+					totalTokens = gptResp.Usage.TotalTokens
 				}
 			}
-		}
 
-		// notify http handler
-		w.hub.Broadcast(strconv.FormatUint(turnReq.TurnID, 10), struct{}{})
-
-		if turnReq.Request != nil {
-			fmt.Printf("[%03d]prompt: %+v\n", id, turnReq.Request.Prompt)
-		} else if turnReq.ChatRequest != nil {
-			msgs := []string{}
-			for _, m := range turnReq.ChatRequest.Messages {
-				msgs = append(msgs, m.Content)
+			if err != nil {
+				w.UpdateConvTurnAsError(ctx, turnReq.TurnID, err.Error())
+				return
 			}
-			fmt.Printf("[%03d]prompt: %+v\n", id, strings.Join(msgs, "\n"))
-		}
-		fmt.Printf("[%03d]resp: %+v\n", id, respText)
+
+			if err := w.convs.UpdateConvTurn(ctx, turnReq.TurnID, respText, totalTokens, core.ConvTurnStatusCompleted); err != nil {
+				return
+			}
+
+			turn, err := w.convs.GetConvTurn(ctx, turnReq.TurnID)
+			if err == nil {
+				conv, err := w.convz.GetConversation(ctx, turn.ConversationID)
+				if err != nil {
+					log.WithError(err).Warningf("convz.GetConversation error")
+				} else {
+					if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, conv.Bot.Model, uint64(totalTokens)); err != nil {
+						log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", conv.Bot.Model, totalTokens)
+					}
+				}
+			}
+
+			// notify http handler
+			w.hub.Broadcast(strconv.FormatUint(turnReq.TurnID, 10), struct{}{})
+
+			if turnReq.Request != nil {
+				fmt.Printf("[%03d]prompt: %+v\n", id, turnReq.Request.Prompt)
+			} else if turnReq.ChatRequest != nil {
+				msgs := []string{}
+				for _, m := range turnReq.ChatRequest.Messages {
+					msgs = append(msgs, m.Content)
+				}
+				fmt.Printf("[%03d]prompt: %+v\n", id, strings.Join(msgs, "\n"))
+			}
+			fmt.Printf("[%03d]resp: %+v\n", id, respText)
+		}()
 	}
 }
