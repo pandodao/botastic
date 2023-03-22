@@ -12,16 +12,16 @@ type Config struct {
 	DB          DBConfig          `yaml:"db"`
 	Milvus      Milvus            `yaml:"milvus"`
 	Sys         System            `yaml:"sys"`
-	OpenAPI     OpenAIConfig      `yaml:"openai"`
+	OpenAI      OpenAIConfig      `yaml:"openai"`
 	Auth        Auth              `yaml:"auth"`
 	Mixpay      Mixpay            `yaml:"mixpay"`
 	OrderSyncer OrderSyncerConfig `yaml:"order_syncer"`
 }
 
 type OrderSyncerConfig struct {
-	Interval       time.Duration
-	CheckInterval  time.Duration
-	CancelInterval time.Duration
+	Interval       time.Duration `yaml:"interval"`
+	CheckInterval  time.Duration `yaml:"check_interval"`
+	CancelInterval time.Duration `yaml:"cancel_interval"`
 }
 
 type Mixpay struct {
@@ -70,7 +70,7 @@ func defaultConfig() *Config {
 		OrderSyncer: OrderSyncerConfig{
 			Interval:       time.Second,
 			CheckInterval:  10 * time.Second,
-			CancelInterval: 24 * time.Hour,
+			CancelInterval: 2 * time.Hour,
 		},
 	}
 }
