@@ -55,8 +55,8 @@ func NewCmdWorker() *cobra.Command {
 			})
 
 			gptHandler := gpt.New(gpt.Config{
-				Keys:    cfg.OpenAPI.Keys,
-				Timeout: cfg.OpenAPI.Timeout,
+				Keys:    cfg.OpenAI.Keys,
+				Timeout: cfg.OpenAI.Timeout,
 			})
 
 			apps := app.New(h)
