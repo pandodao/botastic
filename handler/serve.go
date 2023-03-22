@@ -11,6 +11,7 @@ import (
 	"github.com/pandodao/botastic/handler/bot"
 	"github.com/pandodao/botastic/handler/conv"
 	indexHandler "github.com/pandodao/botastic/handler/index"
+	"github.com/pandodao/botastic/handler/order"
 	"github.com/pandodao/botastic/handler/render"
 	"github.com/pandodao/botastic/handler/user"
 	"github.com/pandodao/botastic/internal/chanhub"
@@ -27,6 +28,7 @@ func New(cfg Config, s *session.Session,
 	indexService core.IndexService,
 	userz core.UserService,
 	convz core.ConversationService,
+	orderz core.OrderService,
 	hub *chanhub.Hub,
 ) Server {
 	return Server{
@@ -41,6 +43,7 @@ func New(cfg Config, s *session.Session,
 		userz:        userz,
 		session:      s,
 		convs:        convs,
+		orderz:       orderz,
 		hub:          hub,
 	}
 }
@@ -63,6 +66,7 @@ type (
 		indexService core.IndexService
 		convz        core.ConversationService
 		userz        core.UserService
+		orderz       core.OrderService
 
 		hub *chanhub.Hub
 	}
@@ -116,6 +120,14 @@ func (s Server) HandleRest() http.Handler {
 		r.Post("/", app.CreateApp(s.appz))
 		r.Get("/", app.GetMyApps(s.appz))
 		r.Delete("/{appID}", app.DeleteApp(s.appz))
+	})
+
+	r.With(auth.LoginRequired()).Route("/orders", func(r chi.Router) {
+		r.Post("/mixpay", order.CreateOrder(s.orderz))
+	})
+
+	r.Route("/callback", func(r chi.Router) {
+		r.Post("/mixpay", order.HandleMixpayCallback(s.orderz))
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {

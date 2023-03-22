@@ -60,6 +60,23 @@ func WrapResponse(wrapData bool) func(http.Handler) http.Handler {
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ignoreRoutes := []string{
+				"/api/callback",
+			}
+
+			meet := false
+			for _, route := range ignoreRoutes {
+				if strings.HasPrefix(r.URL.Path, route) {
+					meet = true
+					break
+				}
+			}
+
+			if meet {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			buf := bufferPool.Get()
 			defer bufferPool.Put(buf)
 

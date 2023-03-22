@@ -16,11 +16,13 @@ import (
 	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/milvus"
+	"github.com/pandodao/botastic/internal/mixpay"
 	appServ "github.com/pandodao/botastic/service/app"
 	botServ "github.com/pandodao/botastic/service/bot"
 	convServ "github.com/pandodao/botastic/service/conv"
 	indexServ "github.com/pandodao/botastic/service/index"
 	middlewareServ "github.com/pandodao/botastic/service/middleware"
+	orderServ "github.com/pandodao/botastic/service/order"
 	userServ "github.com/pandodao/botastic/service/user"
 	"github.com/pandodao/botastic/session"
 	"github.com/pandodao/botastic/store"
@@ -28,8 +30,10 @@ import (
 	"github.com/pandodao/botastic/store/bot"
 	"github.com/pandodao/botastic/store/conv"
 	"github.com/pandodao/botastic/store/index"
+	"github.com/pandodao/botastic/store/order"
 	"github.com/pandodao/botastic/store/user"
 	"github.com/pandodao/botastic/worker"
+	"github.com/pandodao/botastic/worker/ordersyncer"
 	"github.com/pandodao/botastic/worker/rotater"
 	"github.com/rs/cors"
 	"golang.org/x/sync/errgroup"
@@ -65,11 +69,13 @@ func NewCmdHttpd() *cobra.Command {
 				Timeout: cfg.OpenAPI.Timeout,
 			})
 
+			mixpayClient := mixpay.New()
+
 			apps := app.New(h)
 			convs := conv.New(h)
 			users := user.New(h)
 			bots := bot.New(h)
-			// bots := interface{}(nil).(core.BotStore)
+			orders := order.New(h)
 
 			appz := appServ.New(appServ.Config{
 				SecretKey: cfg.Sys.SecretKey,
@@ -86,6 +92,12 @@ func NewCmdHttpd() *cobra.Command {
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
 			botz := botServ.New(botServ.Config{}, apps, bots, middlewarez)
 			convz := convServ.New(convServ.Config{}, convs, botz)
+			orderz := orderServ.New(orderServ.Config{
+				PayeeId:           cfg.Mixpay.PayeeId,
+				QuoteAssetId:      cfg.Mixpay.QuoteAssetId,
+				SettlementAssetId: cfg.Mixpay.SettlementAssetId,
+				CallbackUrl:       cfg.Mixpay.CallbackUrl,
+			}, orders, userz, mixpayClient)
 			hub := chanhub.New()
 			// var userz core.UserService
 
@@ -93,6 +105,12 @@ func NewCmdHttpd() *cobra.Command {
 			workers := []worker.Worker{
 				// rotater
 				rotater.New(rotater.Config{}, gptHandler, convs, apps, convz, botz, middlewarez, userz, hub),
+
+				ordersyncer.New(ordersyncer.Config{
+					Interval:       cfg.OrderSyncer.Interval,
+					CheckInterval:  cfg.OrderSyncer.CheckInterval,
+					CancelInterval: cfg.OrderSyncer.CancelInterval,
+				}, orders, orderz),
 			}
 
 			g, ctx := errgroup.WithContext(ctx)
@@ -124,7 +142,7 @@ func NewCmdHttpd() *cobra.Command {
 				}
 
 				{
-					svr := handler.New(handler.Config{}, s, apps, indexes, users, convs, appz, botz, indexService, userz, convz, hub)
+					svr := handler.New(handler.Config{}, s, apps, indexes, users, convs, appz, botz, indexService, userz, convz, orderz, hub)
 
 					// api v1
 					restHandler := svr.HandleRest()
