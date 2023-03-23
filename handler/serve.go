@@ -105,6 +105,7 @@ func (s Server) HandleRest() http.Handler {
 		r.With(auth.LoginRequired()).Post("/", bot.CreateBot(s.botz))
 		r.With(auth.LoginRequired()).Put("/{botID}", bot.UpdateBot(s.botz))
 		r.With(auth.LoginRequired()).Get("/", bot.GetMyBots(s.botz))
+		r.With(auth.LoginRequired()).Delete("/{botID}", bot.DeleteBot(s.botz))
 	})
 
 	r.With(auth.LoginRequired()).Route("/users", func(r chi.Router) {
@@ -119,6 +120,7 @@ func (s Server) HandleRest() http.Handler {
 		r.Get("/{appID}", app.GetApp(s.appz))
 		r.Post("/", app.CreateApp(s.appz))
 		r.Get("/", app.GetMyApps(s.appz))
+		r.Put("/{appID}", app.UpdateApp(s.appz))
 		r.Delete("/{appID}", app.DeleteApp(s.appz))
 	})
 

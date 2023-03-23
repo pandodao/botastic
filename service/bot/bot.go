@@ -227,3 +227,10 @@ func (s *service) UpdateBot(ctx context.Context, id uint64, name, model, prompt 
 	s.botCache.Delete(fmt.Sprintf("user-bots-%d", bot.UserID))
 	return nil
 }
+
+func (s *service) DeleteBot(ctx context.Context, id uint64) error {
+	if err := s.bots.DeleteBot(ctx, id); err != nil {
+		return err
+	}
+	return nil
+}

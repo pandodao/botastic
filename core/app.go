@@ -98,6 +98,7 @@ type (
 		GetAppByAppID(ctx context.Context, appID string) (*App, error)
 		GetAppsByUser(ctx context.Context, userID uint64) ([]*App, error)
 		DeleteApp(ctx context.Context, id uint64) error
+		UpdateApp(ctx context.Context, id uint64, name string) error
 		ReplaceStore(AppStore) AppService
 	}
 )
