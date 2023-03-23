@@ -133,7 +133,7 @@ type IUserDo interface {
 
 	GetUser(ctx context.Context, id uint64) (result *core.User, err error)
 	GetUserByMixinID(ctx context.Context, mixinUserID string) (result *core.User, err error)
-	CreateUser(ctx context.Context, fullName string, avatarURL string, mixinUserID string, mixinIdentityNumber string, lang string, mvmPublicKey string) (result uint64, err error)
+	CreateUser(ctx context.Context, fullName string, avatarURL string, mixinUserID string, mixinIdentityNumber string, lang string, mvmPublicKey string, credits decimal.Decimal) (result uint64, err error)
 	UpdateInfo(ctx context.Context, id uint64, fullName string, avatarURL string, lang string) (err error)
 	UpdateCredits(ctx context.Context, id uint64, amount decimal.Decimal) (err error)
 }
@@ -205,13 +205,13 @@ func (u userDo) GetUserByMixinID(ctx context.Context, mixinUserID string) (resul
 //
 //	@fullName, @avatarURL,
 //	@mixinUserID, @mixinIdentityNumber,
-//	@lang, 1,
+//	@lang, @credits,
 //	@mvmPublicKey,
 //	NOW(), NOW()
 //
 // )
 // RETURNING "id"
-func (u userDo) CreateUser(ctx context.Context, fullName string, avatarURL string, mixinUserID string, mixinIdentityNumber string, lang string, mvmPublicKey string) (result uint64, err error) {
+func (u userDo) CreateUser(ctx context.Context, fullName string, avatarURL string, mixinUserID string, mixinIdentityNumber string, lang string, mvmPublicKey string, credits decimal.Decimal) (result uint64, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
@@ -220,8 +220,9 @@ func (u userDo) CreateUser(ctx context.Context, fullName string, avatarURL strin
 	params = append(params, mixinUserID)
 	params = append(params, mixinIdentityNumber)
 	params = append(params, lang)
+	params = append(params, credits)
 	params = append(params, mvmPublicKey)
-	generateSQL.WriteString("INSERT INTO users ( \"full_name\", \"avatar_url\", \"mixin_user_id\", \"mixin_identity_number\", \"lang\", \"credits\", \"mvm_public_key\", \"created_at\", \"updated_at\" ) VALUES ( ?, ?, ?, ?, ?, 1, ?, NOW(), NOW() ) RETURNING \"id\" ")
+	generateSQL.WriteString("INSERT INTO users ( \"full_name\", \"avatar_url\", \"mixin_user_id\", \"mixin_identity_number\", \"lang\", \"credits\", \"mvm_public_key\", \"created_at\", \"updated_at\" ) VALUES ( ?, ?, ?, ?, ?, ?, ?, NOW(), NOW() ) RETURNING \"id\" ")
 
 	var executeSQL *gorm.DB
 	executeSQL = u.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert

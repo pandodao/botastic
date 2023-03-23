@@ -29,7 +29,8 @@ func New(
 }
 
 type Config struct {
-	ExtraRate float64
+	ExtraRate       float64
+	InitUserCredits float64
 }
 
 type UserService struct {
@@ -110,7 +111,7 @@ func (s *UserService) LoginWithMixin(ctx context.Context, token, pubkey, lang st
 	// create
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		newUserId, err := s.users.CreateUser(ctx, user.FullName, user.AvatarURL, user.MixinUserID, user.MixinIdentityNumber,
-			user.Lang, user.MvmPublicKey)
+			user.Lang, user.MvmPublicKey, decimal.NewFromFloat(s.cfg.InitUserCredits))
 		if err != nil {
 			fmt.Printf("err users.Create: %v\n", err)
 			return nil, err

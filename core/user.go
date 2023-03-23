@@ -57,12 +57,12 @@ type (
 		// (
 		//   @fullName, @avatarURL,
 		//   @mixinUserID, @mixinIdentityNumber,
-		//   @lang, 1,
+		//   @lang, @credits,
 		//   @mvmPublicKey,
 		//   NOW(), NOW()
 		// )
 		// RETURNING "id"
-		CreateUser(ctx context.Context, fullName, avatarURL, mixinUserID, mixinIdentityNumber, lang, mvmPublicKey string) (uint64, error)
+		CreateUser(ctx context.Context, fullName, avatarURL, mixinUserID, mixinIdentityNumber, lang, mvmPublicKey string, credits decimal.Decimal) (uint64, error)
 
 		// UPDATE @@table
 		// 	{{set}}
