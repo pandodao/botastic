@@ -31,7 +31,7 @@ An AI framework for building cool things.
 
 ## Getting Started
 
-1. visit [https://developers.pando.im/console/botastic](https://developers.pando.im/console/botastic) to get your API key/secret
+1. visit [https://developers.pando.im/console/botastic](https://developers.pando.im/console/botastic) to get your API key/secret, and create a new bot.
 2. run the following command to talk to Botastic
 
 ```bash
@@ -40,7 +40,7 @@ curl --location --request POST 'https://botastic-api.pando.im/api/conversations/
 --header 'X-BOTASTIC-SECRET: your botastic app secret' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "bot_id": 1,
+  "bot_id": "your bot id",
   "content": "How do you view the future of blockchain, and what benefits does it have for human being? Respond as short as possible like a Zen Master.",
   "category": "plain-text"
 }'
