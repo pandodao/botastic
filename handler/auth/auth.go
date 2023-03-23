@@ -145,7 +145,7 @@ func HandleAppSecretRequired() func(http.Handler) http.Handler {
 			app := session.AppFrom(ctx)
 			appSecret := getAuthAppSecret(r)
 
-			if appSecret == "" || app.AppSecret != appSecret {
+			if appSecret == "" || app.SecureAppSecret != appSecret {
 				render.Error(w, http.StatusUnauthorized, errors.New("invalid app_secret"))
 				return
 			}
@@ -195,6 +195,8 @@ func HandleAppAuthentication(s *session.Session, appz core.AppService) func(http
 				return
 			}
 
+			app.SecureAppSecret = app.AppSecret
+			app.AppSecret = ""
 			next.ServeHTTP(w, r.WithContext(
 				session.WithApp(r.Context(), app),
 			))
