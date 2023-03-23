@@ -89,6 +89,13 @@ func (s *service) GetAppsByUser(ctx context.Context, userID uint64) ([]*core.App
 	return apps, nil
 }
 
+func (s *service) UpdateApp(ctx context.Context, id uint64, name string) error {
+	if err := s.apps.UpdateAppName(ctx, id, name); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (s *service) DeleteApp(ctx context.Context, id uint64) error {
 	if err := s.apps.DeleteApp(ctx, id); err != nil {
 		return err

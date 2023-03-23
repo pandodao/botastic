@@ -13,7 +13,7 @@ import (
 	"github.com/go-chi/chi"
 )
 
-type CreateAppPayload struct {
+type CreateOrUpdateAppPayload struct {
 	Name string `json:"name"`
 }
 
@@ -59,7 +59,7 @@ func CreateApp(appz core.AppService) http.HandlerFunc {
 			return
 		}
 
-		body := &CreateAppPayload{}
+		body := &CreateOrUpdateAppPayload{}
 		if err := param.Binding(r, body); err != nil {
 			render.Error(w, http.StatusBadRequest, err)
 			return
@@ -80,6 +80,57 @@ func CreateApp(appz core.AppService) http.HandlerFunc {
 
 		app, err := appz.CreateApp(ctx, user.ID, body.Name)
 		if err != nil {
+			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		render.JSON(w, app)
+	}
+}
+
+func UpdateApp(appz core.AppService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		user, found := session.UserFrom(ctx)
+		if !found {
+			render.Error(w, http.StatusUnauthorized, core.ErrUnauthorized)
+			return
+		}
+
+		body := &CreateOrUpdateAppPayload{}
+		if err := param.Binding(r, body); err != nil {
+			render.Error(w, http.StatusBadRequest, err)
+			return
+		}
+
+		body.Name = strings.TrimSpace(body.Name)
+
+		if len(body.Name) > 128 || len(body.Name) == 0 {
+			render.Error(w, http.StatusBadRequest, nil)
+			return
+		}
+
+		appID := chi.URLParam(r, "appID")
+
+		// validate uuid
+		if _, err := uuid.Parse(appID); err != nil {
+			render.Error(w, http.StatusBadRequest, core.ErrAppNotFound)
+			return
+		}
+
+		app, err := appz.GetAppByAppID(ctx, appID)
+		if err != nil {
+			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		if app.UserID != user.ID {
+			render.Error(w, http.StatusNotFound, core.ErrAppNotFound)
+			return
+		}
+
+		if err := appz.UpdateApp(ctx, user.ID, body.Name); err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
 		}

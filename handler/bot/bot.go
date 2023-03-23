@@ -218,3 +218,39 @@ func CreateBot(botz core.BotService) http.HandlerFunc {
 		render.JSON(w, bot)
 	}
 }
+
+func DeleteBot(botz core.BotService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		user, found := session.UserFrom(ctx)
+		if !found {
+			render.Error(w, http.StatusUnauthorized, core.ErrUnauthorized)
+		}
+
+		botIDStr := chi.URLParam(r, "botID")
+		botID, _ := strconv.ParseUint(botIDStr, 10, 64)
+
+		if botID <= 0 {
+			render.Error(w, http.StatusBadRequest, nil)
+			return
+		}
+
+		bot, err := botz.GetBot(ctx, botID)
+		if err != nil {
+			render.Error(w, http.StatusNotFound, err)
+			return
+		}
+
+		if bot.UserID != user.ID {
+			render.Error(w, http.StatusNotFound, core.ErrBotNotFound)
+			return
+		}
+
+		if err := botz.DeleteBot(ctx, bot.ID); err != nil {
+			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		render.JSON(w, bot)
+	}
+}
