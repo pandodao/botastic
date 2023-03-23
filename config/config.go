@@ -29,6 +29,8 @@ type Mixpay struct {
 	QuoteAssetId      string `yaml:"quote_asset_id"`
 	SettlementAssetId string `yaml:"settlement_asset_id"`
 	CallbackUrl       string `yaml:"callback_url"`
+	ReturnTo          string `yaml:"return_to"`
+	FailedReturnTo    string `yaml:"failed_return_to"`
 }
 
 type Milvus struct {
