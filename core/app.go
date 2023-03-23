@@ -12,8 +12,8 @@ type (
 	App struct {
 		ID                 uint64 `json:"id"`
 		AppID              string `json:"app_id"`
-		AppSecret          string `json:"app_secret"`
-		SecureAppSecret    string `json:"-"`
+		AppSecret          string `gorm:"-" json:"app_secret"`
+		SecureAppSecret    string `gorm:"-" json:"-"`
 		AppSecretEncrypted string `json:"-"`
 		UserID             uint64 `json:"user_id"`
 		Name               string `json:"name"`

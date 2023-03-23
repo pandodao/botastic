@@ -27,7 +27,6 @@ func newApp(db *gorm.DB, opts ...gen.DOOption) app {
 	_app.ALL = field.NewAsterisk(tableName)
 	_app.ID = field.NewUint64(tableName, "id")
 	_app.AppID = field.NewString(tableName, "app_id")
-	_app.AppSecret = field.NewString(tableName, "app_secret")
 	_app.AppSecretEncrypted = field.NewString(tableName, "app_secret_encrypted")
 	_app.UserID = field.NewUint64(tableName, "user_id")
 	_app.Name = field.NewString(tableName, "name")
@@ -46,7 +45,6 @@ type app struct {
 	ALL                field.Asterisk
 	ID                 field.Uint64
 	AppID              field.String
-	AppSecret          field.String
 	AppSecretEncrypted field.String
 	UserID             field.Uint64
 	Name               field.String
@@ -71,7 +69,6 @@ func (a *app) updateTableName(table string) *app {
 	a.ALL = field.NewAsterisk(table)
 	a.ID = field.NewUint64(table, "id")
 	a.AppID = field.NewString(table, "app_id")
-	a.AppSecret = field.NewString(table, "app_secret")
 	a.AppSecretEncrypted = field.NewString(table, "app_secret_encrypted")
 	a.UserID = field.NewUint64(table, "user_id")
 	a.Name = field.NewString(table, "name")
@@ -94,10 +91,9 @@ func (a *app) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (a *app) fillFieldMap() {
-	a.fieldMap = make(map[string]field.Expr, 9)
+	a.fieldMap = make(map[string]field.Expr, 8)
 	a.fieldMap["id"] = a.ID
 	a.fieldMap["app_id"] = a.AppID
-	a.fieldMap["app_secret"] = a.AppSecret
 	a.fieldMap["app_secret_encrypted"] = a.AppSecretEncrypted
 	a.fieldMap["user_id"] = a.UserID
 	a.fieldMap["name"] = a.Name
