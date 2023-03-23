@@ -8,6 +8,7 @@ openai:
 
 sys:
   secret_key: ""
+  extra_rate: 0.1
 
 milvus:
   address: "localhost:19530"
@@ -17,6 +18,11 @@ mixpay:
   quote_asset_id: "31d2ea9c-95eb-3355-b65b-ba096853bc18"
   settlement_asset_id: "31d2ea9c-95eb-3355-b65b-ba096853bc18"
   callback_url: "$API_HOST/api/callback/mixpay"
+
+order_syncer:
+  interval: 1s
+  check_interval: 10s
+  cancel_interval: 2h
 
 auth:
   jwt_secret: "abc123"

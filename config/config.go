@@ -47,7 +47,8 @@ type DBConfig struct {
 }
 
 type System struct {
-	SecretKey string `yaml:"secret_key"`
+	ExtraRate float64 `yaml:"extra_rate"`
+	SecretKey string  `yaml:"secret_key"`
 }
 
 type Auth struct {

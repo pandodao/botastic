@@ -9,7 +9,6 @@ import (
 	"github.com/pandodao/botastic/cmd/gen"
 	"github.com/pandodao/botastic/cmd/httpd"
 	"github.com/pandodao/botastic/cmd/migrate"
-	"github.com/pandodao/botastic/cmd/worker"
 	"github.com/pandodao/botastic/cmdutil"
 	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/session"
@@ -70,7 +69,6 @@ func NewCmdRoot(version string) *cobra.Command {
 	cmd.AddCommand(migrate.NewCmdMigrate())
 	cmd.AddCommand(gen.NewCmdGen())
 	cmd.AddCommand(app.NewCmdApp())
-	cmd.AddCommand(worker.NewCmdWorker())
 
 	return cmd
 }
