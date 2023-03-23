@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pandodao/botastic/core"
+	gogpt "github.com/sashabaranov/go-gpt3"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
@@ -28,7 +29,7 @@ func New(
 }
 
 type Config struct {
-	MixinClientSecret string
+	ExtraRate float64
 }
 
 type UserService struct {
@@ -149,13 +150,13 @@ func (s *UserService) Topup(ctx context.Context, user *core.User, amount decimal
 func (s *UserService) ConsumeCreditsByModel(ctx context.Context, userID uint64, model string, tokenCount uint64) error {
 	price := decimal.Zero
 	switch model {
-	case "gpt-3.5-turbo":
+	case gogpt.GPT3Dot5Turbo:
 		// $0.002 per 1000 tokens
 		price = decimal.NewFromFloat(0.000002)
-	case "text-davinci-003":
+	case gogpt.GPT3TextDavinci003:
 		// $0.02 per 1000 tokens
 		price = decimal.NewFromFloat(0.00002)
-	case "text-embedding-ada-002":
+	case gogpt.AdaEmbeddingV2.String():
 		// $0.0004 per 1000 tokens
 		price = decimal.NewFromFloat(0.0000004)
 	default:
@@ -163,6 +164,9 @@ func (s *UserService) ConsumeCreditsByModel(ctx context.Context, userID uint64, 
 	}
 
 	credits := price.Mul(decimal.NewFromInt(int64(tokenCount)))
+	if s.cfg.ExtraRate > 0 {
+		credits = credits.Mul(decimal.NewFromFloat(1 + s.cfg.ExtraRate))
+	}
 	fmt.Printf("model: %v, price: $%s, token: %d, credits: $%s\n", model, price.StringFixed(8), tokenCount, credits.StringFixed(8))
 	return s.ConsumeCredits(ctx, userID, credits)
 }

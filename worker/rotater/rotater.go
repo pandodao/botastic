@@ -147,7 +147,7 @@ func (w *Worker) run(ctx context.Context) error {
 		}
 
 		switch bot.Model {
-		case "gpt-3.5-turbo", "gpt-3.5-turbo-0301":
+		case gogpt.GPT3Dot5Turbo:
 			// chat completion
 			request := gogpt.ChatCompletionRequest{
 				Model:       bot.Model,
@@ -156,7 +156,7 @@ func (w *Worker) run(ctx context.Context) error {
 			}
 
 			turnReq.ChatRequest = &request
-		default:
+		case gogpt.GPT3TextDavinci003:
 			// text completion
 			prompt := bot.GetPrompt(conv, turn.Request)
 			request := gogpt.CompletionRequest{
@@ -167,6 +167,9 @@ func (w *Worker) run(ctx context.Context) error {
 				User:        conv.GetKey(),
 			}
 			turnReq.Request = &request
+		default:
+			w.UpdateConvTurnAsError(ctx, turn.ID, fmt.Errorf("unsupported model: %s", bot.Model).Error())
+			continue
 		}
 
 		if turn.Status == core.ConvTurnStatusInit {

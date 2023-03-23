@@ -16,3 +16,4 @@
 /botastic
 /test.db
 /config.yaml
+/scripts/deploy.sh

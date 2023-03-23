@@ -86,7 +86,9 @@ func NewCmdHttpd() *cobra.Command {
 			}
 			indexes := index.New(ctx, milvusClient)
 
-			userz := userServ.New(userServ.Config{}, client, users)
+			userz := userServ.New(userServ.Config{
+				ExtraRate: cfg.Sys.ExtraRate,
+			}, client, users)
 			indexService := indexServ.NewService(ctx, gptHandler, indexes, userz)
 
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)

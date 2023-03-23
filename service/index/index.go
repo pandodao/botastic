@@ -39,7 +39,7 @@ func (s *serviceImpl) createEmbeddingsWithLimit(ctx context.Context, req gogpt.E
 
 	resp, err := s.gptHandler.CreateEmbeddings(ctx, req)
 	if err == nil {
-		if err := s.userz.ConsumeCreditsByModel(ctx, userID, "text-embedding-ada-002", uint64(resp.Usage.TotalTokens)); err != nil {
+		if err := s.userz.ConsumeCreditsByModel(ctx, userID, gogpt.AdaEmbeddingV2.String(), uint64(resp.Usage.TotalTokens)); err != nil {
 			log.Printf("ConsumeCredits error: %v\n", err)
 		}
 	}
