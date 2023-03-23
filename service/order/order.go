@@ -33,6 +33,8 @@ type (
 		QuoteAssetId      string
 		SettlementAssetId string
 		CallbackUrl       string
+		ReturnTo          string
+		FailedReturnTo    string
 	}
 
 	service struct {
@@ -60,6 +62,8 @@ func (s *service) CreateMixpayOrder(ctx context.Context, userId uint64, amount d
 		OrderId:           orderId,
 		TraceId:           traceId,
 		CallbackUrl:       s.cfg.CallbackUrl,
+		ReturnTo:          s.cfg.ReturnTo,
+		FailedReturnTo:    s.cfg.FailedReturnTo,
 	})
 	if err != nil {
 		return "", err

@@ -99,6 +99,8 @@ func NewCmdHttpd() *cobra.Command {
 				QuoteAssetId:      cfg.Mixpay.QuoteAssetId,
 				SettlementAssetId: cfg.Mixpay.SettlementAssetId,
 				CallbackUrl:       cfg.Mixpay.CallbackUrl,
+				ReturnTo:          cfg.Mixpay.ReturnTo,
+				FailedReturnTo:    cfg.Mixpay.FailedReturnTo,
 			}, orders, userz, mixpayClient)
 			hub := chanhub.New()
 			// var userz core.UserService

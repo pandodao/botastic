@@ -18,6 +18,8 @@ mixpay:
   quote_asset_id: "31d2ea9c-95eb-3355-b65b-ba096853bc18"
   settlement_asset_id: "31d2ea9c-95eb-3355-b65b-ba096853bc18"
   callback_url: "$API_HOST/api/callback/mixpay"
+  return_to: ""
+  failed_return_to: ""
 
 order_syncer:
   interval: 1s
