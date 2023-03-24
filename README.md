@@ -49,7 +49,9 @@ curl --location --request POST 'https://botastic-api.pando.im/api/conversations/
 ## Showcases
 
 - [Ask Vitalik](https://ask-vitalik.xingchi.dev): A digital avatar of Vitalik Buterin.
-
+- [Ask Scott Alexander](https://ask-scott.pages.dev/): A digital avatar of Scott Alexander.
+  - The author also wrote a [blog post](https://fayezheng.hashnode.dev/effortlessly-develop-custom-chatbots-a-code-light-approach) about how she built it.
+ 
 ## Installation 
 
 ### Manually
@@ -60,6 +62,3 @@ Please refer to [docs/install.md](docs/install.md) for manual installation.
 
 TBD
 
-## Who is using Botastic?
-
-TBD
