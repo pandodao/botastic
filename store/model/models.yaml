@@ -33,4 +33,4 @@
 - provider: openai
   provider_model: text-embedding-ada-002
   price_usd: 0.0000004 # 0.0004 per 1000 tokens
-  max_token: 2049
+  max_token: 8191

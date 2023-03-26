@@ -36,15 +36,19 @@ An AI framework for building cool things.
 
 ```bash
 curl --location --request POST 'https://botastic-api.pando.im/api/conversations/oneway' \
---header 'X-BOTASTIC-APPID: your botastic app id' \
---header 'X-BOTASTIC-SECRET: your botastic app secret' \
+--header 'X-BOTASTIC-APPID: YOUR_BOTASTIC_APP_ID' \
+--header 'X-BOTASTIC-SECRET: YOUR_BOTASTIC_APP_SECRET' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-  "bot_id": "your bot id",
+  "bot_id": YOUR_BOT_ID,
   "content": "How do you view the future of blockchain, and what benefits does it have for human being? Respond as short as possible like a Zen Master.",
   "category": "plain-text"
 }'
 ```
+
+## Documentation
+
+Please refer to [Guide](https://developers.pando.im/guide/botastic.html) and [API Reference](https://developers.pando.im/references/botastic/api.html) for more details.
 
 ## Showcases
 

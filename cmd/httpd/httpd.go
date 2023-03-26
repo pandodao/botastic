@@ -94,7 +94,7 @@ func NewCmdHttpd() *cobra.Command {
 			}, client, users, models)
 			indexService := indexServ.NewService(ctx, gptHandler, indexes, userz)
 
-			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
+			middlewarez := middlewareServ.New(middlewareServ.Config{}, apps, indexService)
 			botz := botServ.New(botServ.Config{}, apps, bots, middlewarez)
 			convz := convServ.New(convServ.Config{}, convs, botz)
 			orderz := orderServ.New(orderServ.Config{

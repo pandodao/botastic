@@ -12,6 +12,7 @@ import (
 
 func New(
 	cfg Config,
+	apps core.AppStore,
 	indexz core.IndexService,
 ) *service {
 	middlewareMap := make(map[string]*core.Middleware)
@@ -25,6 +26,7 @@ func New(
 	}
 	return &service{
 		cfg:    cfg,
+		apps:   apps,
 		indexz: indexz,
 
 		middlewareMap: middlewareMap,
@@ -37,6 +39,7 @@ type (
 
 	service struct {
 		cfg    Config
+		apps   core.AppStore
 		indexz core.IndexService
 
 		middlewareMap map[string]*core.Middleware
@@ -83,12 +86,22 @@ The possible intents should be one of following. If you have no confident about 
 
 func (s *service) ProcessBotasticSearch(ctx context.Context, m *core.Middleware, input string) (*core.MiddlewareProcessResult, error) {
 	limit := 3
+	app := session.AppFrom(ctx)
+
 	val, ok := m.Options["limit"]
 	if ok {
 		limit = int(val.(float64))
 	}
 
-	app := session.AppFrom(ctx)
+	val, ok = m.Options["app_id"]
+	if ok {
+		appID := string(val.(string))
+		givingApp, err := s.apps.GetAppByAppID(ctx, appID)
+		if err == nil {
+			app = givingApp
+		}
+	}
+
 	searchResult, err := s.indexz.SearchIndex(ctx, app.UserID, input, limit)
 	if err != nil {
 		return nil, err
