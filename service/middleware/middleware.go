@@ -17,11 +17,9 @@ func New(
 ) *service {
 	middlewareMap := make(map[string]*core.Middleware)
 	middlewareMap["botastic-search"] = &core.Middleware{
-		ID:   1,
 		Name: "botastic-search",
 	}
 	middlewareMap["duckduckgo-search"] = &core.Middleware{
-		ID:   2,
 		Name: "duckduckgo-search",
 	}
 	return &service{
