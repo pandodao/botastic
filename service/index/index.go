@@ -11,7 +11,7 @@ import (
 	"github.com/pandodao/botastic/internal/milvus"
 	"github.com/pandodao/botastic/session"
 	"github.com/pandodao/tokenizer-go"
-	gogpt "github.com/sashabaranov/go-gpt3"
+	gogpt "github.com/sashabaranov/go-openai"
 )
 
 func NewService(ctx context.Context, gptHandler *gpt.Handler, indexes core.IndexStore, userz core.UserService) core.IndexService {
@@ -39,7 +39,7 @@ func (s *serviceImpl) createEmbeddingsWithLimit(ctx context.Context, req gogpt.E
 
 	resp, err := s.gptHandler.CreateEmbeddings(ctx, req)
 	if err == nil {
-		if err := s.userz.ConsumeCreditsByModel(ctx, userID, gogpt.AdaEmbeddingV2.String(), uint64(resp.Usage.TotalTokens)); err != nil {
+		if err := s.userz.ConsumeCreditsByModel(ctx, userID, gogpt.AdaEmbeddingV2.String(), int64(resp.Usage.PromptTokens), int64(resp.Usage.CompletionTokens)); err != nil {
 			log.Printf("ConsumeCredits error: %v\n", err)
 		}
 	}

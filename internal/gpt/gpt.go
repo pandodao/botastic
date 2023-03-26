@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/fox-one/pkg/logger"
-	gogpt "github.com/sashabaranov/go-gpt3"
+	gogpt "github.com/sashabaranov/go-openai"
 )
 
 var ErrTooManyRequests = errors.New("too many requests")

@@ -13,7 +13,7 @@ import (
 	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/session"
-	gogpt "github.com/sashabaranov/go-gpt3"
+	gogpt "github.com/sashabaranov/go-openai"
 )
 
 const (
@@ -30,6 +30,7 @@ type (
 		gptHandler *gpt.Handler
 		convs      core.ConversationStore
 		apps       core.AppStore
+		models     core.ModelStore
 
 		convz       core.ConversationService
 		botz        core.BotService
@@ -54,6 +55,7 @@ func New(
 	gptHandler *gpt.Handler,
 	convs core.ConversationStore,
 	apps core.AppStore,
+	models core.ModelStore,
 
 	convz core.ConversationService,
 	botz core.BotService,
@@ -68,6 +70,7 @@ func New(
 		gptHandler:  gptHandler,
 		convs:       convs,
 		apps:        apps,
+		models:      models,
 		convz:       convz,
 		botz:        botz,
 		middlewarez: middlewarez,
@@ -146,29 +149,34 @@ func (w *Worker) run(ctx context.Context) error {
 			additional["MiddlewareOutput"] = strings.Join(middlewareOutputs, "\n\n")
 		}
 
-		switch bot.Model {
-		case gogpt.GPT3Dot5Turbo:
-			// chat completion
+		model, err := w.models.GetModel(ctx, bot.Model)
+		if err != nil {
+			w.UpdateConvTurnAsError(ctx, turn.ID, fmt.Errorf("unsupported model: %s", bot.Model).Error())
+			continue
+		}
+
+		if model.Props.IsOpenAIChatModel {
 			request := gogpt.ChatCompletionRequest{
-				Model:       bot.Model,
+				Model:       model.ProviderModel,
 				Messages:    bot.GetChatMessages(conv, additional),
 				Temperature: bot.Temperature,
 			}
 
 			turnReq.ChatRequest = &request
-		case gogpt.GPT3TextDavinci003:
-			// text completion
+
+		} else if model.Props.IsOpenAICompletionModel {
 			prompt := bot.GetPrompt(conv, turn.Request)
 			request := gogpt.CompletionRequest{
-				Model:       bot.Model,
+				Model:       model.ProviderModel,
 				Prompt:      prompt,
 				Temperature: bot.Temperature,
 				Stop:        []string{"Q:"},
 				User:        conv.GetKey(),
 			}
 			turnReq.Request = &request
-		default:
-			w.UpdateConvTurnAsError(ctx, turn.ID, fmt.Errorf("unsupported model: %s", bot.Model).Error())
+
+		} else {
+			w.UpdateConvTurnAsError(ctx, turn.ID, core.ErrInvalidModel.Error())
 			continue
 		}
 
@@ -205,6 +213,8 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 
 			respText := ""
 			var totalTokens int
+			var promptTokenCount int
+			var completionTokenCount int
 			var err error
 			switch {
 			case turnReq.Request != nil:
@@ -215,6 +225,8 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 					respText = strings.TrimPrefix(gptResp.Choices[0].Text, prefix)
 					respText = strings.TrimSpace(respText)
 					totalTokens = gptResp.Usage.TotalTokens
+					promptTokenCount = gptResp.Usage.PromptTokens
+					completionTokenCount = gptResp.Usage.CompletionTokens
 				}
 
 			case turnReq.ChatRequest != nil:
@@ -223,6 +235,8 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 				if err == nil {
 					respText = strings.TrimSpace(gptResp.Choices[0].Message.Content)
 					totalTokens = gptResp.Usage.TotalTokens
+					promptTokenCount = gptResp.Usage.PromptTokens
+					completionTokenCount = gptResp.Usage.CompletionTokens
 				}
 			}
 
@@ -241,7 +255,7 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 				if err != nil {
 					log.WithError(err).Warningf("convz.GetConversation error")
 				} else {
-					if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, conv.Bot.Model, uint64(totalTokens)); err != nil {
+					if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, conv.Bot.Model, int64(promptTokenCount), int64(completionTokenCount)); err != nil {
 						log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", conv.Bot.Model, totalTokens)
 					}
 				}
@@ -250,16 +264,8 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 			// notify http handler
 			w.hub.Broadcast(strconv.FormatUint(turnReq.TurnID, 10), struct{}{})
 
-			if turnReq.Request != nil {
-				fmt.Printf("[%03d]prompt: %+v\n", id, turnReq.Request.Prompt)
-			} else if turnReq.ChatRequest != nil {
-				msgs := []string{}
-				for _, m := range turnReq.ChatRequest.Messages {
-					msgs = append(msgs, m.Content)
-				}
-				fmt.Printf("[%03d]prompt: %+v\n", id, strings.Join(msgs, "\n"))
-			}
-			fmt.Printf("[%03d]resp: %+v\n", id, respText)
+			log.Printf("subwork-%03d processed a turn: %+v\n", id, turnReq.TurnID)
+
 		}()
 	}
 }

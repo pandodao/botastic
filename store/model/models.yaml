@@ -1,0 +1,36 @@
+- provider: openai
+  provider_model: gpt-4
+  prompt_price_usd: 0.00003 # $0.03 / 1K tokens
+  completion_price_usd: 0.00006 # $0.06 / 1K tokens
+  max_token: 8192
+- provider: openai
+  provider_model: gpt-4-0314
+  prompt_price_usd: 0.00003 # $0.03 / 1K tokens
+  completion_price_usd: 0.00006 # $0.06 / 1K tokens
+  max_token: 8192
+- provider: openai
+  provider_model: gpt-4-32k
+  prompt_price_usd: 0.00006 # $0.06 / 1K tokens
+  completion_price_usd: 0.00012 # $0.12 / 1K tokens
+  max_token: 32768
+- provider: openai
+  provider_model: gpt-4-32k-0314
+  prompt_price_usd: 0.00006 # $0.06 / 1K tokens
+  completion_price_usd: 0.00012 # $0.12 / 1K tokens
+  max_token: 32768
+- provider: openai
+  provider_model: gpt-3.5-turbo
+  price_usd: 0.000002 # $0.002 per 1000 tokens
+  max_token: 4096
+- provider: openai
+  provider_model: gpt-3.5-turbo-0301
+  price_usd: 0.000002 # $0.002 per 1000 tokens
+  max_token: 4096
+- provider: openai
+  provider_model: text-davinci-003
+  price_usd: 0.00002 # $0.02 per 1000 tokens
+  max_token: 4097
+- provider: openai
+  provider_model: text-embedding-ada-002
+  price_usd: 0.0000004 # 0.0004 per 1000 tokens
+  max_token: 2049
