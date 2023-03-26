@@ -11,7 +11,7 @@ import (
 	"text/template"
 	"time"
 
-	gogpt "github.com/sashabaranov/go-gpt3"
+	gogpt "github.com/sashabaranov/go-openai"
 )
 
 type JSONB json.RawMessage

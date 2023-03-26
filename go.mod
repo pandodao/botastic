@@ -20,7 +20,7 @@ require (
 	github.com/pandodao/tokenizer-go v0.0.1
 	github.com/pressly/goose/v3 v3.9.0
 	github.com/rs/cors v1.8.3
-	github.com/sashabaranov/go-gpt3 v1.3.3
+	github.com/sashabaranov/go-openai v1.5.7
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
 	golang.org/x/sync v0.1.0
@@ -91,7 +91,7 @@ require (
 	github.com/go-playground/validator/v10 v10.11.1 // indirect
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
 	github.com/goccy/go-json v0.9.11 // indirect
-	github.com/gofrs/uuid v4.4.0+incompatible // indirect
+	github.com/gofrs/uuid v4.4.0+incompatible
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect

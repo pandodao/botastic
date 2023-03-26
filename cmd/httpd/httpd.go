@@ -30,6 +30,7 @@ import (
 	"github.com/pandodao/botastic/store/bot"
 	"github.com/pandodao/botastic/store/conv"
 	"github.com/pandodao/botastic/store/index"
+	"github.com/pandodao/botastic/store/model"
 	"github.com/pandodao/botastic/store/order"
 	"github.com/pandodao/botastic/store/user"
 	"github.com/pandodao/botastic/worker"
@@ -85,11 +86,12 @@ func NewCmdHttpd() *cobra.Command {
 				return err
 			}
 			indexes := index.New(ctx, milvusClient)
+			models := model.New()
 
 			userz := userServ.New(userServ.Config{
 				ExtraRate:       cfg.Sys.ExtraRate,
 				InitUserCredits: cfg.Sys.InitUserCredits,
-			}, client, users)
+			}, client, users, models)
 			indexService := indexServ.NewService(ctx, gptHandler, indexes, userz)
 
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, indexService)
@@ -109,7 +111,7 @@ func NewCmdHttpd() *cobra.Command {
 			// httpd's workers
 			workers := []worker.Worker{
 				// rotater
-				rotater.New(rotater.Config{}, gptHandler, convs, apps, convz, botz, middlewarez, userz, hub),
+				rotater.New(rotater.Config{}, gptHandler, convs, apps, models, convz, botz, middlewarez, userz, hub),
 
 				ordersyncer.New(ordersyncer.Config{
 					Interval:       cfg.OrderSyncer.Interval,

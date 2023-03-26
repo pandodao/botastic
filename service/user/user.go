@@ -7,24 +7,26 @@ import (
 	"strings"
 
 	"github.com/pandodao/botastic/core"
-	gogpt "github.com/sashabaranov/go-gpt3"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/fox-one/passport-go/mvm"
+	"github.com/fox-one/pkg/logger"
 )
 
 func New(
 	cfg Config,
 	client *mixin.Client,
 	users core.UserStore,
+	models core.ModelStore,
 ) *UserService {
 	return &UserService{
 		cfg:    cfg,
 		client: client,
 		users:  users,
+		models: models,
 	}
 }
 
@@ -37,10 +39,11 @@ type UserService struct {
 	cfg    Config
 	client *mixin.Client
 	users  core.UserStore
+	models core.ModelStore
 }
 
 func (s *UserService) ReplaceStore(users core.UserStore) core.UserService {
-	return New(s.cfg, s.client, users)
+	return New(s.cfg, s.client, users, s.models)
 }
 
 func (s *UserService) LoginWithMixin(ctx context.Context, token, pubkey, lang string) (*core.User, error) {
@@ -148,27 +151,35 @@ func (s *UserService) Topup(ctx context.Context, user *core.User, amount decimal
 	return nil
 }
 
-func (s *UserService) ConsumeCreditsByModel(ctx context.Context, userID uint64, model string, tokenCount uint64) error {
-	price := decimal.Zero
-	switch model {
-	case gogpt.GPT3Dot5Turbo:
-		// $0.002 per 1000 tokens
-		price = decimal.NewFromFloat(0.000002)
-	case gogpt.GPT3TextDavinci003:
-		// $0.02 per 1000 tokens
-		price = decimal.NewFromFloat(0.00002)
-	case gogpt.AdaEmbeddingV2.String():
-		// $0.0004 per 1000 tokens
-		price = decimal.NewFromFloat(0.0000004)
-	default:
-		return core.ErrInvalidModel
+func (s *UserService) ConsumeCreditsByModel(ctx context.Context, userID uint64, modelName string, promptTokenCount, completionTokenCount int64) error {
+	log := logger.FromContext(ctx).WithField("service", "user.ConsumeCreditsByModel")
+	model, err := s.models.GetModel(ctx, modelName)
+	if err != nil {
+		return err
 	}
 
-	credits := price.Mul(decimal.NewFromInt(int64(tokenCount)))
+	// price := decimal.Zero
+	// switch model {
+	// case gogpt.GPT3Dot5Turbo:
+	// 	// $0.002 per 1000 tokens
+	// 	price = decimal.NewFromFloat(0.000002)
+	// case gogpt.GPT3TextDavinci003:
+	// 	// $0.02 per 1000 tokens
+	// 	price = decimal.NewFromFloat(0.00002)
+	// case gogpt.AdaEmbeddingV2.String():
+	// 	// $0.0004 per 1000 tokens
+	// 	price = decimal.NewFromFloat(0.0000004)
+	// default:
+	// 	return core.ErrInvalidModel
+	// }
+
+	cost := model.CalculateTokenCost(promptTokenCount, completionTokenCount)
+	credits := cost
 	if s.cfg.ExtraRate > 0 {
 		credits = credits.Mul(decimal.NewFromFloat(1 + s.cfg.ExtraRate))
 	}
-	fmt.Printf("model: %v, price: $%s, token: %d, credits: $%s\n", model, price.StringFixed(8), tokenCount, credits.StringFixed(8))
+	log.Printf("model: %s:%s, cost: $%s, token: %d->%d, credits: $%s\n", model.Provider, model.ProviderModel,
+		cost.StringFixed(8), promptTokenCount, completionTokenCount, credits.StringFixed(8))
 	return s.ConsumeCredits(ctx, userID, credits)
 }
 
