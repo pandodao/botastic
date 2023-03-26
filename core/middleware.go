@@ -20,7 +20,6 @@ const (
 
 type (
 	Middleware struct {
-		ID      uint64            `yaml:"id" json:"id"`
 		Name    string            `yaml:"name" json:"name"`
 		Options MiddlewareOptions `yaml:"options" json:"options"`
 	}
