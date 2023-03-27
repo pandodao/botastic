@@ -37,7 +37,6 @@ An AI framework for building cool things.
 ```bash
 curl --location --request POST 'https://botastic-api.pando.im/api/conversations/oneway' \
 --header 'X-BOTASTIC-APPID: YOUR_BOTASTIC_APP_ID' \
---header 'X-BOTASTIC-SECRET: YOUR_BOTASTIC_APP_SECRET' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "bot_id": YOUR_BOT_ID,
