@@ -4,7 +4,7 @@ go 1.20
 
 replace gorm.io/gen v0.3.22-0.20230213112745-6dc1af4c110b => github.com/pandodao/gen v0.0.0-20230215020331-916e2ec8363e
 
-replace github.com/milvus-io/milvus-sdk-go/v2 v2.2.0 => github.com/pandodao/milvus-sdk-go/v2 v2.0.0-20230316122547-3d438936c43b
+replace github.com/milvus-io/milvus-sdk-go/v2 v2.2.0 => github.com/pandodao/milvus-sdk-go/v2 v2.0.0-20230327110027-9f97cf0e4642
 
 require (
 	github.com/PuerkitoBio/goquery v1.8.1
