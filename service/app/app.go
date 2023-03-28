@@ -11,10 +11,12 @@ import (
 func New(
 	cfg Config,
 	apps core.AppStore,
+	indexz core.IndexService,
 ) *service {
 	return &service{
-		cfg:  cfg,
-		apps: apps,
+		cfg:    cfg,
+		apps:   apps,
+		indexz: indexz,
 	}
 }
 
@@ -23,12 +25,13 @@ type Config struct {
 }
 
 type service struct {
-	cfg  Config
-	apps core.AppStore
+	cfg    Config
+	apps   core.AppStore
+	indexz core.IndexService
 }
 
 func (s *service) ReplaceStore(apps core.AppStore) core.AppService {
-	return New(s.cfg, apps)
+	return New(s.cfg, apps, s.indexz)
 }
 
 func (s *service) CreateApp(ctx context.Context, userID uint64, name string) (*core.App, error) {
@@ -97,8 +100,18 @@ func (s *service) UpdateApp(ctx context.Context, id uint64, name string) error {
 }
 
 func (s *service) DeleteApp(ctx context.Context, id uint64) error {
-	if err := s.apps.DeleteApp(ctx, id); err != nil {
+	app, err := s.apps.GetApp(ctx, id)
+	if err != nil {
 		return err
 	}
+
+	if err := s.apps.DeleteApp(ctx, app.ID); err != nil {
+		return err
+	}
+
+	if err := s.indexz.ResetIndexes(ctx, app.AppID); err != nil {
+		return err
+	}
+
 	return nil
 }

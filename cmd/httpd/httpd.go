@@ -78,9 +78,6 @@ func NewCmdHttpd() *cobra.Command {
 			bots := bot.New(h)
 			orders := order.New(h)
 
-			appz := appServ.New(appServ.Config{
-				SecretKey: cfg.Sys.SecretKey,
-			}, apps)
 			milvusClient, err := milvus.Init(ctx, cfg.Milvus.Address)
 			if err != nil {
 				return err
@@ -93,6 +90,9 @@ func NewCmdHttpd() *cobra.Command {
 				InitUserCredits: cfg.Sys.InitUserCredits,
 			}, client, users, models)
 			indexService := indexServ.NewService(ctx, gptHandler, indexes, userz)
+			appz := appServ.New(appServ.Config{
+				SecretKey: cfg.Sys.SecretKey,
+			}, apps, indexService)
 
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, apps, indexService)
 			botz := botServ.New(botServ.Config{}, apps, bots, middlewarez)
