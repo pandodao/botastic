@@ -20,13 +20,11 @@ func New(
 	cfg Config,
 	client *mixin.Client,
 	users core.UserStore,
-	models core.ModelStore,
 ) *UserService {
 	return &UserService{
 		cfg:    cfg,
 		client: client,
 		users:  users,
-		models: models,
 	}
 }
 
@@ -39,11 +37,10 @@ type UserService struct {
 	cfg    Config
 	client *mixin.Client
 	users  core.UserStore
-	models core.ModelStore
 }
 
 func (s *UserService) ReplaceStore(users core.UserStore) core.UserService {
-	return New(s.cfg, s.client, users, s.models)
+	return New(s.cfg, s.client, users)
 }
 
 func (s *UserService) LoginWithMixin(ctx context.Context, token, pubkey, lang string) (*core.User, error) {
@@ -151,28 +148,8 @@ func (s *UserService) Topup(ctx context.Context, user *core.User, amount decimal
 	return nil
 }
 
-func (s *UserService) ConsumeCreditsByModel(ctx context.Context, userID uint64, modelName string, promptTokenCount, completionTokenCount int64) error {
+func (s *UserService) ConsumeCreditsByModel(ctx context.Context, userID uint64, model core.Model, promptTokenCount, completionTokenCount int64) error {
 	log := logger.FromContext(ctx).WithField("service", "user.ConsumeCreditsByModel")
-	model, err := s.models.GetModel(ctx, modelName)
-	if err != nil {
-		return err
-	}
-
-	// price := decimal.Zero
-	// switch model {
-	// case gogpt.GPT3Dot5Turbo:
-	// 	// $0.002 per 1000 tokens
-	// 	price = decimal.NewFromFloat(0.000002)
-	// case gogpt.GPT3TextDavinci003:
-	// 	// $0.02 per 1000 tokens
-	// 	price = decimal.NewFromFloat(0.00002)
-	// case gogpt.AdaEmbeddingV2.String():
-	// 	// $0.0004 per 1000 tokens
-	// 	price = decimal.NewFromFloat(0.0000004)
-	// default:
-	// 	return core.ErrInvalidModel
-	// }
-
 	cost := model.CalculateTokenCost(promptTokenCount, completionTokenCount)
 	credits := cost
 	if s.cfg.ExtraRate > 0 {

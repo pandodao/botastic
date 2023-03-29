@@ -102,7 +102,7 @@ type (
 		// 	{{end}}
 		// WHERE
 		// 	"id"=@id
-		UpdateConvTurn(ctx context.Context, id uint64, response string, totalTokens int, status int) error
+		UpdateConvTurn(ctx context.Context, id uint64, response string, totalTokens int64, status int) error
 	}
 
 	ConversationService interface {

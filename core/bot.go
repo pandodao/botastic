@@ -16,6 +16,20 @@ import (
 
 type JSONB json.RawMessage
 
+func (j JSONB) MarshalJSON() ([]byte, error) {
+	return json.RawMessage(j).MarshalJSON()
+}
+
+func (j *JSONB) UnmarshalJSON(data []byte) error {
+	var v json.RawMessage
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+
+	*j = JSONB(v)
+	return nil
+}
+
 // implement sql.Scanner interface, Scan value into Jsonb
 func (j *JSONB) Scan(value interface{}) error {
 	bytes, ok := value.([]byte)
@@ -165,23 +179,26 @@ func (t *Bot) DecodeMiddlewares() error {
 	return json.Unmarshal(val.([]byte), &t.Middlewares)
 }
 
-func (t *Bot) GetPrompt(conv *Conversation, question string) string {
+func (t *Bot) GetPrompt(conv *Conversation, question string, additionData map[string]any) string {
 	var buf bytes.Buffer
 	data := map[string]interface{}{
 		"LangHint": conv.LangHint(),
 		"History":  conv.HistoryToText(),
 	}
+	for k, v := range additionData {
+		data[k] = v
+	}
+
 	if t.PromptTpl == nil {
 		t.PromptTpl = template.Must(template.New(fmt.Sprintf("%d-prompt-tmpl", t.ID)).Parse(t.Prompt))
 	}
 	t.PromptTpl.Execute(&buf, data)
 
 	str := buf.String()
-
 	return strings.TrimSpace(str) + "\n"
 }
 
-func (t *Bot) GetChatMessages(conv *Conversation, additionData map[string]interface{}) []gogpt.ChatCompletionMessage {
+func (t *Bot) GetChatMessages(conv *Conversation, additionData map[string]any) []gogpt.ChatCompletionMessage {
 	var buf bytes.Buffer
 	data := map[string]interface{}{
 		"LangHint": conv.LangHint(),

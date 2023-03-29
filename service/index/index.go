@@ -28,6 +28,7 @@ type serviceImpl struct {
 	milvusClient              *milvus.Client
 	indexes                   core.IndexStore
 	userz                     core.UserService
+	models                    core.ModelStore
 	createEmbeddingsLimitChan chan struct{}
 }
 
@@ -37,9 +38,15 @@ func (s *serviceImpl) createEmbeddingsWithLimit(ctx context.Context, req gogpt.E
 		<-s.createEmbeddingsLimitChan
 	}()
 
+	// TODO support custom embedding models
+	m, err := s.models.GetModel(ctx, fmt.Sprintf("%s:%s", core.ModelProviderOpenAI, gogpt.AdaEmbeddingV2.String()))
+	if err != nil {
+		return gogpt.EmbeddingResponse{}, fmt.Errorf("models.GetModel: %w", err)
+	}
+
 	resp, err := s.gptHandler.CreateEmbeddings(ctx, req)
 	if err == nil {
-		if err := s.userz.ConsumeCreditsByModel(ctx, userID, gogpt.AdaEmbeddingV2.String(), int64(resp.Usage.PromptTokens), int64(resp.Usage.CompletionTokens)); err != nil {
+		if err := s.userz.ConsumeCreditsByModel(ctx, userID, *m, int64(resp.Usage.PromptTokens), int64(resp.Usage.CompletionTokens)); err != nil {
 			log.Printf("ConsumeCredits error: %v\n", err)
 		}
 	}

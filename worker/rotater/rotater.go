@@ -1,11 +1,18 @@
 package rotater
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
+	"text/template"
 	"time"
 
 	"github.com/fox-one/pkg/logger"
@@ -13,7 +20,9 @@ import (
 	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/session"
+	"github.com/pandodao/tokenizer-go"
 	gogpt "github.com/sashabaranov/go-openai"
+	"github.com/tidwall/gjson"
 )
 
 const (
@@ -44,9 +53,10 @@ type (
 	}
 
 	TurnRequest struct {
-		TurnID      uint64
-		Request     *gogpt.CompletionRequest
-		ChatRequest *gogpt.ChatCompletionRequest
+		Conv       *core.Conversation
+		Turn       *core.ConvTurn
+		Model      *core.Model
+		Additional map[string]any
 	}
 )
 
@@ -105,13 +115,13 @@ func (w *Worker) Run(ctx context.Context) error {
 }
 
 func (w *Worker) run(ctx context.Context) error {
-	processinngIds := make([]uint64, 0)
+	processingIds := make([]uint64, 0)
 	w.processingMap.Range(func(key, value interface{}) bool {
-		processinngIds = append(processinngIds, key.(uint64))
+		processingIds = append(processingIds, key.(uint64))
 		return true
 	})
 
-	turns, err := w.convs.GetConvTurnsByStatus(ctx, processinngIds, []int{core.ConvTurnStatusInit, core.ConvTurnStatusPending})
+	turns, err := w.convs.GetConvTurnsByStatus(ctx, processingIds, []int{core.ConvTurnStatusInit, core.ConvTurnStatusPending})
 	if err != nil {
 		return err
 	}
@@ -129,8 +139,10 @@ func (w *Worker) run(ctx context.Context) error {
 			continue
 		}
 
-		turnReq := TurnRequest{
-			TurnID: turn.ID,
+		model, err := w.models.GetModel(ctx, conv.Bot.Model)
+		if err != nil {
+			w.UpdateConvTurnAsError(ctx, turn.ID, fmt.Errorf("unsupported model: %s", conv.Bot.Model).Error())
+			continue
 		}
 
 		additional := map[string]interface{}{}
@@ -149,44 +161,18 @@ func (w *Worker) run(ctx context.Context) error {
 			additional["MiddlewareOutput"] = strings.Join(middlewareOutputs, "\n\n")
 		}
 
-		model, err := w.models.GetModel(ctx, bot.Model)
-		if err != nil {
-			w.UpdateConvTurnAsError(ctx, turn.ID, fmt.Errorf("unsupported model: %s", bot.Model).Error())
-			continue
-		}
-
-		if model.Props.IsOpenAIChatModel {
-			request := gogpt.ChatCompletionRequest{
-				Model:       model.ProviderModel,
-				Messages:    bot.GetChatMessages(conv, additional),
-				Temperature: bot.Temperature,
-			}
-
-			turnReq.ChatRequest = &request
-
-		} else if model.Props.IsOpenAICompletionModel {
-			prompt := bot.GetPrompt(conv, turn.Request)
-			request := gogpt.CompletionRequest{
-				Model:       model.ProviderModel,
-				Prompt:      prompt,
-				Temperature: bot.Temperature,
-				Stop:        []string{"Q:"},
-				User:        conv.GetKey(),
-			}
-			turnReq.Request = &request
-
-		} else {
-			w.UpdateConvTurnAsError(ctx, turn.ID, core.ErrInvalidModel.Error())
-			continue
-		}
-
 		if turn.Status == core.ConvTurnStatusInit {
 			if err := w.convs.UpdateConvTurn(ctx, turn.ID, "", 0, core.ConvTurnStatusPending); err != nil {
 				continue
 			}
 		}
 
-		w.turnReqChan <- turnReq
+		w.turnReqChan <- TurnRequest{
+			Conv:       conv,
+			Turn:       turn,
+			Model:      model,
+			Additional: additional,
+		}
 	}
 	return nil
 }
@@ -204,68 +190,200 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 	for {
 		// Wait for a request to handle.
 		turnReq := <-w.turnReqChan
+		turn := turnReq.Turn
 
 		func() {
-			if _, loaded := w.processingMap.LoadOrStore(turnReq.TurnID, struct{}{}); loaded {
+			if _, loaded := w.processingMap.LoadOrStore(turn.ID, struct{}{}); loaded {
 				return
 			}
-			defer w.processingMap.Delete(turnReq.TurnID)
+			defer w.processingMap.Delete(turn.ID)
 
-			respText := ""
-			var totalTokens int
-			var promptTokenCount int
-			var completionTokenCount int
-			var err error
-			switch {
-			case turnReq.Request != nil:
-				var gptResp gogpt.CompletionResponse
-				gptResp, err = w.gptHandler.CreateCompletion(ctx, *turnReq.Request)
-				if err == nil {
-					prefix := "A:"
-					respText = strings.TrimPrefix(gptResp.Choices[0].Text, prefix)
-					respText = strings.TrimSpace(respText)
-					totalTokens = gptResp.Usage.TotalTokens
-					promptTokenCount = gptResp.Usage.PromptTokens
-					completionTokenCount = gptResp.Usage.CompletionTokens
-				}
-
-			case turnReq.ChatRequest != nil:
-				var gptResp gogpt.ChatCompletionResponse
-				gptResp, err = w.gptHandler.CreateChatCompletion(ctx, *turnReq.ChatRequest)
-				if err == nil {
-					respText = strings.TrimSpace(gptResp.Choices[0].Message.Content)
-					totalTokens = gptResp.Usage.TotalTokens
-					promptTokenCount = gptResp.Usage.PromptTokens
-					completionTokenCount = gptResp.Usage.CompletionTokens
-				}
+			var (
+				rr  *requestResult
+				err error
+			)
+			switch turnReq.Model.Provider {
+			case core.ModelProviderOpenAI:
+				rr, err = w.handleOpenAIProvider(ctx, turnReq)
+			case core.ModelProviderCustom:
+				rr, err = w.handleCustomProvider(ctx, turnReq)
 			}
 
 			if err != nil {
-				w.UpdateConvTurnAsError(ctx, turnReq.TurnID, err.Error())
+				w.UpdateConvTurnAsError(ctx, turn.ID, err.Error())
 				return
 			}
 
-			if err := w.convs.UpdateConvTurn(ctx, turnReq.TurnID, respText, totalTokens, core.ConvTurnStatusCompleted); err != nil {
+			if err := w.convs.UpdateConvTurn(ctx, turn.ID, rr.respText, rr.totalTokens, core.ConvTurnStatusCompleted); err != nil {
 				return
 			}
 
-			turn, err := w.convs.GetConvTurn(ctx, turnReq.TurnID)
-			if err == nil {
-				conv, err := w.convz.GetConversation(ctx, turn.ConversationID)
-				if err != nil {
-					log.WithError(err).Warningf("convz.GetConversation error")
-				} else {
-					if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, conv.Bot.Model, int64(promptTokenCount), int64(completionTokenCount)); err != nil {
-						log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", conv.Bot.Model, totalTokens)
-					}
-				}
+			if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, *turnReq.Model, rr.promptTokenCount, rr.completionTokenCount); err != nil {
+				log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", turnReq.Model.Name(), rr.totalTokens)
 			}
 
 			// notify http handler
-			w.hub.Broadcast(strconv.FormatUint(turnReq.TurnID, 10), struct{}{})
+			w.hub.Broadcast(strconv.FormatUint(turn.ID, 10), struct{}{})
 
-			log.Printf("subwork-%03d processed a turn: %+v\n", id, turnReq.TurnID)
-
+			log.Printf("subwork-%03d processed a turn: %+v\n", id, turn.ID)
 		}()
 	}
+}
+
+type requestResult struct {
+	respText             string
+	totalTokens          int64
+	promptTokenCount     int64
+	completionTokenCount int64
+}
+
+func (w *Worker) handleCustomProvider(ctx context.Context, turnReq TurnRequest) (*requestResult, error) {
+	model := turnReq.Model
+	conv := turnReq.Conv
+	turn := turnReq.Turn
+	bot := conv.Bot
+
+	cc, err := model.UnmarshalCustomConfig()
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal custom config error: %v", err)
+	}
+
+	if cc.Request.URL == "" {
+		return nil, fmt.Errorf("custom config request is empty")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, cc.Request.Method, cc.Request.URL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	prompt := bot.GetPrompt(conv, turn.Request, turnReq.Additional)
+	for key, value := range cc.Request.Data {
+		vs, ok := value.(string)
+		if !ok {
+			continue
+		}
+		t, err := template.New(fmt.Sprintf("%d-data-%s", bot.ID, key)).Parse(vs)
+		if err != nil {
+			continue
+		}
+
+		buf := new(bytes.Buffer)
+		if err := t.Execute(buf, map[string]any{
+			"PROMPT": prompt,
+		}); err != nil {
+			continue
+		}
+
+		cc.Request.Data[key] = buf.String()
+	}
+
+	// If the request method is POST, set the request body to the JSON-encoded data
+	if cc.Request.Method == "POST" {
+		jsonData, err := json.Marshal(cc.Request.Data)
+		if err != nil {
+			return nil, err
+		}
+		req.Body = ioutil.NopCloser(bytes.NewReader(jsonData))
+		req.ContentLength = int64(len(jsonData))
+		req.Header.Set("Content-Type", "application/json")
+	} else if cc.Request.Method == "GET" {
+		// If the request method is GET, encode the data as query string parameters
+		queryParams := url.Values{}
+		for key, value := range cc.Request.Data {
+			queryParams.Set(key, fmt.Sprintf("%v", value))
+		}
+		req.URL.RawQuery = queryParams.Encode()
+	}
+
+	for k, v := range cc.Request.Headers {
+		req.Header.Set(k, v)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New(fmt.Sprintf("Request failed with status code %d", resp.StatusCode))
+	}
+
+	respData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	respText := string(respData)
+	if cc.Response.Path != "" {
+		// get by gjson
+		respText = gjson.Get(respText, cc.Response.Path).String()
+	}
+
+	rr := &requestResult{
+		respText:             respText,
+		promptTokenCount:     tokenizer.MustCalToken(prompt),
+		completionTokenCount: tokenizer.MustCalToken(respText),
+	}
+	rr.totalTokens = rr.promptTokenCount + rr.completionTokenCount
+	return rr, nil
+}
+
+func (w *Worker) handleOpenAIProvider(ctx context.Context, req TurnRequest) (*requestResult, error) {
+	model := req.Model
+	conv := req.Conv
+	turn := req.Turn
+	bot := conv.Bot
+
+	var (
+		chatRequest       *gogpt.ChatCompletionRequest
+		completionRequest *gogpt.CompletionRequest
+	)
+
+	if model.IsOpenAIChatModel() {
+		chatRequest = &gogpt.ChatCompletionRequest{
+			Model:       model.ProviderModel,
+			Messages:    req.Conv.Bot.GetChatMessages(req.Conv, req.Additional),
+			Temperature: bot.Temperature,
+		}
+	} else if model.IsOpenAICompletionModel() {
+		prompt := bot.GetPrompt(conv, turn.Request, req.Additional)
+		completionRequest = &gogpt.CompletionRequest{
+			Model:       model.ProviderModel,
+			Prompt:      prompt,
+			Temperature: bot.Temperature,
+			Stop:        []string{"Q:"},
+			User:        conv.GetKey(),
+		}
+	} else {
+		return nil, core.ErrInvalidModel
+	}
+
+	var usage gogpt.Usage
+	var respText string
+	if completionRequest != nil {
+		gptResp, err := w.gptHandler.CreateCompletion(ctx, *completionRequest)
+		if err != nil {
+			return nil, err
+		}
+		prefix := "A:"
+		respText = strings.TrimPrefix(gptResp.Choices[0].Text, prefix)
+		respText = strings.TrimSpace(respText)
+		usage = gptResp.Usage
+	} else {
+		gptResp, err := w.gptHandler.CreateChatCompletion(ctx, *chatRequest)
+		if err != nil {
+			return nil, err
+		}
+		respText = strings.TrimSpace(gptResp.Choices[0].Message.Content)
+		usage = gptResp.Usage
+	}
+
+	return &requestResult{
+		respText:             respText,
+		totalTokens:          int64(usage.TotalTokens),
+		promptTokenCount:     int64(usage.PromptTokens),
+		completionTokenCount: int64(usage.CompletionTokens),
+	}, nil
 }

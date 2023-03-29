@@ -88,7 +88,7 @@ func NewCmdHttpd() *cobra.Command {
 			userz := userServ.New(userServ.Config{
 				ExtraRate:       cfg.Sys.ExtraRate,
 				InitUserCredits: cfg.Sys.InitUserCredits,
-			}, client, users, models)
+			}, client, users)
 			indexService := indexServ.NewService(ctx, gptHandler, indexes, userz)
 			appz := appServ.New(appServ.Config{
 				SecretKey: cfg.Sys.SecretKey,
