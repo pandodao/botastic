@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pandodao/botastic/core"
-	"github.com/pandodao/botastic/internal/tokencal"
 	"github.com/pandodao/botastic/session"
 )
 
@@ -32,7 +31,6 @@ type (
 		convs           core.ConversationStore
 		botz            core.BotService
 		conversationMap map[string]*core.Conversation
-		tokencal        *tokencal.Handler
 	}
 )
 
