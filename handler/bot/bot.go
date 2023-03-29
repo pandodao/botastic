@@ -1,6 +1,7 @@
 package bot
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -31,10 +32,6 @@ func (body *CreateOrUpdateBotPayload) Formalize(defaultValue *core.Bot) error {
 
 	if len(body.Model) > 128 || len(body.Model) == 0 {
 		return core.ErrBotIncorrectField
-	}
-
-	if body.Model != "gpt-3.5-turbo" && body.Model != "text-davinci-003" {
-		return core.ErrBotUnsupportedModel
 	}
 
 	if defaultValue != nil {
@@ -182,7 +179,7 @@ func UpdateBot(botz core.BotService) http.HandlerFunc {
 	}
 }
 
-func CreateBot(botz core.BotService) http.HandlerFunc {
+func CreateBot(botz core.BotService, models core.ModelStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -211,7 +208,11 @@ func CreateBot(botz core.BotService) http.HandlerFunc {
 
 		bot, err := botz.CreateBot(ctx, user.ID, body.Name, body.Model, body.Prompt, body.Temperature, body.MaxTurnCount, body.ContextTurnCount, body.Middlewares, false)
 		if err != nil {
-			render.Error(w, http.StatusInternalServerError, err)
+			statusCode := http.StatusInternalServerError
+			if errors.Is(err, core.ErrInvalidModel) {
+				statusCode = http.StatusBadRequest
+			}
+			render.Error(w, statusCode, err)
 			return
 		}
 

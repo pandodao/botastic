@@ -7,6 +7,7 @@ import (
 	_ "github.com/pandodao/botastic/store/bot"
 	_ "github.com/pandodao/botastic/store/conv"
 	_ "github.com/pandodao/botastic/store/index"
+	_ "github.com/pandodao/botastic/store/model"
 	_ "github.com/pandodao/botastic/store/order"
 	_ "github.com/pandodao/botastic/store/property"
 	_ "github.com/pandodao/botastic/store/user"

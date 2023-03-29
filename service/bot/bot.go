@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pandodao/botastic/core"
+	"github.com/pandodao/botastic/store"
 	"github.com/patrickmn/go-cache"
 )
 
@@ -14,6 +15,7 @@ func New(
 	cfg Config,
 	apps core.AppStore,
 	bots core.BotStore,
+	models core.ModelStore,
 	middlewarez core.MiddlewareService,
 ) *service {
 	botCache := cache.New(time.Minute*5, time.Minute*5)
@@ -24,6 +26,7 @@ func New(
 		cfg:             cfg,
 		apps:            apps,
 		bots:            bots,
+		models:          models,
 		middlewarez:     middlewarez,
 		botCache:        botCache,
 		conversationMap: conversationMap,
@@ -38,6 +41,7 @@ type (
 		cfg             Config
 		apps            core.AppStore
 		bots            core.BotStore
+		models          core.ModelStore
 		middlewarez     core.MiddlewareService
 		botCache        *cache.Cache
 		conversationMap map[string]*core.Conversation
@@ -45,7 +49,7 @@ type (
 )
 
 func (s *service) ReplaceStore(bots core.BotStore) core.BotService {
-	return New(s.cfg, s.apps, bots, s.middlewarez)
+	return New(s.cfg, s.apps, bots, s.models, s.middlewarez)
 }
 
 func (s *service) GetBot(ctx context.Context, id uint64) (*core.Bot, error) {
@@ -121,12 +125,21 @@ func (s *service) CreateBot(ctx context.Context,
 	bytes, err := json.Marshal(middlewares)
 	if err != nil {
 		fmt.Printf("json.Marshal err: %v\n", err)
-		return nil, err
+		return nil, core.ErrInvalidAuthParams
 	}
 
 	jsonb := core.JSONB{}
 	if err := jsonb.Scan(bytes); err != nil {
 		fmt.Printf("jsonb.Scan err: %v\n", err)
+		return nil, err
+	}
+
+	// check model if exists
+	if _, err = s.models.GetModel(ctx, model); err != nil {
+		if store.IsNotFoundErr(err) {
+			return nil, core.ErrInvalidModel
+		}
+		fmt.Printf("models.GetModel err: %v\n", err)
 		return nil, err
 	}
 

@@ -11,6 +11,7 @@ import (
 	"github.com/pandodao/botastic/handler/bot"
 	"github.com/pandodao/botastic/handler/conv"
 	indexHandler "github.com/pandodao/botastic/handler/index"
+	"github.com/pandodao/botastic/handler/model"
 	"github.com/pandodao/botastic/handler/order"
 	"github.com/pandodao/botastic/handler/render"
 	"github.com/pandodao/botastic/handler/user"
@@ -23,6 +24,7 @@ func New(cfg Config, s *session.Session,
 	indexs core.IndexStore,
 	users core.UserStore,
 	convs core.ConversationStore,
+	models core.ModelStore,
 	appz core.AppService,
 	botz core.BotService,
 	indexService core.IndexService,
@@ -37,6 +39,7 @@ func New(cfg Config, s *session.Session,
 		indexes:      indexs,
 		users:        users,
 		appz:         appz,
+		models:       models,
 		indexService: indexService,
 		botz:         botz,
 		convz:        convz,
@@ -60,6 +63,7 @@ type (
 		indexes core.IndexStore
 		users   core.UserStore
 		convs   core.ConversationStore
+		models  core.ModelStore
 
 		botz         core.BotService
 		appz         core.AppService
@@ -85,6 +89,10 @@ func (s Server) HandleRest() http.Handler {
 		r.With(auth.HandleAppSecretRequired()).Delete("/{objectID}", indexHandler.Delete(s.apps, s.indexes))
 	})
 
+	r.Route("/models", func(r chi.Router) {
+		r.Get("/", model.GetModels(s.models))
+	})
+
 	r.Route("/conversations", func(r chi.Router) {
 		r.Post("/", conv.CreateConversation(s.botz, s.convz))
 		r.With(auth.UserCreditRequired(s.users)).Post("/oneway", conv.CreateOnewayConversation(s.convz, s.convs, s.hub))
@@ -102,7 +110,7 @@ func (s Server) HandleRest() http.Handler {
 	r.Route("/bots", func(r chi.Router) {
 		r.Get("/public", bot.GetPublicBots(s.botz))
 		r.With(auth.LoginRequired()).Get("/{botID}", bot.GetBot(s.botz))
-		r.With(auth.LoginRequired()).Post("/", bot.CreateBot(s.botz))
+		r.With(auth.LoginRequired()).Post("/", bot.CreateBot(s.botz, s.models))
 		r.With(auth.LoginRequired()).Put("/{botID}", bot.UpdateBot(s.botz))
 		r.With(auth.LoginRequired()).Get("/", bot.GetMyBots(s.botz))
 		r.With(auth.LoginRequired()).Delete("/{botID}", bot.DeleteBot(s.botz))
