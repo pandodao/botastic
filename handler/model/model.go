@@ -9,10 +9,15 @@ import (
 
 func GetModels(models core.ModelStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		ms, err := models.GetModels(r.Context())
+		ms, err := models.GetModelsByFunction(r.Context(), r.URL.Query().Get("function"))
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
+		}
+
+		for _, m := range ms {
+			// do not expose custom config, it may contain sensitive information
+			m.CustomConfig = nil
 		}
 
 		render.JSON(w, ms)

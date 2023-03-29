@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -9,9 +11,25 @@ import (
 
 const (
 	ModelProviderOpenAI = "openai"
+	ModelProviderCustom = "custom"
+
+	ModelFunctionChat      = "chat"
+	ModelFunctionEmbedding = "embedding"
 )
 
 type (
+	CustomConfig struct {
+		Request struct {
+			URL     string            `json:"url"`
+			Method  string            `json:"method"`
+			Headers map[string]string `json:"headers"`
+			Data    map[string]any    `json:"data"`
+		} `json:"request"`
+		Response struct {
+			Path string `json:"path"`
+		} `json:"response"`
+	}
+
 	Model struct {
 		ID                 uint64          `json:"id"`
 		Provider           string          `json:"provider"`
@@ -20,14 +38,11 @@ type (
 		PromptPriceUSD     decimal.Decimal `json:"prompt_price_usd"`
 		CompletionPriceUSD decimal.Decimal `json:"completion_price_usd"`
 		PriceUSD           decimal.Decimal `json:"price_usd"`
-		CreatedAt          time.Time       `json:"-"`
-		DeletedAt          *time.Time      `json:"-"`
+		CustomConfig       JSONB           `gorm:"type:jsonb;" json:"custom_config,omitempty"`
+		Function           string          `json:"function"`
 
-		Props struct {
-			IsOpenAIChatModel       bool `yaml:"is_openai_chat_model"`
-			IsOpenAICompletionModel bool `yaml:"is_openai_completion_model"`
-			IsOpenAIEmbeddingModel  bool `yaml:"is_openai_embedding_model"`
-		} `gorm:"-" json:"-"`
+		CreatedAt time.Time  `json:"-"`
+		DeletedAt *time.Time `json:"-"`
 	}
 
 	ModelStore interface {
@@ -40,11 +55,24 @@ type (
 		// SELECT *
 		// FROM @@table WHERE
 		// 	"deleted_at" IS NULL
-		GetModels(ctx context.Context) ([]*Model, error)
+		//  {{if f !=""}}
+		//      AND function=@f
+		//  {{end}}
+		GetModelsByFunction(ctx context.Context, f string) ([]*Model, error)
+
+		// INSERT INTO @@table
+		// 	("provider", "provider_model", "max_token", "prompt_price_usd", "completion_price_usd", "price_usd", "custom_config", "function", "created_at")
+		// VALUES
+		// 	(@model.Provider, @model.ProviderModel, @model.MaxToken, @model.PromptPriceUSD, @model.CompletionPriceUSD, @model.PriceUSD, @model.CustomConfig, @model.Function, NOW())
+		CreateModel(ctx context.Context, model *Model) error
 	}
 )
 
-func (m *Model) CalculateTokenCost(promptCount, completionCount int64) decimal.Decimal {
+func (m Model) Name() string {
+	return fmt.Sprintf("%s:%s", m.Provider, m.ProviderModel)
+}
+
+func (m Model) CalculateTokenCost(promptCount, completionCount int64) decimal.Decimal {
 	pc := decimal.NewFromInt(promptCount)
 	cc := decimal.NewFromInt(completionCount)
 
@@ -55,4 +83,38 @@ func (m *Model) CalculateTokenCost(promptCount, completionCount int64) decimal.D
 		return m.PromptPriceUSD.Mul(pc).Add(m.CompletionPriceUSD.Mul(cc))
 	}
 	return decimal.Zero
+}
+
+func (m Model) IsOpenAIChatModel() bool {
+	if m.Provider != ModelProviderOpenAI {
+		return false
+	}
+
+	switch m.ProviderModel {
+	case "gpt-4", "gpt-4-32k", "gpt-3.5-turbo":
+		return true
+	}
+
+	return false
+}
+
+func (m Model) IsOpenAICompletionModel() bool {
+	if m.Provider != ModelProviderOpenAI {
+		return false
+	}
+	switch m.ProviderModel {
+	case "text-davinci-003":
+		return true
+	}
+
+	return false
+}
+
+func (m Model) UnmarshalCustomConfig() (*CustomConfig, error) {
+	r := &CustomConfig{}
+	if err := json.Unmarshal(m.CustomConfig, r); err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }

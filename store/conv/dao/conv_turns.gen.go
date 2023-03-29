@@ -137,7 +137,7 @@ type IConvTurnDo interface {
 	GetConvTurns(ctx context.Context, ids []uint64) (result []*core.ConvTurn, err error)
 	GetConvTurn(ctx context.Context, id uint64) (result *core.ConvTurn, err error)
 	GetConvTurnsByStatus(ctx context.Context, excludeIDs []uint64, status []int) (result []*core.ConvTurn, err error)
-	UpdateConvTurn(ctx context.Context, id uint64, response string, totalTokens int, status int) (err error)
+	UpdateConvTurn(ctx context.Context, id uint64, response string, totalTokens int64, status int) (err error)
 }
 
 // INSERT INTO "conv_turns"
@@ -278,7 +278,7 @@ func (c convTurnDo) GetConvTurnsByStatus(ctx context.Context, excludeIDs []uint6
 // WHERE
 //
 //	"id"=@id
-func (c convTurnDo) UpdateConvTurn(ctx context.Context, id uint64, response string, totalTokens int, status int) (err error) {
+func (c convTurnDo) UpdateConvTurn(ctx context.Context, id uint64, response string, totalTokens int64, status int) (err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder

@@ -31,6 +31,8 @@ func newModel(db *gorm.DB, opts ...gen.DOOption) model {
 	_model.PromptPriceUSD = field.NewField(tableName, "prompt_price_usd")
 	_model.CompletionPriceUSD = field.NewField(tableName, "completion_price_usd")
 	_model.PriceUSD = field.NewField(tableName, "price_usd")
+	_model.CustomConfig = field.NewField(tableName, "custom_config")
+	_model.Function = field.NewString(tableName, "function")
 	_model.CreatedAt = field.NewTime(tableName, "created_at")
 	_model.DeletedAt = field.NewTime(tableName, "deleted_at")
 
@@ -50,6 +52,8 @@ type model struct {
 	PromptPriceUSD     field.Field
 	CompletionPriceUSD field.Field
 	PriceUSD           field.Field
+	CustomConfig       field.Field
+	Function           field.String
 	CreatedAt          field.Time
 	DeletedAt          field.Time
 
@@ -75,6 +79,8 @@ func (m *model) updateTableName(table string) *model {
 	m.PromptPriceUSD = field.NewField(table, "prompt_price_usd")
 	m.CompletionPriceUSD = field.NewField(table, "completion_price_usd")
 	m.PriceUSD = field.NewField(table, "price_usd")
+	m.CustomConfig = field.NewField(table, "custom_config")
+	m.Function = field.NewString(table, "function")
 	m.CreatedAt = field.NewTime(table, "created_at")
 	m.DeletedAt = field.NewTime(table, "deleted_at")
 
@@ -93,7 +99,7 @@ func (m *model) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (m *model) fillFieldMap() {
-	m.fieldMap = make(map[string]field.Expr, 9)
+	m.fieldMap = make(map[string]field.Expr, 11)
 	m.fieldMap["id"] = m.ID
 	m.fieldMap["provider"] = m.Provider
 	m.fieldMap["provider_model"] = m.ProviderModel
@@ -101,6 +107,8 @@ func (m *model) fillFieldMap() {
 	m.fieldMap["prompt_price_usd"] = m.PromptPriceUSD
 	m.fieldMap["completion_price_usd"] = m.CompletionPriceUSD
 	m.fieldMap["price_usd"] = m.PriceUSD
+	m.fieldMap["custom_config"] = m.CustomConfig
+	m.fieldMap["function"] = m.Function
 	m.fieldMap["created_at"] = m.CreatedAt
 	m.fieldMap["deleted_at"] = m.DeletedAt
 }
@@ -121,19 +129,20 @@ type IModelDo interface {
 	WithContext(ctx context.Context) IModelDo
 
 	GetModel(ctx context.Context, name string) (result *core.Model, err error)
-	GetModels(ctx context.Context) (result []*core.Model, err error)
+	GetModelsByFunction(ctx context.Context, f string) (result []*core.Model, err error)
+	CreateModel(ctx context.Context, model *core.Model) (err error)
 }
 
 // SELECT *
 // FROM @@table WHERE
 //
-//	"deleted_at" IS NULL AND provider_model = @name
+//	"deleted_at" IS NULL AND CONCAT(provider, ':', provider_model) = @name;
 func (m modelDo) GetModel(ctx context.Context, name string) (result *core.Model, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
 	params = append(params, name)
-	generateSQL.WriteString("SELECT * FROM models WHERE \"deleted_at\" IS NULL AND provider_model = ? ")
+	generateSQL.WriteString("SELECT * FROM models WHERE \"deleted_at\" IS NULL AND CONCAT(provider, ':', provider_model) = ?; ")
 
 	var executeSQL *gorm.DB
 	executeSQL = m.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert
@@ -146,12 +155,52 @@ func (m modelDo) GetModel(ctx context.Context, name string) (result *core.Model,
 // FROM @@table WHERE
 //
 //	"deleted_at" IS NULL
-func (m modelDo) GetModels(ctx context.Context) (result []*core.Model, err error) {
+//
+// {{if f !=""}}
+//
+//	AND function=@f
+//
+// {{end}}
+func (m modelDo) GetModelsByFunction(ctx context.Context, f string) (result []*core.Model, err error) {
+	var params []interface{}
+
 	var generateSQL strings.Builder
 	generateSQL.WriteString("SELECT * FROM models WHERE \"deleted_at\" IS NULL ")
+	if f != "" {
+		params = append(params, f)
+		generateSQL.WriteString("AND function=? ")
+	}
 
 	var executeSQL *gorm.DB
-	executeSQL = m.UnderlyingDB().Raw(generateSQL.String()).Find(&result) // ignore_security_alert
+	executeSQL = m.UnderlyingDB().Raw(generateSQL.String(), params...).Find(&result) // ignore_security_alert
+	err = executeSQL.Error
+
+	return
+}
+
+// INSERT INTO @@table
+//
+//	("provider", "provider_model", "max_token", "prompt_price_usd", "completion_price_usd", "price_usd", "custom_config", "function", "created_at")
+//
+// VALUES
+//
+//	(@model.Provider, @model.ProviderModel, @model.MaxToken, @model.PromptPriceUSD, @model.CompletionPriceUSD, @model.PriceUSD, @model.CustomConfig, @model.Function, NOW())
+func (m modelDo) CreateModel(ctx context.Context, model *core.Model) (err error) {
+	var params []interface{}
+
+	var generateSQL strings.Builder
+	params = append(params, model.Provider)
+	params = append(params, model.ProviderModel)
+	params = append(params, model.MaxToken)
+	params = append(params, model.PromptPriceUSD)
+	params = append(params, model.CompletionPriceUSD)
+	params = append(params, model.PriceUSD)
+	params = append(params, model.CustomConfig)
+	params = append(params, model.Function)
+	generateSQL.WriteString("INSERT INTO models (\"provider\", \"provider_model\", \"max_token\", \"prompt_price_usd\", \"completion_price_usd\", \"price_usd\", \"custom_config\", \"function\", \"created_at\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW()) ")
+
+	var executeSQL *gorm.DB
+	executeSQL = m.UnderlyingDB().Exec(generateSQL.String(), params...) // ignore_security_alert
 	err = executeSQL.Error
 
 	return

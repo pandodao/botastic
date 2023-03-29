@@ -91,6 +91,7 @@ func (s Server) HandleRest() http.Handler {
 
 	r.Route("/models", func(r chi.Router) {
 		r.Get("/", model.GetModels(s.models))
+		r.Post("/", model.GetModels(s.models))
 	})
 
 	r.Route("/conversations", func(r chi.Router) {
