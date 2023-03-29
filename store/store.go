@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"embed"
+	"errors"
 
 	"github.com/pressly/goose/v3"
 	"gorm.io/driver/postgres"
@@ -148,4 +149,8 @@ func Transaction(f func(tx *Handler) error) error {
 			DB: db,
 		})
 	})
+}
+
+func IsNotFoundErr(err error) bool {
+	return errors.Is(err, gorm.ErrRecordNotFound)
 }

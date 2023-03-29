@@ -83,7 +83,7 @@ func NewCmdHttpd() *cobra.Command {
 				return err
 			}
 			indexes := index.New(ctx, milvusClient)
-			models := model.New()
+			models := model.New(h)
 
 			userz := userServ.New(userServ.Config{
 				ExtraRate:       cfg.Sys.ExtraRate,
@@ -95,7 +95,7 @@ func NewCmdHttpd() *cobra.Command {
 			}, apps, indexService)
 
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, apps, indexService)
-			botz := botServ.New(botServ.Config{}, apps, bots, middlewarez)
+			botz := botServ.New(botServ.Config{}, apps, bots, models, middlewarez)
 			convz := convServ.New(convServ.Config{}, convs, botz)
 			orderz := orderServ.New(orderServ.Config{
 				PayeeId:           cfg.Mixpay.PayeeId,
@@ -149,7 +149,7 @@ func NewCmdHttpd() *cobra.Command {
 				}
 
 				{
-					svr := handler.New(handler.Config{}, s, apps, indexes, users, convs, appz, botz, indexService, userz, convz, orderz, hub)
+					svr := handler.New(handler.Config{}, s, apps, indexes, users, convs, models, appz, botz, indexService, userz, convz, orderz, hub)
 
 					// api v1
 					restHandler := svr.HandleRest()

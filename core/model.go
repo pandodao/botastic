@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"time"
 
 	"github.com/shopspring/decimal"
 )
@@ -10,31 +11,36 @@ const (
 	ModelProviderOpenAI = "openai"
 )
 
-const (
-	ModelOpenAIGPT4               = "openai:gpt-4"
-	ModelOpenAIGPT3Dot5Turbo      = "openai:gpt-3.5-turbo"
-	ModelOpenAIGPT3TextDavinci003 = "openai:text-davinci-003"
-	ModelOpenAIAdaEmbeddingV2     = "openai:text-embedding-ada-002"
-)
-
 type (
 	Model struct {
-		Provider           string          `yaml:"provider"`
-		ProviderModel      string          `yaml:"provider_model"`
-		MaxToken           int             `yaml:"max_token"`
-		PromptPriceUSD     decimal.Decimal `yaml:"prompt_price_usd"`
-		CompletionPriceUSD decimal.Decimal `yaml:"completion_price_usd"`
-		PriceUSD           decimal.Decimal `yaml:"price_usd"`
+		ID                 uint64          `json:"id"`
+		Provider           string          `json:"provider"`
+		ProviderModel      string          `json:"provider_model"`
+		MaxToken           int             `json:"max_token"`
+		PromptPriceUSD     decimal.Decimal `json:"prompt_price_usd"`
+		CompletionPriceUSD decimal.Decimal `json:"completion_price_usd"`
+		PriceUSD           decimal.Decimal `json:"price_usd"`
+		CreatedAt          time.Time       `json:"-"`
+		DeletedAt          *time.Time      `json:"-"`
 
 		Props struct {
 			IsOpenAIChatModel       bool `yaml:"is_openai_chat_model"`
 			IsOpenAICompletionModel bool `yaml:"is_openai_completion_model"`
 			IsOpenAIEmbeddingModel  bool `yaml:"is_openai_embedding_model"`
-		}
+		} `gorm:"-" json:"-"`
 	}
 
 	ModelStore interface {
+
+		// SELECT *
+		// FROM @@table WHERE
+		// 	"deleted_at" IS NULL AND CONCAT(provider, ':', provider_model) = @name;
 		GetModel(ctx context.Context, name string) (*Model, error)
+
+		// SELECT *
+		// FROM @@table WHERE
+		// 	"deleted_at" IS NULL
+		GetModels(ctx context.Context) ([]*Model, error)
 	}
 )
 
