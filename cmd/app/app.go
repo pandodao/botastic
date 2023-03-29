@@ -66,7 +66,7 @@ func NewCmdAppCreate() *cobra.Command {
 			apps := app.New(h)
 			appz := appServ.New(appServ.Config{
 				SecretKey: cfg.Sys.SecretKey,
-			}, apps)
+			}, apps, nil)
 
 			app, err := appz.CreateApp(ctx, userID, appName)
 			if err != nil {
@@ -74,7 +74,7 @@ func NewCmdAppCreate() *cobra.Command {
 				return
 			}
 
-			cmd.Printf("app_id: %s, app_secret: %s", app.AppID, app.AppSecret)
+			cmd.Printf("app_id: %s\napp_secret: %s\n", app.AppID, app.AppSecret)
 		},
 	}
 
