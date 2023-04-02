@@ -14,11 +14,12 @@ import (
 	gogpt "github.com/sashabaranov/go-openai"
 )
 
-func NewService(ctx context.Context, gptHandler *gpt.Handler, indexes core.IndexStore, userz core.UserService) core.IndexService {
+func NewService(ctx context.Context, gptHandler *gpt.Handler, indexes core.IndexStore, userz core.UserService, models core.ModelStore) core.IndexService {
 	return &serviceImpl{
 		gptHandler:                gptHandler,
 		indexes:                   indexes,
 		userz:                     userz,
+		models:                    models,
 		createEmbeddingsLimitChan: make(chan struct{}, 20),
 	}
 }

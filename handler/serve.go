@@ -27,27 +27,27 @@ func New(cfg Config, s *session.Session,
 	models core.ModelStore,
 	appz core.AppService,
 	botz core.BotService,
-	indexService core.IndexService,
+	indexz core.IndexService,
 	userz core.UserService,
 	convz core.ConversationService,
 	orderz core.OrderService,
 	hub *chanhub.Hub,
 ) Server {
 	return Server{
-		cfg:          cfg,
-		apps:         apps,
-		indexes:      indexs,
-		users:        users,
-		appz:         appz,
-		models:       models,
-		indexService: indexService,
-		botz:         botz,
-		convz:        convz,
-		userz:        userz,
-		session:      s,
-		convs:        convs,
-		orderz:       orderz,
-		hub:          hub,
+		cfg:     cfg,
+		apps:    apps,
+		indexes: indexs,
+		users:   users,
+		appz:    appz,
+		models:  models,
+		indexz:  indexz,
+		botz:    botz,
+		convz:   convz,
+		userz:   userz,
+		session: s,
+		convs:   convs,
+		orderz:  orderz,
+		hub:     hub,
 	}
 }
 
@@ -65,12 +65,12 @@ type (
 		convs   core.ConversationStore
 		models  core.ModelStore
 
-		botz         core.BotService
-		appz         core.AppService
-		indexService core.IndexService
-		convz        core.ConversationService
-		userz        core.UserService
-		orderz       core.OrderService
+		botz   core.BotService
+		appz   core.AppService
+		indexz core.IndexService
+		convz  core.ConversationService
+		userz  core.UserService
+		orderz core.OrderService
 
 		hub *chanhub.Hub
 	}
@@ -83,9 +83,9 @@ func (s Server) HandleRest() http.Handler {
 	r.Use(auth.HandleAuthentication(s.session, s.users))
 
 	r.Route("/indexes", func(r chi.Router) {
-		r.With(auth.HandleAppSecretRequired(), auth.UserCreditRequired(s.users)).Post("/", indexHandler.CreateIndex(s.indexService))
-		r.With(auth.HandleAppSecretRequired()).Post("/reset", indexHandler.ResetIndexes(s.indexService))
-		r.With(auth.UserCreditRequired(s.users)).Get("/search", indexHandler.Search(s.apps, s.indexService))
+		r.With(auth.HandleAppSecretRequired(), auth.UserCreditRequired(s.users)).Post("/", indexHandler.CreateIndex(s.indexz))
+		r.With(auth.HandleAppSecretRequired()).Post("/reset", indexHandler.ResetIndexes(s.indexz))
+		r.With(auth.UserCreditRequired(s.users)).Get("/search", indexHandler.Search(s.apps, s.indexz))
 		r.With(auth.HandleAppSecretRequired()).Delete("/{objectID}", indexHandler.Delete(s.apps, s.indexes))
 	})
 
