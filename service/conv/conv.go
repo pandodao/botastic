@@ -82,9 +82,7 @@ func (s *service) GetConversation(ctx context.Context, convID string) (*core.Con
 				turn := conv.History[ix]
 				existed, ok := turnMap[turn.ID]
 				if ok && existed.Status != turn.Status {
-					turn.Status = existed.Status
-					turn.Response = existed.Response
-					turn.UpdatedAt = existed.UpdatedAt
+					*turn = *existed
 				}
 			}
 		}

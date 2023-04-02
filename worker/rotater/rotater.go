@@ -162,7 +162,7 @@ func (w *Worker) run(ctx context.Context) error {
 		}
 
 		if turn.Status == core.ConvTurnStatusInit {
-			if err := w.convs.UpdateConvTurn(ctx, turn.ID, "", 0, core.ConvTurnStatusPending); err != nil {
+			if err := w.convs.UpdateConvTurn(ctx, turn.ID, "", 0, 0, 0, core.ConvTurnStatusPending); err != nil {
 				continue
 			}
 		}
@@ -179,7 +179,7 @@ func (w *Worker) run(ctx context.Context) error {
 
 func (w *Worker) UpdateConvTurnAsError(ctx context.Context, id uint64, errMsg string) error {
 	fmt.Printf("errMsg: %v, %d\n", errMsg, id)
-	if err := w.convs.UpdateConvTurn(ctx, id, "Something wrong happened", 0, core.ConvTurnStatusError); err != nil {
+	if err := w.convs.UpdateConvTurn(ctx, id, "Something wrong happened", 0, 0, 0, core.ConvTurnStatusError); err != nil {
 		return err
 	}
 	return nil
@@ -214,7 +214,7 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 				return
 			}
 
-			if err := w.convs.UpdateConvTurn(ctx, turn.ID, rr.respText, rr.totalTokens, core.ConvTurnStatusCompleted); err != nil {
+			if err := w.convs.UpdateConvTurn(ctx, turn.ID, rr.respText, rr.promptTokenCount, rr.completionTokenCount, rr.totalTokens, core.ConvTurnStatusCompleted); err != nil {
 				return
 			}
 

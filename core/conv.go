@@ -26,18 +26,20 @@ type (
 	}
 
 	ConvTurn struct {
-		ID             uint64     `yaml:"id" json:"id"`
-		ConversationID string     `yaml:"conversation_id" json:"conversation_id"`
-		BotID          uint64     `yaml:"bot_id" json:"bot_id"`
-		AppID          uint64     `yaml:"app_id" json:"app_id"`
-		UserID         uint64     `yaml:"user_id" json:"user_id"`
-		UserIdentity   string     `yaml:"user_identity" json:"user_identity"`
-		Request        string     `yaml:"request" json:"request"`
-		Response       string     `yaml:"response" json:"response"`
-		TotalTokens    int        `yaml:"total_tokens" json:"total_tokens"`
-		Status         int        `yaml:"status" json:"status"`
-		CreatedAt      *time.Time `yaml:"created_at" json:"created_at"`
-		UpdatedAt      *time.Time `yaml:"updated_at" json:"updated_at"`
+		ID               uint64     `yaml:"id" json:"id"`
+		ConversationID   string     `yaml:"conversation_id" json:"conversation_id"`
+		BotID            uint64     `yaml:"bot_id" json:"bot_id"`
+		AppID            uint64     `yaml:"app_id" json:"app_id"`
+		UserID           uint64     `yaml:"user_id" json:"user_id"`
+		UserIdentity     string     `yaml:"user_identity" json:"user_identity"`
+		Request          string     `yaml:"request" json:"request"`
+		Response         string     `yaml:"response" json:"response"`
+		PromptTokens     int        `yaml:"prompt_tokens" json:"prompt_tokens"`
+		CompletionTokens int        `yaml:"completion_tokens" json:"completion_tokens"`
+		TotalTokens      int        `yaml:"total_tokens" json:"total_tokens"`
+		Status           int        `yaml:"status" json:"status"`
+		CreatedAt        *time.Time `yaml:"created_at" json:"created_at"`
+		UpdatedAt        *time.Time `yaml:"updated_at" json:"updated_at"`
 	}
 
 	ConversationStore interface {
@@ -63,6 +65,7 @@ type (
 		//	"conversation_id", "bot_id", "app_id", "user_id",
 		//  "user_identity",
 		//  "request", "response", "status",
+		//  "prompt_tokens", "completion_tokens", "total_tokens",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns" WHERE
 		//  "id" IN (@ids)
@@ -73,6 +76,7 @@ type (
 		//	"conversation_id", "bot_id", "app_id", "user_id",
 		//  "user_identity",
 		//  "request", "response", "status",
+		//  "prompt_tokens", "completion_tokens", "total_tokens",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns" WHERE
 		//  "id" = @id
@@ -96,13 +100,15 @@ type (
 		// UPDATE "conv_turns"
 		// 	{{set}}
 		// 		"response"=@response,
+		//    "prompt_tokens"=@promptTokens,
+		//    "completion_tokens"=@completionTokens,
 		// 		"total_tokens"=@totalTokens,
 		// 		"status"=@status,
 		// 		"updated_at"=NOW()
 		// 	{{end}}
 		// WHERE
 		// 	"id"=@id
-		UpdateConvTurn(ctx context.Context, id uint64, response string, totalTokens int64, status int) error
+		UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens, completionTokens, totalTokens int64, status int) error
 	}
 
 	ConversationService interface {
