@@ -145,12 +145,17 @@ func (w *Worker) run(ctx context.Context) error {
 			continue
 		}
 
+		middlewareCfg := bot.MiddlewareJson
+		if turn.BotOverride.Middlewares != nil {
+			middlewareCfg = *turn.BotOverride.Middlewares
+		}
+
 		additional := map[string]interface{}{}
-		if bot.Middlewares.Items != nil && len(bot.Middlewares.Items) != 0 {
+		if len(middlewareCfg.Items) != 0 {
 			middlewareOutputs := make([]string, 0)
 			app, err := w.apps.GetApp(ctx, turn.AppID)
 			if err == nil {
-				for _, middleware := range bot.Middlewares.Items {
+				for _, middleware := range middlewareCfg.Items {
 					ctx = session.WithApp(ctx, app)
 					result, err := w.middlewarez.Process(ctx, middleware, turn.Request)
 					if err == nil && result != nil {
@@ -243,11 +248,7 @@ func (w *Worker) handleCustomProvider(ctx context.Context, turnReq TurnRequest) 
 	turn := turnReq.Turn
 	bot := conv.Bot
 
-	cc, err := model.UnmarshalCustomConfig()
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal custom config error: %v", err)
-	}
-
+	cc := model.CustomConfig
 	if cc.Request.URL == "" {
 		return nil, fmt.Errorf("custom config request is empty")
 	}

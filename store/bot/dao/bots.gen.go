@@ -140,8 +140,8 @@ type IBotDo interface {
 	GetBot(ctx context.Context, id uint64) (result *core.Bot, err error)
 	GetBotsByUserID(ctx context.Context, userID uint64) (result []*core.Bot, err error)
 	GetPublicBots(ctx context.Context) (result []*core.Bot, err error)
-	CreateBot(ctx context.Context, userID uint64, name string, model string, prompt string, temperature float32, maxTurnCount int, contextTurnCount int, middlewareJson core.JSONB, public bool) (result uint64, err error)
-	UpdateBot(ctx context.Context, id uint64, name string, model string, prompt string, temperature float32, maxTurnCount int, contextTurnCount int, middlewareJson core.JSONB, public bool) (err error)
+	CreateBot(ctx context.Context, userID uint64, name string, model string, prompt string, temperature float32, maxTurnCount int, contextTurnCount int, middlewareJson core.MiddlewareConfig, public bool) (result uint64, err error)
+	UpdateBot(ctx context.Context, id uint64, name string, model string, prompt string, temperature float32, maxTurnCount int, contextTurnCount int, middlewareJson core.MiddlewareConfig, public bool) (err error)
 	DeleteBot(ctx context.Context, id uint64) (err error)
 }
 
@@ -231,7 +231,7 @@ func (b botDo) GetPublicBots(ctx context.Context) (result []*core.Bot, err error
 //	 NOW(), NOW())
 //
 // RETURNING "id"
-func (b botDo) CreateBot(ctx context.Context, userID uint64, name string, model string, prompt string, temperature float32, maxTurnCount int, contextTurnCount int, middlewareJson core.JSONB, public bool) (result uint64, err error) {
+func (b botDo) CreateBot(ctx context.Context, userID uint64, name string, model string, prompt string, temperature float32, maxTurnCount int, contextTurnCount int, middlewareJson core.MiddlewareConfig, public bool) (result uint64, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
@@ -270,7 +270,7 @@ func (b botDo) CreateBot(ctx context.Context, userID uint64, name string, model 
 // WHERE
 //
 //	"id"=@id AND "deleted_at" is NULL
-func (b botDo) UpdateBot(ctx context.Context, id uint64, name string, model string, prompt string, temperature float32, maxTurnCount int, contextTurnCount int, middlewareJson core.JSONB, public bool) (err error) {
+func (b botDo) UpdateBot(ctx context.Context, id uint64, name string, model string, prompt string, temperature float32, maxTurnCount int, contextTurnCount int, middlewareJson core.MiddlewareConfig, public bool) (err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder

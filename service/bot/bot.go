@@ -2,7 +2,6 @@ package bot
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -63,10 +62,6 @@ func (s *service) GetBot(ctx context.Context, id uint64) (*core.Bot, error) {
 		return nil, err
 	}
 
-	if err := bot.DecodeMiddlewares(); err != nil {
-		return nil, err
-	}
-
 	s.botCache.Set(key, bot, cache.DefaultExpiration)
 	return bot, nil
 }
@@ -80,11 +75,6 @@ func (s *service) GetPublicBots(ctx context.Context) ([]*core.Bot, error) {
 	bots, err := s.bots.GetPublicBots(ctx)
 	if err != nil {
 		return nil, err
-	}
-	for _, bot := range bots {
-		if err := bot.DecodeMiddlewares(); err != nil {
-			continue
-		}
 	}
 
 	s.botCache.Set(key, bots, cache.DefaultExpiration)
@@ -102,11 +92,6 @@ func (s *service) GetBotsByUserID(ctx context.Context, userID uint64) ([]*core.B
 	if err != nil {
 		return nil, err
 	}
-	for _, bot := range bots {
-		if err := bot.DecodeMiddlewares(); err != nil {
-			continue
-		}
-	}
 
 	s.botCache.Set(key, bots, cache.DefaultExpiration)
 
@@ -122,20 +107,8 @@ func (s *service) CreateBot(ctx context.Context,
 	public bool,
 ) (*core.Bot, error) {
 
-	bytes, err := json.Marshal(middlewares)
-	if err != nil {
-		fmt.Printf("json.Marshal err: %v\n", err)
-		return nil, core.ErrInvalidAuthParams
-	}
-
-	jsonb := core.JSONB{}
-	if err := jsonb.Scan(bytes); err != nil {
-		fmt.Printf("jsonb.Scan err: %v\n", err)
-		return nil, err
-	}
-
 	// check model if exists
-	if _, err = s.models.GetModel(ctx, model); err != nil {
+	if _, err := s.models.GetModel(ctx, model); err != nil {
 		if store.IsNotFoundErr(err) {
 			return nil, core.ErrInvalidModel
 		}
@@ -143,7 +116,7 @@ func (s *service) CreateBot(ctx context.Context,
 		return nil, err
 	}
 
-	botID, err := s.bots.CreateBot(ctx, id, name, model, prompt, temperature, max_turn_count, context_turn_count, jsonb, public)
+	botID, err := s.bots.CreateBot(ctx, id, name, model, prompt, temperature, max_turn_count, context_turn_count, middlewares, public)
 	if err != nil {
 		fmt.Printf("bots.CreateBot err: %v\n", err)
 		return nil, err
@@ -164,25 +137,13 @@ func (s *service) CreateBot(ctx context.Context,
 }
 
 func (s *service) UpdateBot(ctx context.Context, id uint64, name, model, prompt string, temperature float32, maxTurnCount, contextTurnCount int, middlewares core.MiddlewareConfig, public bool) error {
-	bytes, err := json.Marshal(middlewares)
-	if err != nil {
-		fmt.Printf("json.Marshal err: %v\n", err)
-		return err
-	}
-
-	jsonb := core.JSONB{}
-	if err := jsonb.Scan(bytes); err != nil {
-		fmt.Printf("jsonb.Scan err: %v\n", err)
-		return err
-	}
-
 	bot, err := s.bots.GetBot(ctx, id)
 	if err != nil {
 		fmt.Printf("bots.GetBot err: %v\n", err)
 		return err
 	}
 
-	err = s.bots.UpdateBot(ctx, id, name, model, prompt, temperature, maxTurnCount, contextTurnCount, jsonb, public)
+	err = s.bots.UpdateBot(ctx, id, name, model, prompt, temperature, maxTurnCount, contextTurnCount, middlewares, public)
 	if err != nil {
 		fmt.Printf("bots.UpdateBot err: %v\n", err)
 		return err

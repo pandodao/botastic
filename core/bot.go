@@ -14,65 +14,69 @@ import (
 	gogpt "github.com/sashabaranov/go-openai"
 )
 
-type JSONB json.RawMessage
+const (
+	MiddlewareBotasticSearch    = "botastic-search"
+	MiddlewareDuckduckgoSearch  = "duckduckgo-search"
+	MiddlewareIntentRecognition = "intent-recognition"
+)
 
-func (j JSONB) MarshalJSON() ([]byte, error) {
-	return json.RawMessage(j).MarshalJSON()
-}
+const MiddlewareProcessCodeUnknown = -1
 
-func (j *JSONB) UnmarshalJSON(data []byte) error {
-	var v json.RawMessage
-	if err := json.Unmarshal(data, &v); err != nil {
-		return err
+const (
+	MiddlewareProcessCodeOK = iota
+)
+
+type (
+	Middleware struct {
+		Name    string         `json:"name"`
+		Options map[string]any `json:"options,omitempty"`
 	}
 
-	*j = JSONB(v)
-	return nil
+	MiddlewareConfig struct {
+		Items []*Middleware `json:"items"`
+	}
+
+	MiddlewareProcessResult struct {
+		Name   string `json:"name"`
+		Code   uint64 `json:"code"`
+		Result string `json:"result"`
+	}
+
+	MiddlewareService interface {
+		Process(ctx context.Context, m *Middleware, input string) (*MiddlewareProcessResult, error)
+	}
+)
+
+func (a MiddlewareConfig) Value() (driver.Value, error) {
+	return json.Marshal(a)
 }
 
-// implement sql.Scanner interface, Scan value into Jsonb
-func (j *JSONB) Scan(value interface{}) error {
-	bytes, ok := value.([]byte)
+func (a *MiddlewareConfig) Scan(value interface{}) error {
+	b, ok := value.([]byte)
 	if !ok {
-		return errors.New(fmt.Sprint("type assertion to []byte failed:", value))
+		return errors.New("type assertion to []byte failed")
 	}
-
-	result := json.RawMessage{}
-	err := json.Unmarshal(bytes, &result)
-	if err != nil {
-		return err
-	}
-	*j = JSONB(result)
-	return err
-}
-
-// implement driver.Valuer interface, Value return json value
-func (j JSONB) Value() (driver.Value, error) {
-	if len(j) == 0 {
-		return nil, nil
-	}
-	return json.RawMessage(j).MarshalJSON()
+	return json.Unmarshal(b, a)
 }
 
 type (
 	Bot struct {
-		ID               uint64  `json:"id"`
-		Name             string  `json:"name"`
-		UserID           uint64  `json:"user_id"`
-		Prompt           string  `json:"prompt"`
-		Model            string  `json:"model"`
-		MaxTurnCount     int     `json:"max_turn_count"`
-		ContextTurnCount int     `json:"context_turn_count"`
-		Temperature      float32 `json:"temperature"`
-		MiddlewareJson   JSONB   `gorm:"type:jsonb" json:"-"`
-		Public           bool    `json:"public"`
+		ID               uint64           `json:"id"`
+		Name             string           `json:"name"`
+		UserID           uint64           `json:"user_id"`
+		Prompt           string           `json:"prompt"`
+		Model            string           `json:"model"`
+		MaxTurnCount     int              `json:"max_turn_count"`
+		ContextTurnCount int              `json:"context_turn_count"`
+		Temperature      float32          `json:"temperature"`
+		MiddlewareJson   MiddlewareConfig `gorm:"type:jsonb" json:"middlewares"`
+		Public           bool             `json:"public"`
 
 		CreatedAt *time.Time `json:"created_at"`
 		UpdatedAt *time.Time `json:"updated_at"`
 		DeletedAt *time.Time `json:"deleted_at"`
 
-		PromptTpl   *template.Template `gorm:"-" json:"-"`
-		Middlewares MiddlewareConfig   `gorm:"-" json:"middlewares"`
+		PromptTpl *template.Template `gorm:"-" json:"-"`
 	}
 
 	BotStore interface {
@@ -120,7 +124,7 @@ type (
 			temperature float32,
 			maxTurnCount,
 			contextTurnCount int,
-			middlewareJson JSONB, public bool,
+			middlewareJson MiddlewareConfig, public bool,
 		) (uint64, error)
 
 		// UPDATE @@table
@@ -142,7 +146,7 @@ type (
 			temperature float32,
 			maxTurnCount,
 			contextTurnCount int,
-			middlewareJson JSONB,
+			middlewareJson MiddlewareConfig,
 			public bool,
 		) error
 
@@ -165,19 +169,6 @@ type (
 		ReplaceStore(store BotStore) BotService
 	}
 )
-
-func (t *Bot) DecodeMiddlewares() error {
-	if t.MiddlewareJson == nil {
-		return nil
-	}
-
-	val, err := t.MiddlewareJson.Value()
-	if err != nil {
-		return err
-	}
-
-	return json.Unmarshal(val.([]byte), &t.Middlewares)
-}
 
 func (t *Bot) GetPrompt(conv *Conversation, question string, additionData map[string]any) string {
 	var buf bytes.Buffer

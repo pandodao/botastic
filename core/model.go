@@ -2,7 +2,9 @@ package core
 
 import (
 	"context"
+	"database/sql/driver"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -17,19 +19,32 @@ const (
 	ModelFunctionEmbedding = "embedding"
 )
 
-type (
-	CustomConfig struct {
-		Request struct {
-			URL     string            `json:"url"`
-			Method  string            `json:"method"`
-			Headers map[string]string `json:"headers"`
-			Data    map[string]any    `json:"data"`
-		} `json:"request"`
-		Response struct {
-			Path string `json:"path"`
-		} `json:"response"`
+type CustomConfig struct {
+	Request *struct {
+		URL     string            `json:"url"`
+		Method  string            `json:"method"`
+		Headers map[string]string `json:"headers"`
+		Data    map[string]any    `json:"data"`
+	} `json:"request,omitempty"`
+	Response *struct {
+		Path string `json:"path"`
+	} `json:"response,omitempty"`
+}
+
+func (c *CustomConfig) Scan(value interface{}) error {
+	data, ok := value.([]byte)
+	if !ok {
+		return errors.New(fmt.Sprint("type assertion to []byte failed:", value))
 	}
 
+	return json.Unmarshal(data, c)
+}
+
+func (b CustomConfig) Value() (driver.Value, error) {
+	return json.Marshal(b)
+}
+
+type (
 	Model struct {
 		ID                 uint64          `json:"id"`
 		Provider           string          `json:"provider"`
@@ -38,7 +53,7 @@ type (
 		PromptPriceUSD     decimal.Decimal `json:"prompt_price_usd"`
 		CompletionPriceUSD decimal.Decimal `json:"completion_price_usd"`
 		PriceUSD           decimal.Decimal `json:"price_usd"`
-		CustomConfig       JSONB           `gorm:"type:jsonb;" json:"custom_config,omitempty"`
+		CustomConfig       CustomConfig    `gorm:"type:jsonb;" json:"custom_config,omitempty"`
 		Function           string          `json:"function"`
 
 		CreatedAt time.Time  `json:"-"`
@@ -108,13 +123,4 @@ func (m Model) IsOpenAICompletionModel() bool {
 	}
 
 	return false
-}
-
-func (m Model) UnmarshalCustomConfig() (*CustomConfig, error) {
-	r := &CustomConfig{}
-	if err := json.Unmarshal(m.CustomConfig, r); err != nil {
-		return nil, err
-	}
-
-	return r, nil
 }
