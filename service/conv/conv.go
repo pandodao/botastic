@@ -91,8 +91,8 @@ func (s *service) GetConversation(ctx context.Context, convID string) (*core.Con
 	return conv, nil
 }
 
-func (s *service) PostToConversation(ctx context.Context, conv *core.Conversation, input string) (*core.ConvTurn, error) {
-	turnID, err := s.convs.CreateConvTurn(ctx, conv.ID, conv.Bot.ID, conv.App.ID, conv.App.UserID, conv.UserIdentity, input)
+func (s *service) PostToConversation(ctx context.Context, conv *core.Conversation, input string, bo core.BotOverride) (*core.ConvTurn, error) {
+	turnID, err := s.convs.CreateConvTurn(ctx, conv.ID, conv.Bot.ID, conv.App.ID, conv.App.UserID, conv.UserIdentity, input, bo)
 	if err != nil {
 		return nil, err
 	}

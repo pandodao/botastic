@@ -341,18 +341,23 @@ func (w *Worker) handleOpenAIProvider(ctx context.Context, req TurnRequest) (*re
 		completionRequest *gogpt.CompletionRequest
 	)
 
+	temperature := bot.Temperature
+	if turn.BotOverride.Temperature != nil && *turn.BotOverride.Temperature >= 0 && *turn.BotOverride.Temperature <= 2 {
+		temperature = *turn.BotOverride.Temperature
+	}
+
 	if model.IsOpenAIChatModel() {
 		chatRequest = &gogpt.ChatCompletionRequest{
 			Model:       model.ProviderModel,
 			Messages:    req.Conv.Bot.GetChatMessages(req.Conv, req.Additional),
-			Temperature: bot.Temperature,
+			Temperature: temperature,
 		}
 	} else if model.IsOpenAICompletionModel() {
 		prompt := bot.GetPrompt(conv, turn.Request, req.Additional)
 		completionRequest = &gogpt.CompletionRequest{
 			Model:       model.ProviderModel,
 			Prompt:      prompt,
-			Temperature: bot.Temperature,
+			Temperature: temperature,
 			Stop:        []string{"Q:"},
 			User:        conv.GetKey(),
 		}
