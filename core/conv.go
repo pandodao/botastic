@@ -2,6 +2,9 @@ package core
 
 import (
 	"context"
+	"database/sql/driver"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -14,32 +17,55 @@ const (
 	ConvTurnStatusError
 )
 
+type BotOverride struct {
+	Temperature *float32 `json:"temperature,omitempty"`
+}
+
+func (b *BotOverride) Scan(value interface{}) error {
+	data, ok := value.([]byte)
+	if !ok {
+		return errors.New(fmt.Sprint("type assertion to []byte failed:", value))
+	}
+
+	return json.Unmarshal(data, b)
+}
+
+func (b BotOverride) Value() (driver.Value, error) {
+	data, err := json.Marshal(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return json.RawMessage(data), nil
+}
+
 type (
 	Conversation struct {
-		ID           string      `yaml:"id" json:"id"`
-		Bot          *Bot        `yaml:"bot" json:"bot"`
-		App          *App        `yaml:"app" json:"app"`
-		UserIdentity string      `yaml:"user_identity" json:"user_identity"`
-		Lang         string      `yaml:"lang" json:"lang"`
-		History      []*ConvTurn `yaml:"history" json:"history"`
-		ExpiredAt    time.Time   `yaml:"expired_at" json:"expired_at"`
+		ID           string      `json:"id"`
+		Bot          *Bot        `json:"bot"`
+		App          *App        `json:"app"`
+		UserIdentity string      `json:"user_identity"`
+		Lang         string      `json:"lang"`
+		History      []*ConvTurn `json:"history"`
+		ExpiredAt    time.Time   `json:"expired_at"`
 	}
 
 	ConvTurn struct {
-		ID               uint64     `yaml:"id" json:"id"`
-		ConversationID   string     `yaml:"conversation_id" json:"conversation_id"`
-		BotID            uint64     `yaml:"bot_id" json:"bot_id"`
-		AppID            uint64     `yaml:"app_id" json:"app_id"`
-		UserID           uint64     `yaml:"user_id" json:"user_id"`
-		UserIdentity     string     `yaml:"user_identity" json:"user_identity"`
-		Request          string     `yaml:"request" json:"request"`
-		Response         string     `yaml:"response" json:"response"`
-		PromptTokens     int        `yaml:"prompt_tokens" json:"prompt_tokens"`
-		CompletionTokens int        `yaml:"completion_tokens" json:"completion_tokens"`
-		TotalTokens      int        `yaml:"total_tokens" json:"total_tokens"`
-		Status           int        `yaml:"status" json:"status"`
-		CreatedAt        *time.Time `yaml:"created_at" json:"created_at"`
-		UpdatedAt        *time.Time `yaml:"updated_at" json:"updated_at"`
+		ID               uint64      `json:"id"`
+		ConversationID   string      `json:"conversation_id"`
+		BotID            uint64      `json:"bot_id"`
+		AppID            uint64      `json:"app_id"`
+		UserID           uint64      `json:"user_id"`
+		UserIdentity     string      `json:"user_identity"`
+		Request          string      `json:"request"`
+		Response         string      `json:"response"`
+		PromptTokens     int         `json:"prompt_tokens"`
+		CompletionTokens int         `json:"completion_tokens"`
+		TotalTokens      int         `json:"total_tokens"`
+		Status           int         `json:"status"`
+		BotOverride      BotOverride `gorm:"type:jsonb"  json:"bot_override"`
+		CreatedAt        *time.Time  `json:"created_at"`
+		UpdatedAt        *time.Time  `json:"updated_at"`
 	}
 
 	ConversationStore interface {
@@ -47,25 +73,25 @@ type (
 		// 	(
 		//	"conversation_id", "bot_id", "app_id", "user_id",
 		//  "user_identity",
-		//  "request", "response", "status",
+		//  "request", "response", "status", "bot_override",
 		//  "created_at", "updated_at"
 		//   )
 		// VALUES
 		// 	(
 		//   @convID, @botID, @appID, @userID,
 		//   @uid,
-		//   @request, '', 0,
+		//   @request, '', 0, @bo,
 		//   NOW(), NOW()
 		//  )
 		// RETURNING "id"
-		CreateConvTurn(ctx context.Context, convID string, botID, appID, userID uint64, uid, request string) (uint64, error)
+		CreateConvTurn(ctx context.Context, convID string, botID, appID, userID uint64, uid, request string, bo BotOverride) (uint64, error)
 
 		// SELECT
 		// 	"id",
 		//	"conversation_id", "bot_id", "app_id", "user_id",
 		//  "user_identity",
 		//  "request", "response", "status",
-		//  "prompt_tokens", "completion_tokens", "total_tokens",
+		//  "prompt_tokens", "completion_tokens", "total_tokens", "bot_override",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns" WHERE
 		//  "id" IN (@ids)
@@ -76,7 +102,7 @@ type (
 		//	"conversation_id", "bot_id", "app_id", "user_id",
 		//  "user_identity",
 		//  "request", "response", "status",
-		//  "prompt_tokens", "completion_tokens", "total_tokens",
+		//  "prompt_tokens", "completion_tokens", "total_tokens", "bot_override",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns" WHERE
 		//  "id" = @id
@@ -87,6 +113,7 @@ type (
 		//	"conversation_id", "bot_id", "app_id", "user_id",
 		//  "user_identity",
 		//  "request", "response", "status",
+		//  "prompt_tokens", "completion_tokens", "total_tokens", "bot_override",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns"
 		// {{where}}
@@ -116,7 +143,7 @@ type (
 		ClearExpiredConversations(ctx context.Context) error
 		DeleteConversation(ctx context.Context, convID string) error
 		GetConversation(ctx context.Context, convID string) (*Conversation, error)
-		PostToConversation(ctx context.Context, conv *Conversation, input string) (*ConvTurn, error)
+		PostToConversation(ctx context.Context, conv *Conversation, input string, bo BotOverride) (*ConvTurn, error)
 		ReplaceStore(store ConversationStore) ConversationService
 	}
 )

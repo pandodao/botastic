@@ -29,14 +29,16 @@ type (
 	}
 
 	PostToConversationPayload struct {
-		Content  string `json:"content"`
-		Category string `json:"category"`
+		BotOverride core.BotOverride `json:"bot_override"`
+		Content     string           `json:"content"`
+		Category    string           `json:"category"`
 	}
 
 	CreateOnewayConversationPayload struct {
-		BotID   uint64 `json:"bot_id"`
-		Content string `json:"content"`
-		Lang    string `json:"lang"`
+		BotID       uint64           `json:"bot_id"`
+		BotOverride core.BotOverride `json:"bot_override"`
+		Content     string           `json:"content"`
+		Lang        string           `json:"lang"`
 	}
 )
 
@@ -166,6 +168,11 @@ func PostToConversation(botz core.BotService, convz core.ConversationService) ht
 			return
 		}
 
+		if body.BotOverride.Temperature != nil && (*body.BotOverride.Temperature < 0 || *body.BotOverride.Temperature > 2) {
+			render.Error(w, http.StatusBadRequest, nil)
+			return
+		}
+
 		conv, err := convz.GetConversation(ctx, conversationID)
 		if err != nil || conv == nil {
 			render.Error(w, http.StatusNotFound, nil)
@@ -183,7 +190,7 @@ func PostToConversation(botz core.BotService, convz core.ConversationService) ht
 			return
 		}
 
-		turn, err := convz.PostToConversation(ctx, conv, body.Content)
+		turn, err := convz.PostToConversation(ctx, conv, body.Content, body.BotOverride)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
@@ -255,6 +262,11 @@ func CreateOnewayConversation(convz core.ConversationService, convs core.Convers
 			return
 		}
 
+		if body.BotOverride.Temperature != nil && (*body.BotOverride.Temperature < 0 || *body.BotOverride.Temperature > 2) {
+			render.Error(w, http.StatusBadRequest, nil)
+			return
+		}
+
 		uid := uuid.New().String()
 
 		conv, err := convz.CreateConversation(ctx, body.BotID, app.ID, uid, body.Lang)
@@ -263,7 +275,7 @@ func CreateOnewayConversation(convz core.ConversationService, convs core.Convers
 			return
 		}
 
-		turn, err := convz.PostToConversation(ctx, conv, body.Content)
+		turn, err := convz.PostToConversation(ctx, conv, body.Content, body.BotOverride)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
