@@ -73,11 +73,7 @@ func NewCmdModelCreate() *cobra.Command {
 				return fmt.Errorf("provider model is empty")
 			}
 
-			cc, err := m.UnmarshalCustomConfig()
-			if err != nil {
-				return fmt.Errorf("unmarshal custom config error: %w", err)
-			}
-			if cc.Request.URL == "" || cc.Request.Method == "" || len(cc.Request.Data) == 0 {
+			if m.CustomConfig.Request.URL == "" || m.CustomConfig.Request.Method == "" || len(m.CustomConfig.Request.Data) == 0 {
 				return fmt.Errorf("request of custom config is empty")
 			}
 

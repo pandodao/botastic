@@ -18,7 +18,8 @@ const (
 )
 
 type BotOverride struct {
-	Temperature *float32 `json:"temperature,omitempty"`
+	Temperature *float32          `json:"temperature,omitempty"`
+	Middlewares *MiddlewareConfig `json:"middlewares,omitempty"`
 }
 
 func (b *BotOverride) Scan(value interface{}) error {

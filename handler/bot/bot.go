@@ -45,7 +45,7 @@ func (body *CreateOrUpdateBotPayload) Formalize(defaultValue *core.Bot) error {
 			body.ContextTurnCount = defaultValue.ContextTurnCount
 		}
 		if body.Middlewares.Items == nil {
-			body.Middlewares.Items = defaultValue.Middlewares.Items
+			body.Middlewares.Items = defaultValue.MiddlewareJson.Items
 		}
 	} else {
 		if body.Temperature <= 0 {

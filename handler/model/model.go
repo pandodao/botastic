@@ -17,7 +17,7 @@ func GetModels(models core.ModelStore) http.HandlerFunc {
 
 		for _, m := range ms {
 			// do not expose custom config, it may contain sensitive information
-			m.CustomConfig = nil
+			m.CustomConfig = core.CustomConfig{}
 		}
 
 		render.JSON(w, ms)
