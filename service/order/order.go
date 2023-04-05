@@ -6,10 +6,10 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/pandodao/botastic/core"
-	"github.com/pandodao/botastic/internal/mixpay"
 	"github.com/pandodao/botastic/store"
 	"github.com/pandodao/botastic/store/order"
 	"github.com/pandodao/botastic/store/user"
+	"github.com/pandodao/mixpay-go"
 	"github.com/shopspring/decimal"
 )
 

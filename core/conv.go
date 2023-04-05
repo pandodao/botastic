@@ -32,12 +32,7 @@ func (b *BotOverride) Scan(value interface{}) error {
 }
 
 func (b BotOverride) Value() (driver.Value, error) {
-	data, err := json.Marshal(b)
-	if err != nil {
-		return nil, err
-	}
-
-	return json.RawMessage(data), nil
+	return json.Marshal(b)
 }
 
 type (

@@ -16,7 +16,6 @@ import (
 	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/milvus"
-	"github.com/pandodao/botastic/internal/mixpay"
 	appServ "github.com/pandodao/botastic/service/app"
 	botServ "github.com/pandodao/botastic/service/bot"
 	convServ "github.com/pandodao/botastic/service/conv"
@@ -36,6 +35,7 @@ import (
 	"github.com/pandodao/botastic/worker"
 	"github.com/pandodao/botastic/worker/ordersyncer"
 	"github.com/pandodao/botastic/worker/rotater"
+	"github.com/pandodao/mixpay-go"
 	"github.com/rs/cors"
 	"golang.org/x/sync/errgroup"
 

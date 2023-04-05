@@ -17,6 +17,7 @@ require (
 	github.com/lib/pq v1.10.7
 	github.com/milvus-io/milvus-sdk-go/v2 v2.2.0
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
+	github.com/pandodao/mixpay-go v0.0.0-20230405103808-9f656bd75b03
 	github.com/pandodao/tokenizer-go v0.0.1
 	github.com/pressly/goose/v3 v3.9.0
 	github.com/rs/cors v1.8.3
