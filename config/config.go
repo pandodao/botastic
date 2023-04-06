@@ -55,8 +55,9 @@ type System struct {
 }
 
 type Auth struct {
-	JwtSecret         string `json:"jwt_secret"`
-	MixinClientSecret string `json:"mixin_client_secret"`
+	JwtSecret         string   `yaml:"jwt_secret"`
+	MixinClientSecret string   `yaml:"mixin_client_secret"`
+	TrustDomains      []string `yaml:"trust_domains"`
 }
 
 func (c Config) validate() error {

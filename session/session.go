@@ -7,6 +7,7 @@ import (
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/pandodao/botastic/core"
+	"github.com/pandodao/passport-go/auth"
 )
 
 type Session struct {
@@ -61,8 +62,8 @@ func (s *Session) GetClient() (*mixin.Client, error) {
 	return mixin.NewFromKeystore(store)
 }
 
-func (s *Session) LoginWithMixin(ctx context.Context, userz core.UserService, token, pubkey, lang string) (*core.User, string, error) {
-	user, err := userz.LoginWithMixin(ctx, token, pubkey, lang)
+func (s *Session) LoginWithMixin(ctx context.Context, userz core.UserService, authUser *auth.User, lang string) (*core.User, string, error) {
+	user, err := userz.LoginWithMixin(ctx, authUser, lang)
 	if err != nil {
 		return nil, "", err
 	}

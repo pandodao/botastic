@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
-	"github.com/fox-one/passport-go/eip4361"
 	"github.com/fox-one/pkg/httputil/param"
 	"github.com/golang-jwt/jwt"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/handler/render"
 	"github.com/pandodao/botastic/session"
 	"github.com/pandodao/botastic/util"
+	"github.com/pandodao/passport-go/auth"
 	"gorm.io/gorm"
 )
 
@@ -25,7 +24,7 @@ type LoginPayload struct {
 	Lang          string `json:"lang"`
 }
 
-func Login(s *session.Session, userz core.UserService) http.HandlerFunc {
+func Login(s *session.Session, userz core.UserService, clientID string, domains []string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -35,11 +34,22 @@ func Login(s *session.Session, userz core.UserService) http.HandlerFunc {
 			return
 		}
 
+		authorizer := auth.New([]string{
+			clientID,
+		}, domains)
+
 		switch body.Method {
 		case "mixin_token":
 			{
-				mixinToken := body.MixinToken
-				user, token, err := s.LoginWithMixin(ctx, userz, mixinToken, "", body.Lang)
+				authUser, err := authorizer.Authorize(ctx, &auth.AuthorizationParams{
+					Method:     auth.AuthMethodMixinToken,
+					MixinToken: body.MixinToken,
+				})
+				if err != nil {
+					render.Error(w, http.StatusUnauthorized, err)
+					return
+				}
+				user, token, err := s.LoginWithMixin(ctx, userz, authUser, body.Lang)
 				if err != nil {
 					render.Error(w, http.StatusUnauthorized, err)
 					return
@@ -52,30 +62,16 @@ func Login(s *session.Session, userz core.UserService) http.HandlerFunc {
 			}
 		case "mvm":
 			{
-				if body.Signature == "" {
-					render.Error(w, http.StatusBadRequest, core.ErrBadMvmLoginSignature)
-					return
-				}
-
-				message, err := eip4361.Parse(body.SignedMessage)
+				authUser, err := authorizer.Authorize(ctx, &auth.AuthorizationParams{
+					Method:           auth.AuthMethodMvm,
+					MvmSignature:     body.Signature,
+					MvmSignedMessage: body.SignedMessage,
+				})
 				if err != nil {
-					render.Error(w, http.StatusBadRequest, core.ErrBadMvmLoginMessage)
+					render.Error(w, http.StatusUnauthorized, err)
 					return
 				}
-
-				if err := message.Validate(time.Now()); err != nil {
-					render.Error(w, http.StatusBadRequest, core.ErrBadMvmLoginMessage)
-					return
-				}
-
-				if err := eip4361.Verify(message, body.Signature); err != nil {
-					render.Error(w, http.StatusUnauthorized, core.ErrBadMvmLoginSignature)
-					return
-				}
-
-				pubkey := message.Address
-
-				user, token, err := s.LoginWithMixin(ctx, userz, "", pubkey, body.Lang)
+				user, token, err := s.LoginWithMixin(ctx, userz, authUser, body.Lang)
 				if err != nil {
 					render.Error(w, http.StatusUnauthorized, err)
 					return
