@@ -53,6 +53,8 @@ func New(cfg Config, s *session.Session,
 
 type (
 	Config struct {
+		ClientID     string
+		TrustDomains []string
 	}
 
 	Server struct {
@@ -105,7 +107,7 @@ func (s Server) HandleRest() http.Handler {
 	})
 
 	r.Route("/auth", func(r chi.Router) {
-		r.Post("/login", auth.Login(s.session, s.userz))
+		r.Post("/login", auth.Login(s.session, s.userz, s.cfg.ClientID, s.cfg.TrustDomains))
 	})
 
 	r.Route("/bots", func(r chi.Router) {

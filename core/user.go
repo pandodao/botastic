@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/pandodao/passport-go/auth"
 	"github.com/shopspring/decimal"
 )
 
@@ -86,7 +87,7 @@ type (
 	}
 
 	UserService interface {
-		LoginWithMixin(ctx context.Context, token, pubkey, lang string) (*User, error)
+		LoginWithMixin(ctx context.Context, authUser *auth.User, lang string) (*User, error)
 		Topup(ctx context.Context, user *User, amount decimal.Decimal) error
 		ConsumeCredits(ctx context.Context, userID uint64, amount decimal.Decimal) error
 		ConsumeCreditsByModel(ctx context.Context, userID uint64, model Model, promptTokenCount, completionTokenCount int64) error

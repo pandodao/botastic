@@ -30,3 +30,5 @@ order_syncer:
 auth:
   jwt_secret: "abc123"
   mixin_client_secret: "...."
+  trust_domains:
+    - "developers.pando.im"
