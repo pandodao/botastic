@@ -72,6 +72,10 @@ func GetConversationTurn(botz core.BotService, convs core.ConversationStore, hub
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		app := session.AppFrom(ctx)
+
+		bur := r.URL.Query().Get("block_until_response")
+		blockUntilResponse, _ := strconv.ParseBool(bur)
+
 		conversationID := chi.URLParam(r, "conversationID")
 		if conversationID == "" {
 			render.Error(w, http.StatusBadRequest, nil)
@@ -106,8 +110,7 @@ func GetConversationTurn(botz core.BotService, convs core.ConversationStore, hub
 			return
 		}
 
-		switch convTurn.Status {
-		case core.ConvTurnStatusCompleted, core.ConvTurnStatusError:
+		if !blockUntilResponse || convTurn.IsProcessed() {
 			render.JSON(w, convTurn)
 			return
 		}

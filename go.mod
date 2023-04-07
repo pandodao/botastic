@@ -9,7 +9,6 @@ replace github.com/milvus-io/milvus-sdk-go/v2 v2.2.0 => github.com/pandodao/milv
 require (
 	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/drone/signal v1.0.0
-	github.com/ethereum/go-ethereum v1.11.5
 	github.com/fox-one/pkg/logger v0.0.2
 	github.com/go-chi/chi v1.5.4
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -47,6 +46,7 @@ require (
 	github.com/dlclark/regexp2 v1.8.1 // indirect
 	github.com/dop251/goja v0.0.0-20230304130813-e2f543bf4b4c // indirect
 	github.com/dop251/goja_nodejs v0.0.0-20230226152057-060fa99b809f // indirect
+	github.com/ethereum/go-ethereum v1.11.5 // indirect
 	github.com/fkgi/abnf v1.0.0 // indirect
 	github.com/fox-one/msgpack v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
@@ -86,7 +86,6 @@ require (
 
 require (
 	github.com/fox-one/mixin-sdk-go v1.7.5
-	github.com/fox-one/passport-go v1.0.4
 	github.com/fox-one/pkg/httputil v0.0.1
 	github.com/fox-one/pkg/uuid v0.0.1 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
