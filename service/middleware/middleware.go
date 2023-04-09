@@ -3,6 +3,8 @@ package middleware
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"strings"
 
 	"github.com/pandodao/botastic/core"
@@ -16,11 +18,14 @@ func New(
 	indexz core.IndexService,
 ) *service {
 	middlewareMap := make(map[string]*core.Middleware)
-	middlewareMap["botastic-search"] = &core.Middleware{
-		Name: "botastic-search",
-	}
-	middlewareMap["duckduckgo-search"] = &core.Middleware{
-		Name: "duckduckgo-search",
+	for _, v := range []string{
+		core.MiddlewareBotasticSearch,
+		core.MiddlewareDuckduckgoSearch,
+		core.MiddlewareFetch,
+	} {
+		middlewareMap[v] = &core.Middleware{
+			Name: v,
+		}
 	}
 	return &service{
 		cfg:    cfg,
@@ -144,6 +149,34 @@ func (s *service) ProcessDuckduckgoSearch(ctx context.Context, m *core.Middlewar
 	return ret, nil
 }
 
+func (s *service) ProcessFetch(ctx context.Context, m *core.Middleware, input string) (*core.MiddlewareProcessResult, error) {
+	// query an URL and return the result
+	val, ok := m.Options["url"]
+	if !ok {
+		return nil, core.ErrBadMiddlewareOptions
+	}
+	url := string(val.(string))
+	req, _ := http.NewRequest("GET", url, nil)
+	resp, err := http.DefaultClient.Do(req.WithContext(ctx))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	ret := &core.MiddlewareProcessResult{
+		Name:   m.Name,
+		Code:   core.MiddlewareProcessCodeOK,
+		Result: string(body),
+	}
+
+	return ret, nil
+}
+
 func (s *service) Process(ctx context.Context, m *core.Middleware, input string) (*core.MiddlewareProcessResult, error) {
 	switch m.Name {
 	case core.MiddlewareBotasticSearch:
@@ -152,6 +185,8 @@ func (s *service) Process(ctx context.Context, m *core.Middleware, input string)
 		return s.ProcessDuckduckgoSearch(ctx, m, input)
 	case core.MiddlewareIntentRecognition:
 		return s.ProcessIntentRecognition(ctx, m, input)
+	case core.MiddlewareFetch:
+		return s.ProcessFetch(ctx, m, input)
 	}
 	return nil, nil
 }

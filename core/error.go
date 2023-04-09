@@ -89,4 +89,6 @@ var (
 	ErrInvalidModel = errors.New("invalid model")
 
 	ErrTokenExceedLimit = errors.New("token exceed limit")
+
+	ErrBadMiddlewareOptions = errors.New("bad middleware options")
 )

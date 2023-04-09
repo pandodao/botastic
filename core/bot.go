@@ -18,6 +18,7 @@ const (
 	MiddlewareBotasticSearch    = "botastic-search"
 	MiddlewareDuckduckgoSearch  = "duckduckgo-search"
 	MiddlewareIntentRecognition = "intent-recognition"
+	MiddlewareFetch             = "fetch"
 )
 
 const MiddlewareProcessCodeUnknown = -1
