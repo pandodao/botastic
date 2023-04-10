@@ -20,10 +20,12 @@ const (
 	MiddlewareIntentRecognition = "intent-recognition"
 )
 
-const MiddlewareProcessCodeUnknown = -1
-
 const (
 	MiddlewareProcessCodeOK = iota
+	MiddlewareProcessCodeUnknown
+	MiddlewareProcessCodeInvalidOptions
+	MiddlewareProcessCodeInternalError
+	MiddlewareProcessCodeTimeout
 )
 
 type (
@@ -37,15 +39,23 @@ type (
 	}
 
 	MiddlewareProcessResult struct {
+		Opts   any    `json:"opts,omitempty"`
 		Name   string `json:"name"`
-		Code   uint64 `json:"code"`
-		Result string `json:"result"`
+		Code   int    `json:"code"`
+		Result string `json:"result,omitempty"`
+		Err    error  `json:"err,omitempty"`
+		Break  bool   `json:"break,omitempty"`
 	}
 
 	MiddlewareService interface {
-		Process(ctx context.Context, m *Middleware, input string) (*MiddlewareProcessResult, error)
+		ProcessByConfig(ctx context.Context, m MiddlewareConfig, input string) []*MiddlewareProcessResult
+		Process(ctx context.Context, m *Middleware, input string) *MiddlewareProcessResult
 	}
 )
+
+func (m Middleware) GetName() string {
+	return m.Name
+}
 
 func (a MiddlewareConfig) Value() (driver.Value, error) {
 	return json.Marshal(a)
