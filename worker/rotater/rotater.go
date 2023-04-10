@@ -152,16 +152,24 @@ func (w *Worker) run(ctx context.Context) error {
 
 		additional := map[string]interface{}{}
 		if len(middlewareCfg.Items) != 0 {
-			middlewareOutputs := make([]string, 0)
 			app, err := w.apps.GetApp(ctx, turn.AppID)
-			if err == nil {
-				for _, middleware := range middlewareCfg.Items {
-					ctx = session.WithApp(ctx, app)
-					result, err := w.middlewarez.Process(ctx, middleware, turn.Request)
-					if err == nil && result != nil {
-						middlewareOutputs = append(middlewareOutputs, result.Result)
-					}
-				}
+			if err != nil {
+				w.UpdateConvTurnAsError(ctx, turn.ID, err.Error())
+				continue
+			}
+			ctx = session.WithApp(ctx, app)
+			middlewareResults := w.middlewarez.ProcessByConfig(ctx, middlewareCfg, turn.Request)
+			lastResult := middlewareResults[len(middlewareResults)-1]
+			if lastResult.Err != nil && lastResult.Break {
+				w.UpdateConvTurnAsError(ctx, turn.ID, err.Error())
+				continue
+			}
+
+			middlewareOutputs := make([]string, 0)
+			for _, r := range middlewareResults {
+				name := strings.ToUpper(strings.ReplaceAll(r.Name, "-", "_"))
+				additional[fmt.Sprintf("MiddlewareOutput_%s", name)] = r.Result
+				middlewareOutputs = append(middlewareOutputs, r.Result)
 			}
 			additional["MiddlewareOutput"] = strings.Join(middlewareOutputs, "\n\n")
 		}
