@@ -83,5 +83,5 @@ func (m *botasticSearch) Process(ctx context.Context, opts any, input string) (s
 		}
 	}
 
-	return fmt.Sprintf("[context-begin]\n%s\n[context-end]\n", strings.Join(arr, "\n")), nil
+	return strings.Join(arr, "\n"), nil
 }

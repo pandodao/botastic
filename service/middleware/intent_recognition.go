@@ -53,5 +53,5 @@ The possible intents should be one of following. If you have no confident about 
 		return "", nil
 	}
 
-	return fmt.Sprintf("%s\n\n[intents-begin]\n%s\n[intents-end]\n", prompt, strings.Join(options.Intents, "\n")), nil
+	return fmt.Sprintf("%s\n%s", prompt, strings.Join(options.Intents, "\n")), nil
 }
