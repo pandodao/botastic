@@ -35,6 +35,21 @@ func (b BotOverride) Value() (driver.Value, error) {
 	return json.Marshal(b)
 }
 
+type MiddlewareResults []*MiddlewareProcessResult
+
+func (mr *MiddlewareResults) Scan(value interface{}) error {
+	data, ok := value.([]byte)
+	if !ok {
+		return errors.New(fmt.Sprint("type assertion to []byte failed:", value))
+	}
+
+	return json.Unmarshal(data, mr)
+}
+
+func (mr MiddlewareResults) Value() (driver.Value, error) {
+	return json.Marshal(mr)
+}
+
 type (
 	Conversation struct {
 		ID           string      `json:"id"`
@@ -47,21 +62,22 @@ type (
 	}
 
 	ConvTurn struct {
-		ID               uint64      `json:"id"`
-		ConversationID   string      `json:"conversation_id"`
-		BotID            uint64      `json:"bot_id"`
-		AppID            uint64      `json:"app_id"`
-		UserID           uint64      `json:"user_id"`
-		UserIdentity     string      `json:"user_identity"`
-		Request          string      `json:"request"`
-		Response         string      `json:"response"`
-		PromptTokens     int         `json:"prompt_tokens"`
-		CompletionTokens int         `json:"completion_tokens"`
-		TotalTokens      int         `json:"total_tokens"`
-		Status           int         `json:"status"`
-		BotOverride      BotOverride `gorm:"type:jsonb"  json:"bot_override"`
-		CreatedAt        *time.Time  `json:"created_at"`
-		UpdatedAt        *time.Time  `json:"updated_at"`
+		ID                uint64            `json:"id"`
+		ConversationID    string            `json:"conversation_id"`
+		BotID             uint64            `json:"bot_id"`
+		AppID             uint64            `json:"app_id"`
+		UserID            uint64            `json:"user_id"`
+		UserIdentity      string            `json:"user_identity"`
+		Request           string            `json:"request"`
+		Response          string            `json:"response"`
+		PromptTokens      int               `json:"prompt_tokens"`
+		CompletionTokens  int               `json:"completion_tokens"`
+		TotalTokens       int               `json:"total_tokens"`
+		Status            int               `json:"status"`
+		BotOverride       BotOverride       `gorm:"type:jsonb"  json:"bot_override"`
+		MiddlewareResults MiddlewareResults `gorm:"type:jsonb"  json:"middleware_results,omitempty"`
+		CreatedAt         *time.Time        `json:"created_at"`
+		UpdatedAt         *time.Time        `json:"updated_at"`
 	}
 
 	ConversationStore interface {
@@ -98,7 +114,7 @@ type (
 		//	"conversation_id", "bot_id", "app_id", "user_id",
 		//  "user_identity",
 		//  "request", "response", "status",
-		//  "prompt_tokens", "completion_tokens", "total_tokens", "bot_override",
+		//  "prompt_tokens", "completion_tokens", "total_tokens", "bot_override", "middleware_results",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns" WHERE
 		//  "id" = @id
@@ -109,7 +125,7 @@ type (
 		//	"conversation_id", "bot_id", "app_id", "user_id",
 		//  "user_identity",
 		//  "request", "response", "status",
-		//  "prompt_tokens", "completion_tokens", "total_tokens", "bot_override",
+		//  "prompt_tokens", "completion_tokens", "total_tokens", "bot_override", "middleware_results",
 		//  "created_at", "updated_at"
 		// FROM "conv_turns"
 		// {{where}}
@@ -127,11 +143,14 @@ type (
 		//    "completion_tokens"=@completionTokens,
 		// 		"total_tokens"=@totalTokens,
 		// 		"status"=@status,
+		// {{if mr != nil}}
+		// 		"middleware_results"=@mr,
+		// {{end}}
 		// 		"updated_at"=NOW()
 		// 	{{end}}
 		// WHERE
 		// 	"id"=@id
-		UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens, completionTokens, totalTokens int64, status int) error
+		UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens, completionTokens, totalTokens int64, status int, mr MiddlewareResults) error
 	}
 
 	ConversationService interface {

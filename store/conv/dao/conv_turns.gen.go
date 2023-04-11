@@ -38,6 +38,7 @@ func newConvTurn(db *gorm.DB, opts ...gen.DOOption) convTurn {
 	_convTurn.TotalTokens = field.NewInt(tableName, "total_tokens")
 	_convTurn.Status = field.NewInt(tableName, "status")
 	_convTurn.BotOverride = field.NewField(tableName, "bot_override")
+	_convTurn.MiddlewareResults = field.NewField(tableName, "middleware_results")
 	_convTurn.CreatedAt = field.NewTime(tableName, "created_at")
 	_convTurn.UpdatedAt = field.NewTime(tableName, "updated_at")
 
@@ -49,22 +50,23 @@ func newConvTurn(db *gorm.DB, opts ...gen.DOOption) convTurn {
 type convTurn struct {
 	convTurnDo
 
-	ALL              field.Asterisk
-	ID               field.Uint64
-	ConversationID   field.String
-	BotID            field.Uint64
-	AppID            field.Uint64
-	UserID           field.Uint64
-	UserIdentity     field.String
-	Request          field.String
-	Response         field.String
-	PromptTokens     field.Int
-	CompletionTokens field.Int
-	TotalTokens      field.Int
-	Status           field.Int
-	BotOverride      field.Field
-	CreatedAt        field.Time
-	UpdatedAt        field.Time
+	ALL               field.Asterisk
+	ID                field.Uint64
+	ConversationID    field.String
+	BotID             field.Uint64
+	AppID             field.Uint64
+	UserID            field.Uint64
+	UserIdentity      field.String
+	Request           field.String
+	Response          field.String
+	PromptTokens      field.Int
+	CompletionTokens  field.Int
+	TotalTokens       field.Int
+	Status            field.Int
+	BotOverride       field.Field
+	MiddlewareResults field.Field
+	CreatedAt         field.Time
+	UpdatedAt         field.Time
 
 	fieldMap map[string]field.Expr
 }
@@ -94,6 +96,7 @@ func (c *convTurn) updateTableName(table string) *convTurn {
 	c.TotalTokens = field.NewInt(table, "total_tokens")
 	c.Status = field.NewInt(table, "status")
 	c.BotOverride = field.NewField(table, "bot_override")
+	c.MiddlewareResults = field.NewField(table, "middleware_results")
 	c.CreatedAt = field.NewTime(table, "created_at")
 	c.UpdatedAt = field.NewTime(table, "updated_at")
 
@@ -112,7 +115,7 @@ func (c *convTurn) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (c *convTurn) fillFieldMap() {
-	c.fieldMap = make(map[string]field.Expr, 15)
+	c.fieldMap = make(map[string]field.Expr, 16)
 	c.fieldMap["id"] = c.ID
 	c.fieldMap["conversation_id"] = c.ConversationID
 	c.fieldMap["bot_id"] = c.BotID
@@ -126,6 +129,7 @@ func (c *convTurn) fillFieldMap() {
 	c.fieldMap["total_tokens"] = c.TotalTokens
 	c.fieldMap["status"] = c.Status
 	c.fieldMap["bot_override"] = c.BotOverride
+	c.fieldMap["middleware_results"] = c.MiddlewareResults
 	c.fieldMap["created_at"] = c.CreatedAt
 	c.fieldMap["updated_at"] = c.UpdatedAt
 }
@@ -149,7 +153,7 @@ type IConvTurnDo interface {
 	GetConvTurns(ctx context.Context, ids []uint64) (result []*core.ConvTurn, err error)
 	GetConvTurn(ctx context.Context, id uint64) (result *core.ConvTurn, err error)
 	GetConvTurnsByStatus(ctx context.Context, excludeIDs []uint64, status []int) (result []*core.ConvTurn, err error)
-	UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens int64, completionTokens int64, totalTokens int64, status int) (err error)
+	UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens int64, completionTokens int64, totalTokens int64, status int, mr core.MiddlewareResults) (err error)
 }
 
 // INSERT INTO "conv_turns"
@@ -225,7 +229,7 @@ func (c convTurnDo) GetConvTurns(ctx context.Context, ids []uint64) (result []*c
 //
 // "user_identity",
 // "request", "response", "status",
-// "prompt_tokens", "completion_tokens", "total_tokens", "bot_override",
+// "prompt_tokens", "completion_tokens", "total_tokens", "bot_override", "middleware_results",
 // "created_at", "updated_at"
 // FROM "conv_turns" WHERE
 // "id" = @id
@@ -234,7 +238,7 @@ func (c convTurnDo) GetConvTurn(ctx context.Context, id uint64) (result *core.Co
 
 	var generateSQL strings.Builder
 	params = append(params, id)
-	generateSQL.WriteString("SELECT \"id\", \"conversation_id\", \"bot_id\", \"app_id\", \"user_id\", \"user_identity\", \"request\", \"response\", \"status\", \"prompt_tokens\", \"completion_tokens\", \"total_tokens\", \"bot_override\", \"created_at\", \"updated_at\" FROM \"conv_turns\" WHERE \"id\" = ? ")
+	generateSQL.WriteString("SELECT \"id\", \"conversation_id\", \"bot_id\", \"app_id\", \"user_id\", \"user_identity\", \"request\", \"response\", \"status\", \"prompt_tokens\", \"completion_tokens\", \"total_tokens\", \"bot_override\", \"middleware_results\", \"created_at\", \"updated_at\" FROM \"conv_turns\" WHERE \"id\" = ? ")
 
 	var executeSQL *gorm.DB
 	executeSQL = c.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert
@@ -250,7 +254,7 @@ func (c convTurnDo) GetConvTurn(ctx context.Context, id uint64) (result *core.Co
 //
 // "user_identity",
 // "request", "response", "status",
-// "prompt_tokens", "completion_tokens", "total_tokens", "bot_override",
+// "prompt_tokens", "completion_tokens", "total_tokens", "bot_override", "middleware_results",
 // "created_at", "updated_at"
 // FROM "conv_turns"
 // {{where}}
@@ -265,7 +269,7 @@ func (c convTurnDo) GetConvTurnsByStatus(ctx context.Context, excludeIDs []uint6
 	var params []interface{}
 
 	var generateSQL strings.Builder
-	generateSQL.WriteString("SELECT \"id\", \"conversation_id\", \"bot_id\", \"app_id\", \"user_id\", \"user_identity\", \"request\", \"response\", \"status\", \"prompt_tokens\", \"completion_tokens\", \"total_tokens\", \"bot_override\", \"created_at\", \"updated_at\" FROM \"conv_turns\" ")
+	generateSQL.WriteString("SELECT \"id\", \"conversation_id\", \"bot_id\", \"app_id\", \"user_id\", \"user_identity\", \"request\", \"response\", \"status\", \"prompt_tokens\", \"completion_tokens\", \"total_tokens\", \"bot_override\", \"middleware_results\", \"created_at\", \"updated_at\" FROM \"conv_turns\" ")
 	var whereSQL0 strings.Builder
 	params = append(params, status)
 	whereSQL0.WriteString("\"status\" IN (?) ")
@@ -290,13 +294,20 @@ func (c convTurnDo) GetConvTurnsByStatus(ctx context.Context, excludeIDs []uint6
 //	  "completion_tokens"=@completionTokens,
 //			"total_tokens"=@totalTokens,
 //			"status"=@status,
-//			"updated_at"=NOW()
-//		{{end}}
+//
+// {{if mr != nil}}
+//
+//	"middleware_results"=@mr,
+//
+// {{end}}
+//
+//		"updated_at"=NOW()
+//	{{end}}
 //
 // WHERE
 //
 //	"id"=@id
-func (c convTurnDo) UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens int64, completionTokens int64, totalTokens int64, status int) (err error) {
+func (c convTurnDo) UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens int64, completionTokens int64, totalTokens int64, status int, mr core.MiddlewareResults) (err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
@@ -307,7 +318,12 @@ func (c convTurnDo) UpdateConvTurn(ctx context.Context, id uint64, response stri
 	params = append(params, completionTokens)
 	params = append(params, totalTokens)
 	params = append(params, status)
-	setSQL0.WriteString("\"response\"=?, \"prompt_tokens\"=?, \"completion_tokens\"=?, \"total_tokens\"=?, \"status\"=?, \"updated_at\"=NOW() ")
+	setSQL0.WriteString("\"response\"=?, \"prompt_tokens\"=?, \"completion_tokens\"=?, \"total_tokens\"=?, \"status\"=?, ")
+	if mr != nil {
+		params = append(params, mr)
+		setSQL0.WriteString("\"middleware_results\"=?, ")
+	}
+	setSQL0.WriteString("\"updated_at\"=NOW() ")
 	helper.JoinSetBuilder(&generateSQL, setSQL0)
 	params = append(params, id)
 	generateSQL.WriteString("WHERE \"id\"=? ")

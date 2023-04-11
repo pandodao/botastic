@@ -11,18 +11,15 @@ import (
 type intentRecognition struct{}
 
 type intentRecognitionOptions struct {
-	*generalOptions
-	Intents []string `json:"intents"`
+	Intents []string
 }
 
 func (m *intentRecognition) Name() string {
 	return core.MiddlewareIntentRecognition
 }
 
-func (m *intentRecognition) ValidateOptions(gopts *generalOptions, opts map[string]any) (any, error) {
-	options := &intentRecognitionOptions{
-		generalOptions: gopts,
-	}
+func (m *intentRecognition) ValidateOptions(opts map[string]any) (any, error) {
+	options := &intentRecognitionOptions{}
 
 	val, ok := opts["intents"]
 	if ok {

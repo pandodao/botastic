@@ -40,16 +40,16 @@ type (
 	}
 
 	MiddlewareProcessResult struct {
-		Opts   any    `json:"opts,omitempty"`
-		Name   string `json:"name"`
-		Code   int    `json:"code"`
-		Result string `json:"result,omitempty"`
-		Err    error  `json:"err,omitempty"`
-		Break  bool   `json:"break,omitempty"`
+		Opts     map[string]any `json:"opts,omitempty"`
+		Name     string         `json:"name"`
+		Code     int            `json:"code"`
+		Result   string         `json:"result,omitempty"`
+		Err      error          `json:"err,omitempty"`
+		Required bool           `json:"required,omitempty"`
 	}
 
 	MiddlewareService interface {
-		ProcessByConfig(ctx context.Context, m MiddlewareConfig, input string) []*MiddlewareProcessResult
+		ProcessByConfig(ctx context.Context, m MiddlewareConfig, input string) MiddlewareResults
 		Process(ctx context.Context, m *Middleware, input string) *MiddlewareProcessResult
 	}
 )
