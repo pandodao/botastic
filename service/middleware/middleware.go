@@ -34,6 +34,7 @@ func New(
 		},
 		&duckDuckGoSearch{},
 		&intentRecognition{},
+		&fetch{},
 	} {
 		middlewareMap[m.Name()] = m
 	}
