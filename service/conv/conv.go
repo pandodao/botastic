@@ -7,17 +7,20 @@ import (
 	"github.com/google/uuid"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/session"
+	"github.com/pandodao/botastic/store"
 )
 
 func New(
 	cfg Config,
 	convs core.ConversationStore,
 	botz core.BotService,
+	apps core.AppStore,
 ) *service {
 	return &service{
 		cfg:             cfg,
 		convs:           convs,
 		botz:            botz,
+		apps:            apps,
 		conversationMap: make(map[string]*core.Conversation),
 	}
 }
@@ -30,12 +33,13 @@ type (
 		cfg             Config
 		convs           core.ConversationStore
 		botz            core.BotService
+		apps            core.AppStore
 		conversationMap map[string]*core.Conversation
 	}
 )
 
 func (s *service) ReplaceStore(convs core.ConversationStore) core.ConversationService {
-	return New(s.cfg, convs, s.botz)
+	return New(s.cfg, convs, s.botz, s.apps)
 }
 
 func (s *service) CreateConversation(ctx context.Context, botID, appID uint64, userIdentity, lang string) (*core.Conversation, error) {
@@ -49,17 +53,77 @@ func (s *service) CreateConversation(ctx context.Context, botID, appID uint64, u
 	if !bot.Public && app.UserID != bot.UserID {
 		return nil, core.ErrBotNotFound
 	}
+	if lang == "" {
+		lang = "en"
+	}
 
-	conv := s.getDefaultConversation(app, bot, userIdentity, lang)
+	now := time.Now()
+	conv := &core.Conversation{
+		ID:           uuid.New().String(),
+		AppID:        app.ID,
+		BotID:        bot.ID,
+		UserIdentity: userIdentity,
+		Lang:         lang,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+		Bot:          bot,
+		App:          app,
+	}
+
+	if err := s.convs.CreateConversation(ctx, conv); err != nil {
+		return nil, err
+	}
+
 	s.conversationMap[conv.ID] = conv
-
 	return conv, nil
 }
 
 func (s *service) GetConversation(ctx context.Context, convID string) (*core.Conversation, error) {
 	conv, ok := s.conversationMap[convID]
 	if !ok {
-		return nil, core.ErrConvNotFound
+		// load from db
+		var err error
+		conv, err = s.convs.GetConversation(ctx, convID)
+		if err != nil {
+			if store.IsNotFoundErr(err) {
+				return nil, core.ErrConvNotFound
+			}
+			return nil, core.ErrInternalServer
+		}
+
+		app := session.AppFrom(ctx)
+		if app != nil {
+			if conv.AppID != app.ID {
+				return nil, core.ErrConvNotFound
+			}
+			conv.App = app
+		} else {
+			app, err := s.apps.GetApp(ctx, conv.AppID)
+			if err != nil {
+				if store.IsNotFoundErr(err) {
+					return nil, core.ErrAppNotFound
+				}
+				return nil, core.ErrInternalServer
+			}
+			conv.App = app
+		}
+
+		bot, err := s.botz.GetBot(ctx, conv.BotID)
+		if err != nil {
+			if store.IsNotFoundErr(err) {
+				return nil, core.ErrBotNotFound
+			}
+			return nil, core.ErrInternalServer
+		}
+		conv.Bot = bot
+
+		// load history
+		turns, err := s.convs.GetConvTurnsByConversationID(ctx, conv.ID, bot.MaxTurnCount)
+		if err != nil {
+			return nil, core.ErrInternalServer
+		}
+
+		conv.History = turns
 	}
 
 	ids := []uint64{}
@@ -97,12 +161,10 @@ func (s *service) PostToConversation(ctx context.Context, conv *core.Conversatio
 		return nil, err
 	}
 
-	turns, err := s.convs.GetConvTurns(ctx, []uint64{turnID})
+	turn, err := s.convs.GetConvTurn(ctx, turnID)
 	if err != nil {
 		return nil, err
 	}
-
-	turn := turns[0]
 
 	bot, err := s.botz.GetBot(ctx, conv.Bot.ID)
 	if err != nil {
@@ -117,15 +179,6 @@ func (s *service) PostToConversation(ctx context.Context, conv *core.Conversatio
 	}
 
 	return turn, nil
-}
-
-func (s *service) ClearExpiredConversations(ctx context.Context) error {
-	for key, conv := range s.conversationMap {
-		if conv.IsExpired() {
-			delete(s.conversationMap, key)
-		}
-	}
-	return nil
 }
 
 func (s *service) DeleteConversation(ctx context.Context, convID string) error {
@@ -144,6 +197,5 @@ func (s *service) getDefaultConversation(app *core.App, bot *core.Bot, uid, lang
 		UserIdentity: uid,
 		Lang:         lang,
 		History:      []*core.ConvTurn{},
-		ExpiredAt:    time.Now().Add(10 * time.Minute),
 	}
 }

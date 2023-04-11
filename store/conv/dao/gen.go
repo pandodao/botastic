@@ -16,34 +16,39 @@ import (
 )
 
 var (
-	Q        = new(Query)
-	ConvTurn *convTurn
+	Q            = new(Query)
+	ConvTurn     *convTurn
+	Conversation *conversation
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
 	ConvTurn = &Q.ConvTurn
+	Conversation = &Q.Conversation
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:       db,
-		ConvTurn: newConvTurn(db, opts...),
+		db:           db,
+		ConvTurn:     newConvTurn(db, opts...),
+		Conversation: newConversation(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	ConvTurn convTurn
+	ConvTurn     convTurn
+	Conversation conversation
 }
 
 func (q *Query) Available() bool { return q.db != nil }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:       db,
-		ConvTurn: q.ConvTurn.clone(db),
+		db:           db,
+		ConvTurn:     q.ConvTurn.clone(db),
+		Conversation: q.Conversation.clone(db),
 	}
 }
 
@@ -57,18 +62,21 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:       db,
-		ConvTurn: q.ConvTurn.replaceDB(db),
+		db:           db,
+		ConvTurn:     q.ConvTurn.replaceDB(db),
+		Conversation: q.Conversation.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	ConvTurn IConvTurnDo
+	ConvTurn     IConvTurnDo
+	Conversation IConversationDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		ConvTurn: q.ConvTurn.WithContext(ctx),
+		ConvTurn:     q.ConvTurn.WithContext(ctx),
+		Conversation: q.Conversation.WithContext(ctx),
 	}
 }
 

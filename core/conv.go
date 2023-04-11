@@ -52,13 +52,18 @@ func (mr MiddlewareResults) Value() (driver.Value, error) {
 
 type (
 	Conversation struct {
-		ID           string      `json:"id"`
-		Bot          *Bot        `json:"bot"`
-		App          *App        `json:"app"`
-		UserIdentity string      `json:"user_identity"`
-		Lang         string      `json:"lang"`
-		History      []*ConvTurn `json:"history"`
-		ExpiredAt    time.Time   `json:"expired_at"`
+		ID           string     `json:"id"`
+		Lang         string     `json:"lang"`
+		UserIdentity string     `json:"user_identity"`
+		BotID        uint64     `json:"bot_id"`
+		AppID        uint64     `json:"app_id"`
+		CreatedAt    time.Time  `json:"created_at"`
+		UpdatedAt    time.Time  `json:"updated_at"`
+		DeletedAt    *time.Time `json:"-"`
+
+		Bot     *Bot        `gorm:"-" json:"bot"`
+		App     *App        `gorm:"-" json:"app"`
+		History []*ConvTurn `gorm:"-" json:"history"`
 	}
 
 	ConvTurn struct {
@@ -81,6 +86,21 @@ type (
 	}
 
 	ConversationStore interface {
+
+		// INSERT INTO "conversations"
+		// (
+		//   id, lang, user_identity, bot_id, app_id, created_at, updated_at
+		// ) VALUES (
+		//   @conv.ID, @conv.Lang, @conv.UserIdentity, @conv.BotID, @conv.AppID, NOW(), NOW()
+		// )
+		CreateConversation(ctx context.Context, conv *Conversation) error
+
+		// SELECT * FROM "conversations" WHERE id = @id AND deleted_at IS NULL
+		GetConversation(ctx context.Context, id string) (*Conversation, error)
+
+		// SELECT * FROM "conv_turns" WHERE conversation_id = @conversationID ORDER BY id DESC LIMIT @limit
+		GetConvTurnsByConversationID(ctx context.Context, conversationID string, limit int) ([]*ConvTurn, error)
+
 		// INSERT INTO "conv_turns"
 		// 	(
 		//	"conversation_id", "bot_id", "app_id", "user_id",
@@ -98,35 +118,17 @@ type (
 		// RETURNING "id"
 		CreateConvTurn(ctx context.Context, convID string, botID, appID, userID uint64, uid, request string, bo BotOverride) (uint64, error)
 
-		// SELECT
-		// 	"id",
-		//	"conversation_id", "bot_id", "app_id", "user_id",
-		//  "user_identity",
-		//  "request", "response", "status",
-		//  "prompt_tokens", "completion_tokens", "total_tokens", "bot_override",
-		//  "created_at", "updated_at"
+		// SELECT *
 		// FROM "conv_turns" WHERE
 		//  "id" IN (@ids)
 		GetConvTurns(ctx context.Context, ids []uint64) ([]*ConvTurn, error)
 
-		// SELECT
-		// 	"id",
-		//	"conversation_id", "bot_id", "app_id", "user_id",
-		//  "user_identity",
-		//  "request", "response", "status",
-		//  "prompt_tokens", "completion_tokens", "total_tokens", "bot_override", "middleware_results",
-		//  "created_at", "updated_at"
+		// SELECT *
 		// FROM "conv_turns" WHERE
 		//  "id" = @id
 		GetConvTurn(ctx context.Context, id uint64) (*ConvTurn, error)
 
-		// SELECT
-		// 	"id",
-		//	"conversation_id", "bot_id", "app_id", "user_id",
-		//  "user_identity",
-		//  "request", "response", "status",
-		//  "prompt_tokens", "completion_tokens", "total_tokens", "bot_override", "middleware_results",
-		//  "created_at", "updated_at"
+		// SELECT *
 		// FROM "conv_turns"
 		// {{where}}
 		// "status" IN (@status)
@@ -155,17 +157,12 @@ type (
 
 	ConversationService interface {
 		CreateConversation(ctx context.Context, botID, appID uint64, userIdentity, lang string) (*Conversation, error)
-		ClearExpiredConversations(ctx context.Context) error
 		DeleteConversation(ctx context.Context, convID string) error
 		GetConversation(ctx context.Context, convID string) (*Conversation, error)
 		PostToConversation(ctx context.Context, conv *Conversation, input string, bo BotOverride) (*ConvTurn, error)
 		ReplaceStore(store ConversationStore) ConversationService
 	}
 )
-
-func (c *Conversation) IsExpired() bool {
-	return c.ExpiredAt.Before(time.Now())
-}
 
 func (c *Conversation) HistoryToText() string {
 	lines := make([]string, 0)
