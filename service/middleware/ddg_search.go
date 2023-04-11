@@ -15,14 +15,12 @@ func (m *duckDuckGoSearch) Name() string {
 }
 
 type duckDuckGoSearchOptions struct {
-	*generalOptions
-	Limit int `json:"limit"`
+	Limit int
 }
 
-func (m *duckDuckGoSearch) ValidateOptions(gopts *generalOptions, opts map[string]any) (any, error) {
+func (m *duckDuckGoSearch) ValidateOptions(opts map[string]any) (any, error) {
 	options := &duckDuckGoSearchOptions{
-		generalOptions: gopts,
-		Limit:          3,
+		Limit: 3,
 	}
 
 	if val, ok := opts["limit"]; ok {

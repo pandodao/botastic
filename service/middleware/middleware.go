@@ -11,13 +11,13 @@ import (
 
 type Middleware interface {
 	Name() string
-	ValidateOptions(gopts *generalOptions, opts map[string]any) (any, error)
+	ValidateOptions(opts map[string]any) (any, error)
 	Process(ctx context.Context, opts any, input string) (string, error)
 }
 
 type generalOptions struct {
-	Break   bool          `json:"break"`
-	Timeout time.Duration `json:"timeout"`
+	Required bool          `json:"required"`
+	Timeout  time.Duration `json:"timeout"`
 }
 
 func New(
@@ -60,12 +60,12 @@ type (
 	}
 )
 
-func (s *service) ProcessByConfig(ctx context.Context, mc core.MiddlewareConfig, input string) []*core.MiddlewareProcessResult {
+func (s *service) ProcessByConfig(ctx context.Context, mc core.MiddlewareConfig, input string) core.MiddlewareResults {
 	var results []*core.MiddlewareProcessResult
 	for _, m := range mc.Items {
 		result := s.Process(ctx, m, input)
 		results = append(results, result)
-		if result.Break {
+		if result.Required {
 			break
 		}
 	}
@@ -76,30 +76,30 @@ func (s *service) Process(ctx context.Context, m *core.Middleware, input string)
 	gopts, err := parseGeneralOptions(ctx, m.Options)
 	if err != nil {
 		return &core.MiddlewareProcessResult{
-			Name:  m.Name,
-			Code:  core.MiddlewareProcessCodeInvalidOptions,
-			Err:   err,
-			Break: true,
+			Name:     m.Name,
+			Code:     core.MiddlewareProcessCodeInvalidOptions,
+			Err:      err,
+			Required: true,
 		}
 	}
 
 	middleware := s.middlewareMap[m.Name]
 	if middleware == nil {
 		return &core.MiddlewareProcessResult{
-			Name:  m.Name,
-			Code:  core.MiddlewareProcessCodeUnknown,
-			Err:   errors.New("middleware not found"),
-			Break: gopts.Break,
+			Name:     m.Name,
+			Code:     core.MiddlewareProcessCodeUnknown,
+			Err:      errors.New("middleware not found"),
+			Required: gopts.Required,
 		}
 	}
 
-	opts, err := middleware.ValidateOptions(gopts, m.Options)
+	opts, err := middleware.ValidateOptions(m.Options)
 	if err != nil {
 		return &core.MiddlewareProcessResult{
-			Name:  m.Name,
-			Code:  core.MiddlewareProcessCodeInvalidOptions,
-			Err:   err,
-			Break: gopts.Break,
+			Name:     m.Name,
+			Code:     core.MiddlewareProcessCodeInvalidOptions,
+			Err:      err,
+			Required: gopts.Required,
 		}
 	}
 
@@ -117,15 +117,15 @@ func (s *service) Process(ctx context.Context, m *core.Middleware, input string)
 		}
 
 		return &core.MiddlewareProcessResult{
-			Name:  m.Name,
-			Code:  code,
-			Err:   err,
-			Break: gopts.Break,
+			Name:     m.Name,
+			Code:     code,
+			Err:      err,
+			Required: gopts.Required,
 		}
 	}
 
 	return &core.MiddlewareProcessResult{
-		Opts:   opts,
+		Opts:   m.Options,
 		Name:   m.Name,
 		Code:   core.MiddlewareProcessCodeOK,
 		Result: result,
@@ -135,12 +135,12 @@ func (s *service) Process(ctx context.Context, m *core.Middleware, input string)
 func parseGeneralOptions(ctx context.Context, opts map[string]any) (*generalOptions, error) {
 	generalOptions := &generalOptions{}
 
-	if val, ok := opts["break"]; ok {
+	if val, ok := opts["required"]; ok {
 		b, ok := val.(bool)
 		if !ok {
-			return nil, fmt.Errorf("break should be bool: %v", val)
+			return nil, fmt.Errorf("required should be bool: %v", val)
 		}
-		generalOptions.Break = b
+		generalOptions.Required = b
 	}
 
 	if val, ok := opts["timeout"]; ok {

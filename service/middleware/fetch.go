@@ -17,14 +17,11 @@ func (m *fetch) Name() string {
 }
 
 type fetchOptions struct {
-	*generalOptions
-	URL string `json:"url"`
+	URL string
 }
 
-func (m *fetch) ValidateOptions(gopts *generalOptions, opts map[string]any) (any, error) {
-	options := &fetchOptions{
-		generalOptions: gopts,
-	}
+func (m *fetch) ValidateOptions(opts map[string]any) (any, error) {
+	options := &fetchOptions{}
 
 	if val, ok := opts["url"]; ok {
 		v, ok := val.(string)

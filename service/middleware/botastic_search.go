@@ -15,19 +15,17 @@ type botasticSearch struct {
 }
 
 type botasticSearchOptions struct {
-	*generalOptions
-	Limit int    `json:"limit"`
-	AppID string `json:"app_id"`
+	Limit int
+	AppID string
 }
 
 func (m *botasticSearch) Name() string {
 	return core.MiddlewareBotasticSearch
 }
 
-func (m *botasticSearch) ValidateOptions(gopts *generalOptions, opts map[string]any) (any, error) {
+func (m *botasticSearch) ValidateOptions(opts map[string]any) (any, error) {
 	options := &botasticSearchOptions{
-		generalOptions: gopts,
-		Limit:          3,
+		Limit: 3,
 	}
 
 	if val, ok := opts["limit"]; ok {

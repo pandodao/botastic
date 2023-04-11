@@ -151,6 +151,7 @@ func (w *Worker) run(ctx context.Context) error {
 		}
 
 		additional := map[string]interface{}{}
+		middlewareResults := core.MiddlewareResults{}
 		if len(middlewareCfg.Items) != 0 {
 			app, err := w.apps.GetApp(ctx, turn.AppID)
 			if err != nil {
@@ -158,9 +159,9 @@ func (w *Worker) run(ctx context.Context) error {
 				continue
 			}
 			ctx = session.WithApp(ctx, app)
-			middlewareResults := w.middlewarez.ProcessByConfig(ctx, middlewareCfg, turn.Request)
+			middlewareResults = w.middlewarez.ProcessByConfig(ctx, middlewareCfg, turn.Request)
 			lastResult := middlewareResults[len(middlewareResults)-1]
-			if lastResult.Err != nil && lastResult.Break {
+			if lastResult.Err != nil && lastResult.Required {
 				w.UpdateConvTurnAsError(ctx, turn.ID, err.Error())
 				continue
 			}
@@ -175,7 +176,7 @@ func (w *Worker) run(ctx context.Context) error {
 		}
 
 		if turn.Status == core.ConvTurnStatusInit {
-			if err := w.convs.UpdateConvTurn(ctx, turn.ID, "", 0, 0, 0, core.ConvTurnStatusPending); err != nil {
+			if err := w.convs.UpdateConvTurn(ctx, turn.ID, "", 0, 0, 0, core.ConvTurnStatusPending, middlewareResults); err != nil {
 				continue
 			}
 		}
@@ -192,7 +193,7 @@ func (w *Worker) run(ctx context.Context) error {
 
 func (w *Worker) UpdateConvTurnAsError(ctx context.Context, id uint64, errMsg string) error {
 	fmt.Printf("errMsg: %v, %d\n", errMsg, id)
-	if err := w.convs.UpdateConvTurn(ctx, id, "Something wrong happened", 0, 0, 0, core.ConvTurnStatusError); err != nil {
+	if err := w.convs.UpdateConvTurn(ctx, id, "Something wrong happened", 0, 0, 0, core.ConvTurnStatusError, nil); err != nil {
 		return err
 	}
 	return nil
@@ -227,7 +228,7 @@ func (w *Worker) subworker(ctx context.Context, id int) {
 				return
 			}
 
-			if err := w.convs.UpdateConvTurn(ctx, turn.ID, rr.respText, rr.promptTokenCount, rr.completionTokenCount, rr.totalTokens, core.ConvTurnStatusCompleted); err != nil {
+			if err := w.convs.UpdateConvTurn(ctx, turn.ID, rr.respText, rr.promptTokenCount, rr.completionTokenCount, rr.totalTokens, core.ConvTurnStatusCompleted, nil); err != nil {
 				return
 			}
 
