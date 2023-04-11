@@ -14,7 +14,7 @@ func init() {
 			OutPath: "store/conv/dao",
 		},
 		func(g *gen.Generator) {
-			g.ApplyInterface(func(core.ConversationStore) {}, core.ConvTurn{})
+			g.ApplyInterface(func(core.ConversationStore) {}, core.ConvTurn{}, core.Conversation{})
 		},
 	)
 }

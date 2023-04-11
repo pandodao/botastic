@@ -9,7 +9,6 @@ import (
 
 	"github.com/fox-one/pkg/httputil/param"
 	"github.com/go-chi/chi"
-	"github.com/google/uuid"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/handler/render"
 	"github.com/pandodao/botastic/internal/chanhub"
@@ -35,10 +34,12 @@ type (
 	}
 
 	CreateOnewayConversationPayload struct {
-		BotID       uint64           `json:"bot_id"`
+		CreateConversationPayload
+		ConversationID string `json:"conversation_id"`
+
 		BotOverride core.BotOverride `json:"bot_override"`
 		Content     string           `json:"content"`
-		Lang        string           `json:"lang"`
+		Timeout     time.Duration    `json:"timeout"`
 	}
 )
 
@@ -135,8 +136,6 @@ func GetConversationTurn(botz core.BotService, convs core.ConversationStore, hub
 func GetConversation(botz core.BotService, convz core.ConversationService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		app := session.AppFrom(ctx)
-
 		conversationID := chi.URLParam(r, "conversationID")
 		if conversationID == "" {
 			render.Error(w, http.StatusBadRequest, nil)
@@ -144,13 +143,13 @@ func GetConversation(botz core.BotService, convz core.ConversationService) http.
 		}
 
 		conv, err := convz.GetConversation(ctx, conversationID)
-		if err != nil || conv == nil {
-			render.Error(w, http.StatusNotFound, err)
-			return
-		}
-
-		if conv.App.ID != app.ID {
-			render.Error(w, http.StatusNotFound, nil)
+		if err != nil {
+			switch err {
+			case core.ErrConvNotFound, core.ErrBotNotFound:
+				render.Error(w, http.StatusNotFound, err)
+			default:
+				render.Error(w, http.StatusInternalServerError, err)
+			}
 			return
 		}
 
@@ -249,9 +248,6 @@ func UpdateConversation() http.HandlerFunc {
 func CreateOnewayConversation(convz core.ConversationService, convs core.ConversationStore, hub *chanhub.Hub) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-		defer cancel()
-
 		app := session.AppFrom(ctx)
 
 		body := &CreateOnewayConversationPayload{}
@@ -259,6 +255,13 @@ func CreateOnewayConversation(convz core.ConversationService, convs core.Convers
 			render.Error(w, http.StatusBadRequest, err)
 			return
 		}
+
+		timeout := 10 * time.Second
+		if body.Timeout > 0 {
+			timeout = body.Timeout
+		}
+		ctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
 
 		if body.BotID <= 0 {
 			render.Error(w, http.StatusBadRequest, nil)
@@ -270,9 +273,16 @@ func CreateOnewayConversation(convz core.ConversationService, convs core.Convers
 			return
 		}
 
-		uid := uuid.New().String()
+		var (
+			conv *core.Conversation
+			err  error
+		)
+		if body.ConversationID == "" {
+			conv, err = convz.CreateConversation(ctx, body.BotID, app.ID, body.UserIdentity, body.Lang)
+		} else {
+			conv, err = convz.GetConversation(ctx, body.ConversationID)
+		}
 
-		conv, err := convz.CreateConversation(ctx, body.BotID, app.ID, uid, body.Lang)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
@@ -285,7 +295,6 @@ func CreateOnewayConversation(convz core.ConversationService, convs core.Convers
 		}
 
 		turnIDStr := strconv.FormatUint(turn.ID, 10)
-
 		_, err = hub.AddAndWait(ctx, turnIDStr)
 		if err != nil {
 			if err == context.Canceled {
@@ -301,6 +310,5 @@ func CreateOnewayConversation(convz core.ConversationService, convs core.Convers
 		}
 
 		render.JSON(w, turn)
-
 	}
 }

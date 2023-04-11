@@ -17,95 +17,71 @@ import (
 	"github.com/pandodao/botastic/core"
 )
 
-func newConvTurn(db *gorm.DB, opts ...gen.DOOption) convTurn {
-	_convTurn := convTurn{}
+func newConversation(db *gorm.DB, opts ...gen.DOOption) conversation {
+	_conversation := conversation{}
 
-	_convTurn.convTurnDo.UseDB(db, opts...)
-	_convTurn.convTurnDo.UseModel(&core.ConvTurn{})
+	_conversation.conversationDo.UseDB(db, opts...)
+	_conversation.conversationDo.UseModel(&core.Conversation{})
 
-	tableName := _convTurn.convTurnDo.TableName()
-	_convTurn.ALL = field.NewAsterisk(tableName)
-	_convTurn.ID = field.NewUint64(tableName, "id")
-	_convTurn.ConversationID = field.NewString(tableName, "conversation_id")
-	_convTurn.BotID = field.NewUint64(tableName, "bot_id")
-	_convTurn.AppID = field.NewUint64(tableName, "app_id")
-	_convTurn.UserID = field.NewUint64(tableName, "user_id")
-	_convTurn.UserIdentity = field.NewString(tableName, "user_identity")
-	_convTurn.Request = field.NewString(tableName, "request")
-	_convTurn.Response = field.NewString(tableName, "response")
-	_convTurn.PromptTokens = field.NewInt(tableName, "prompt_tokens")
-	_convTurn.CompletionTokens = field.NewInt(tableName, "completion_tokens")
-	_convTurn.TotalTokens = field.NewInt(tableName, "total_tokens")
-	_convTurn.Status = field.NewInt(tableName, "status")
-	_convTurn.BotOverride = field.NewField(tableName, "bot_override")
-	_convTurn.MiddlewareResults = field.NewField(tableName, "middleware_results")
-	_convTurn.CreatedAt = field.NewTime(tableName, "created_at")
-	_convTurn.UpdatedAt = field.NewTime(tableName, "updated_at")
+	tableName := _conversation.conversationDo.TableName()
+	_conversation.ALL = field.NewAsterisk(tableName)
+	_conversation.ID = field.NewString(tableName, "id")
+	_conversation.Lang = field.NewString(tableName, "lang")
+	_conversation.UserIdentity = field.NewString(tableName, "user_identity")
+	_conversation.BotID = field.NewUint64(tableName, "bot_id")
+	_conversation.AppID = field.NewUint64(tableName, "app_id")
+	_conversation.CreatedAt = field.NewTime(tableName, "created_at")
+	_conversation.UpdatedAt = field.NewTime(tableName, "updated_at")
+	_conversation.DeletedAt = field.NewTime(tableName, "deleted_at")
 
-	_convTurn.fillFieldMap()
+	_conversation.fillFieldMap()
 
-	return _convTurn
+	return _conversation
 }
 
-type convTurn struct {
-	convTurnDo
+type conversation struct {
+	conversationDo
 
-	ALL               field.Asterisk
-	ID                field.Uint64
-	ConversationID    field.String
-	BotID             field.Uint64
-	AppID             field.Uint64
-	UserID            field.Uint64
-	UserIdentity      field.String
-	Request           field.String
-	Response          field.String
-	PromptTokens      field.Int
-	CompletionTokens  field.Int
-	TotalTokens       field.Int
-	Status            field.Int
-	BotOverride       field.Field
-	MiddlewareResults field.Field
-	CreatedAt         field.Time
-	UpdatedAt         field.Time
+	ALL          field.Asterisk
+	ID           field.String
+	Lang         field.String
+	UserIdentity field.String
+	BotID        field.Uint64
+	AppID        field.Uint64
+	CreatedAt    field.Time
+	UpdatedAt    field.Time
+	DeletedAt    field.Time
 
 	fieldMap map[string]field.Expr
 }
 
-func (c convTurn) Table(newTableName string) *convTurn {
-	c.convTurnDo.UseTable(newTableName)
+func (c conversation) Table(newTableName string) *conversation {
+	c.conversationDo.UseTable(newTableName)
 	return c.updateTableName(newTableName)
 }
 
-func (c convTurn) As(alias string) *convTurn {
-	c.convTurnDo.DO = *(c.convTurnDo.As(alias).(*gen.DO))
+func (c conversation) As(alias string) *conversation {
+	c.conversationDo.DO = *(c.conversationDo.As(alias).(*gen.DO))
 	return c.updateTableName(alias)
 }
 
-func (c *convTurn) updateTableName(table string) *convTurn {
+func (c *conversation) updateTableName(table string) *conversation {
 	c.ALL = field.NewAsterisk(table)
-	c.ID = field.NewUint64(table, "id")
-	c.ConversationID = field.NewString(table, "conversation_id")
+	c.ID = field.NewString(table, "id")
+	c.Lang = field.NewString(table, "lang")
+	c.UserIdentity = field.NewString(table, "user_identity")
 	c.BotID = field.NewUint64(table, "bot_id")
 	c.AppID = field.NewUint64(table, "app_id")
-	c.UserID = field.NewUint64(table, "user_id")
-	c.UserIdentity = field.NewString(table, "user_identity")
-	c.Request = field.NewString(table, "request")
-	c.Response = field.NewString(table, "response")
-	c.PromptTokens = field.NewInt(table, "prompt_tokens")
-	c.CompletionTokens = field.NewInt(table, "completion_tokens")
-	c.TotalTokens = field.NewInt(table, "total_tokens")
-	c.Status = field.NewInt(table, "status")
-	c.BotOverride = field.NewField(table, "bot_override")
-	c.MiddlewareResults = field.NewField(table, "middleware_results")
 	c.CreatedAt = field.NewTime(table, "created_at")
 	c.UpdatedAt = field.NewTime(table, "updated_at")
+	c.DeletedAt = field.NewTime(table, "deleted_at")
 
 	c.fillFieldMap()
 
 	return c
 }
 
-func (c *convTurn) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
+func (c *conversation) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 	_f, ok := c.fieldMap[fieldName]
 	if !ok || _f == nil {
 		return nil, false
@@ -114,40 +90,32 @@ func (c *convTurn) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 	return _oe, ok
 }
 
-func (c *convTurn) fillFieldMap() {
-	c.fieldMap = make(map[string]field.Expr, 16)
+func (c *conversation) fillFieldMap() {
+	c.fieldMap = make(map[string]field.Expr, 8)
 	c.fieldMap["id"] = c.ID
-	c.fieldMap["conversation_id"] = c.ConversationID
+	c.fieldMap["lang"] = c.Lang
+	c.fieldMap["user_identity"] = c.UserIdentity
 	c.fieldMap["bot_id"] = c.BotID
 	c.fieldMap["app_id"] = c.AppID
-	c.fieldMap["user_id"] = c.UserID
-	c.fieldMap["user_identity"] = c.UserIdentity
-	c.fieldMap["request"] = c.Request
-	c.fieldMap["response"] = c.Response
-	c.fieldMap["prompt_tokens"] = c.PromptTokens
-	c.fieldMap["completion_tokens"] = c.CompletionTokens
-	c.fieldMap["total_tokens"] = c.TotalTokens
-	c.fieldMap["status"] = c.Status
-	c.fieldMap["bot_override"] = c.BotOverride
-	c.fieldMap["middleware_results"] = c.MiddlewareResults
 	c.fieldMap["created_at"] = c.CreatedAt
 	c.fieldMap["updated_at"] = c.UpdatedAt
+	c.fieldMap["deleted_at"] = c.DeletedAt
 }
 
-func (c convTurn) clone(db *gorm.DB) convTurn {
-	c.convTurnDo.ReplaceConnPool(db.Statement.ConnPool)
+func (c conversation) clone(db *gorm.DB) conversation {
+	c.conversationDo.ReplaceConnPool(db.Statement.ConnPool)
 	return c
 }
 
-func (c convTurn) replaceDB(db *gorm.DB) convTurn {
-	c.convTurnDo.ReplaceDB(db)
+func (c conversation) replaceDB(db *gorm.DB) conversation {
+	c.conversationDo.ReplaceDB(db)
 	return c
 }
 
-type convTurnDo struct{ gen.DO }
+type conversationDo struct{ gen.DO }
 
-type IConvTurnDo interface {
-	WithContext(ctx context.Context) IConvTurnDo
+type IConversationDo interface {
+	WithContext(ctx context.Context) IConversationDo
 
 	CreateConversation(ctx context.Context, conv *core.Conversation) (err error)
 	GetConversation(ctx context.Context, id string) (result *core.Conversation, err error)
@@ -169,7 +137,7 @@ type IConvTurnDo interface {
 //	@conv.ID, @conv.Lang, @conv.UserIdentity, @conv.BotID, @conv.AppID, NOW(), NOW()
 //
 // )
-func (c convTurnDo) CreateConversation(ctx context.Context, conv *core.Conversation) (err error) {
+func (c conversationDo) CreateConversation(ctx context.Context, conv *core.Conversation) (err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
@@ -188,7 +156,7 @@ func (c convTurnDo) CreateConversation(ctx context.Context, conv *core.Conversat
 }
 
 // SELECT * FROM "conversations" WHERE id = @id AND deleted_at IS NULL
-func (c convTurnDo) GetConversation(ctx context.Context, id string) (result *core.Conversation, err error) {
+func (c conversationDo) GetConversation(ctx context.Context, id string) (result *core.Conversation, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
@@ -203,7 +171,7 @@ func (c convTurnDo) GetConversation(ctx context.Context, id string) (result *cor
 }
 
 // SELECT * FROM "conv_turns" WHERE conversation_id = @conversationID ORDER BY id DESC LIMIT @limit
-func (c convTurnDo) GetConvTurnsByConversationID(ctx context.Context, conversationID string, limit int) (result []*core.ConvTurn, err error) {
+func (c conversationDo) GetConvTurnsByConversationID(ctx context.Context, conversationID string, limit int) (result []*core.ConvTurn, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
@@ -239,7 +207,7 @@ func (c convTurnDo) GetConvTurnsByConversationID(ctx context.Context, conversati
 //
 // )
 // RETURNING "id"
-func (c convTurnDo) CreateConvTurn(ctx context.Context, convID string, botID uint64, appID uint64, userID uint64, uid string, request string, bo core.BotOverride) (result uint64, err error) {
+func (c conversationDo) CreateConvTurn(ctx context.Context, convID string, botID uint64, appID uint64, userID uint64, uid string, request string, bo core.BotOverride) (result uint64, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
@@ -262,7 +230,7 @@ func (c convTurnDo) CreateConvTurn(ctx context.Context, convID string, botID uin
 // SELECT *
 // FROM "conv_turns" WHERE
 // "id" IN (@ids)
-func (c convTurnDo) GetConvTurns(ctx context.Context, ids []uint64) (result []*core.ConvTurn, err error) {
+func (c conversationDo) GetConvTurns(ctx context.Context, ids []uint64) (result []*core.ConvTurn, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
@@ -279,7 +247,7 @@ func (c convTurnDo) GetConvTurns(ctx context.Context, ids []uint64) (result []*c
 // SELECT *
 // FROM "conv_turns" WHERE
 // "id" = @id
-func (c convTurnDo) GetConvTurn(ctx context.Context, id uint64) (result *core.ConvTurn, err error) {
+func (c conversationDo) GetConvTurn(ctx context.Context, id uint64) (result *core.ConvTurn, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
@@ -303,7 +271,7 @@ func (c convTurnDo) GetConvTurn(ctx context.Context, id uint64) (result *core.Co
 //	{{end}}
 //
 // {{end}}
-func (c convTurnDo) GetConvTurnsByStatus(ctx context.Context, excludeIDs []uint64, status []int) (result []*core.ConvTurn, err error) {
+func (c conversationDo) GetConvTurnsByStatus(ctx context.Context, excludeIDs []uint64, status []int) (result []*core.ConvTurn, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
@@ -345,7 +313,7 @@ func (c convTurnDo) GetConvTurnsByStatus(ctx context.Context, excludeIDs []uint6
 // WHERE
 //
 //	"id"=@id
-func (c convTurnDo) UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens int64, completionTokens int64, totalTokens int64, status int, mr core.MiddlewareResults) (err error) {
+func (c conversationDo) UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens int64, completionTokens int64, totalTokens int64, status int, mr core.MiddlewareResults) (err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
@@ -373,11 +341,11 @@ func (c convTurnDo) UpdateConvTurn(ctx context.Context, id uint64, response stri
 	return
 }
 
-func (c convTurnDo) WithContext(ctx context.Context) IConvTurnDo {
+func (c conversationDo) WithContext(ctx context.Context) IConversationDo {
 	return c.withDO(c.DO.WithContext(ctx))
 }
 
-func (c *convTurnDo) withDO(do gen.Dao) *convTurnDo {
+func (c *conversationDo) withDO(do gen.Dao) *conversationDo {
 	c.DO = *do.(*gen.DO)
 	return c
 }

@@ -48,6 +48,8 @@ func MatchFlag(err error, flag int) bool {
 }
 
 var (
+	ErrInternalServer = errors.New("internal server error")
+
 	ErrInsufficientCredit = errors.New("insufficient credit")
 
 	ErrMinAmountNotSatisfied = errors.New("min amount not satisfied")

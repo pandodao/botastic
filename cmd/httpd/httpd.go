@@ -96,7 +96,7 @@ func NewCmdHttpd() *cobra.Command {
 
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, apps, indexService)
 			botz := botServ.New(botServ.Config{}, apps, bots, models, middlewarez)
-			convz := convServ.New(convServ.Config{}, convs, botz)
+			convz := convServ.New(convServ.Config{}, convs, botz, apps)
 			orderz := orderServ.New(orderServ.Config{
 				PayeeId:           cfg.Mixpay.PayeeId,
 				QuoteAssetId:      cfg.Mixpay.QuoteAssetId,
