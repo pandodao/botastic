@@ -9,18 +9,19 @@ import (
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/milvus"
+	"github.com/pandodao/botastic/internal/tiktoken"
 	"github.com/pandodao/botastic/session"
-	"github.com/pandodao/tokenizer-go"
 	gogpt "github.com/sashabaranov/go-openai"
 )
 
-func NewService(ctx context.Context, gptHandler *gpt.Handler, indexes core.IndexStore, userz core.UserService, models core.ModelStore) core.IndexService {
+func NewService(ctx context.Context, gptHandler *gpt.Handler, indexes core.IndexStore, userz core.UserService, models core.ModelStore, tiktokenHandler *tiktoken.Handler) core.IndexService {
 	return &serviceImpl{
 		gptHandler:                gptHandler,
 		indexes:                   indexes,
 		userz:                     userz,
 		models:                    models,
 		createEmbeddingsLimitChan: make(chan struct{}, 20),
+		tiktokenHandler:           tiktokenHandler,
 	}
 }
 
@@ -31,19 +32,14 @@ type serviceImpl struct {
 	userz                     core.UserService
 	models                    core.ModelStore
 	createEmbeddingsLimitChan chan struct{}
+	tiktokenHandler           *tiktoken.Handler
 }
 
-func (s *serviceImpl) createEmbeddingsWithLimit(ctx context.Context, req gogpt.EmbeddingRequest, userID uint64) (gogpt.EmbeddingResponse, error) {
+func (s *serviceImpl) createEmbeddingsWithLimit(ctx context.Context, req gogpt.EmbeddingRequest, userID uint64, m *core.Model) (gogpt.EmbeddingResponse, error) {
 	s.createEmbeddingsLimitChan <- struct{}{}
 	defer func() {
 		<-s.createEmbeddingsLimitChan
 	}()
-
-	// TODO support custom embedding models
-	m, err := s.models.GetModel(ctx, fmt.Sprintf("%s:%s", core.ModelProviderOpenAI, gogpt.AdaEmbeddingV2.String()))
-	if err != nil {
-		return gogpt.EmbeddingResponse{}, fmt.Errorf("models.GetModel: %w", err)
-	}
 
 	resp, err := s.gptHandler.CreateEmbeddings(ctx, req)
 	if err == nil {
@@ -66,10 +62,16 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, userID uint64, query stri
 
 	app := session.AppFrom(ctx)
 
+	provider, providerModel := core.ModelProviderOpenAI, gogpt.AdaEmbeddingV2.String()
+	m, err := s.models.GetModel(ctx, fmt.Sprintf("%s:%s", provider, providerModel))
+	if err != nil {
+		return nil, fmt.Errorf("models.GetModel: %w", err)
+	}
+
 	resp, err := s.createEmbeddingsWithLimit(ctx, gogpt.EmbeddingRequest{
 		Input: []string{query},
 		Model: gogpt.AdaEmbeddingV2,
-	}, userID)
+	}, userID, m)
 
 	if err != nil {
 		return nil, err
@@ -87,24 +89,32 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, userID uint64, query stri
 
 func (s *serviceImpl) CreateIndexes(ctx context.Context, userID uint64, items []*core.Index) error {
 	input := make([]string, 0, len(items))
-	var totalToken uint64
+	var totalToken int
+
+	provider, providerModel := core.ModelProviderOpenAI, gogpt.AdaEmbeddingV2.String()
+	m, err := s.models.GetModel(ctx, fmt.Sprintf("%s:%s", provider, providerModel))
+	if err != nil {
+		return fmt.Errorf("models.GetModel: %w", err)
+	}
+
 	for _, item := range items {
-		token := tokenizer.MustCalToken(item.Data)
-		totalToken += uint64(token)
-		item.DataToken = int64(token)
+		tokens, err := s.tiktokenHandler.CalToken(provider, providerModel, item.Data)
+		if err != nil {
+			return err
+		}
+		totalToken += tokens
+		item.DataToken = int64(tokens)
 		input = append(input, item.Data)
 	}
 
-	// @TODO calculate token limit according to the model
-	if totalToken > 8191 {
+	if totalToken > m.MaxToken {
 		return core.ErrTokenExceedLimit
 	}
 
-	// @TODO should not pending here
 	resp, err := s.createEmbeddingsWithLimit(ctx, gogpt.EmbeddingRequest{
 		Input: input,
 		Model: gogpt.AdaEmbeddingV2,
-	}, userID)
+	}, userID, m)
 
 	if err != nil {
 		return fmt.Errorf("CreateEmbeddings: %w", err)

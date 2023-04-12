@@ -19,8 +19,8 @@ import (
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/internal/gpt"
+	"github.com/pandodao/botastic/internal/tiktoken"
 	"github.com/pandodao/botastic/session"
-	"github.com/pandodao/tokenizer-go"
 	gogpt "github.com/sashabaranov/go-openai"
 	"github.com/tidwall/gjson"
 )
@@ -49,7 +49,8 @@ type (
 		turnReqChan chan TurnRequest
 		hub         *chanhub.Hub
 
-		processingMap sync.Map
+		processingMap   sync.Map
+		tiktokenHandler *tiktoken.Handler
 	}
 
 	TurnRequest struct {
@@ -73,21 +74,22 @@ func New(
 	userz core.UserService,
 
 	hub *chanhub.Hub,
+	tiktokenHandler *tiktoken.Handler,
 ) *Worker {
 	turnReqChan := make(chan TurnRequest, MAX_REQUESTS_PER_MINUTE)
 	return &Worker{
-		cfg:         cfg,
-		gptHandler:  gptHandler,
-		convs:       convs,
-		apps:        apps,
-		models:      models,
-		convz:       convz,
-		botz:        botz,
-		middlewarez: middlewarez,
-		userz:       userz,
-
-		turnReqChan: turnReqChan,
-		hub:         hub,
+		cfg:             cfg,
+		gptHandler:      gptHandler,
+		convs:           convs,
+		apps:            apps,
+		models:          models,
+		convz:           convz,
+		botz:            botz,
+		middlewarez:     middlewarez,
+		userz:           userz,
+		turnReqChan:     turnReqChan,
+		hub:             hub,
+		tiktokenHandler: tiktokenHandler,
 	}
 }
 
@@ -331,10 +333,12 @@ func (w *Worker) handleCustomProvider(ctx context.Context, turnReq TurnRequest) 
 		respText = gjson.Get(respText, cc.Response.Path).String()
 	}
 
+	promptTokenCount, _ := w.tiktokenHandler.CalToken(core.ModelProviderCustom, "", prompt)
+	completionTokenCount, _ := w.tiktokenHandler.CalToken(core.ModelProviderCustom, "", respText)
 	rr := &requestResult{
 		respText:             respText,
-		promptTokenCount:     tokenizer.MustCalToken(prompt),
-		completionTokenCount: tokenizer.MustCalToken(respText),
+		promptTokenCount:     int64(promptTokenCount),
+		completionTokenCount: int64(completionTokenCount),
 	}
 	rr.totalTokens = rr.promptTokenCount + rr.completionTokenCount
 	return rr, nil

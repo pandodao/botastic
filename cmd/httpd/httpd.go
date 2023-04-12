@@ -16,6 +16,7 @@ import (
 	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/milvus"
+	"github.com/pandodao/botastic/internal/tiktoken"
 	appServ "github.com/pandodao/botastic/service/app"
 	botServ "github.com/pandodao/botastic/service/bot"
 	convServ "github.com/pandodao/botastic/service/conv"
@@ -85,11 +86,16 @@ func NewCmdHttpd() *cobra.Command {
 			indexes := index.New(ctx, milvusClient)
 			models := model.New(h)
 
+			tiktokenHandler, err := tiktoken.Init()
+			if err != nil {
+				return err
+			}
+
 			userz := userServ.New(userServ.Config{
 				ExtraRate:       cfg.Sys.ExtraRate,
 				InitUserCredits: cfg.Sys.InitUserCredits,
 			}, client, users)
-			indexService := indexServ.NewService(ctx, gptHandler, indexes, userz, models)
+			indexService := indexServ.NewService(ctx, gptHandler, indexes, userz, models, tiktokenHandler)
 			appz := appServ.New(appServ.Config{
 				SecretKey: cfg.Sys.SecretKey,
 			}, apps, indexService)
@@ -111,7 +117,7 @@ func NewCmdHttpd() *cobra.Command {
 			// httpd's workers
 			workers := []worker.Worker{
 				// rotater
-				rotater.New(rotater.Config{}, gptHandler, convs, apps, models, convz, botz, middlewarez, userz, hub),
+				rotater.New(rotater.Config{}, gptHandler, convs, apps, models, convz, botz, middlewarez, userz, hub, tiktokenHandler),
 
 				ordersyncer.New(ordersyncer.Config{
 					Interval:       cfg.OrderSyncer.Interval,
