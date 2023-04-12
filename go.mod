@@ -17,7 +17,7 @@ require (
 	github.com/milvus-io/milvus-sdk-go/v2 v2.2.0
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c
 	github.com/pandodao/mixpay-go v0.0.0-20230405103808-9f656bd75b03
-	github.com/pandodao/tokenizer-go v0.0.1
+	github.com/pkoukk/tiktoken-go v0.1.1-0.20230410080739-eb45b82397d3
 	github.com/pressly/goose/v3 v3.9.0
 	github.com/rs/cors v1.8.3
 	github.com/sashabaranov/go-openai v1.5.7
@@ -43,19 +43,15 @@ require (
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/redact v1.1.3 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
-	github.com/dlclark/regexp2 v1.8.1 // indirect
-	github.com/dop251/goja v0.0.0-20230304130813-e2f543bf4b4c // indirect
-	github.com/dop251/goja_nodejs v0.0.0-20230226152057-060fa99b809f // indirect
+	github.com/dlclark/regexp2 v1.9.0 // indirect
 	github.com/ethereum/go-ethereum v1.11.5 // indirect
 	github.com/fkgi/abnf v1.0.0 // indirect
 	github.com/fox-one/msgpack v1.0.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/getsentry/sentry-go v0.18.0 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
-	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/pprof v0.0.0-20230309165930-d61513b1440d // indirect
 	github.com/gorilla/schema v1.2.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
