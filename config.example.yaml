@@ -11,8 +11,17 @@ sys:
   extra_rate: 0.1
   init_user_credits: 0.1
 
-milvus:
-  address: "localhost:19530"
+index_store:
+  driver: memory # redis, milvus
+  redis:
+    address: "localhost:6379"
+    password: ""
+    db: 0
+    key_prefix: app
+  milvus:
+    address: "localhost:19530"
+    collection: indexes
+    collection_shards_num: 2
 
 mixpay:
   payee_id: "USER_UUID"

@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"io/ioutil"
 	"log"
 	"time"
@@ -8,14 +9,29 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type IndexStoreDriver string
+
+const (
+	IndexStoreMemory IndexStoreDriver = "memory"
+	IndexStoreMilvus IndexStoreDriver = "milvus"
+	IndexStoreRedis  IndexStoreDriver = "redis"
+)
+
 type Config struct {
 	DB          DBConfig          `yaml:"db"`
-	Milvus      Milvus            `yaml:"milvus"`
+	IndexStore  IndexStoreConfig  `yaml:"index_store"`
 	Sys         System            `yaml:"sys"`
 	OpenAI      OpenAIConfig      `yaml:"openai"`
 	Auth        Auth              `yaml:"auth"`
 	Mixpay      Mixpay            `yaml:"mixpay"`
 	OrderSyncer OrderSyncerConfig `yaml:"order_syncer"`
+}
+
+type IndexStoreConfig struct {
+	Driver    IndexStoreDriver        `yaml:"driver"`
+	Dimension int                     `yaml:"dimension"`
+	Milvus    *IndexStoreMilvusConfig `yaml:"milvus"`
+	Redis     *IndexStoreRedisConfig  `yaml:"redis"`
 }
 
 type OrderSyncerConfig struct {
@@ -33,8 +49,17 @@ type Mixpay struct {
 	FailedReturnTo    string `yaml:"failed_return_to"`
 }
 
-type Milvus struct {
-	Address string `yaml:"address"`
+type IndexStoreMilvusConfig struct {
+	Collection          string `yaml:"collection"`
+	CollectionShardsNum int32  `yaml:"collection_shards_num"`
+	Address             string `yaml:"address"`
+}
+
+type IndexStoreRedisConfig struct {
+	Address   string `yaml:"address"`
+	Password  string `yaml:"password"`
+	DB        int    `yaml:"db"`
+	KeyPrefix string `yaml:"key_prefix"`
 }
 
 type OpenAIConfig struct {
@@ -61,6 +86,19 @@ type Auth struct {
 }
 
 func (c Config) validate() error {
+	switch c.IndexStore.Driver {
+	case IndexStoreMemory:
+	case IndexStoreMilvus:
+		if c.IndexStore.Milvus == nil {
+			return fmt.Errorf("index_store.milvus is required")
+		}
+	case IndexStoreRedis:
+		if c.IndexStore.Redis == nil {
+			return fmt.Errorf("index_store.redis is required")
+		}
+	default:
+		return fmt.Errorf("index_store.driver is invalid: %s", c.IndexStore.Driver)
+	}
 	return nil
 }
 
@@ -76,6 +114,9 @@ func defaultConfig() *Config {
 			Interval:       time.Second,
 			CheckInterval:  10 * time.Second,
 			CancelInterval: 2 * time.Hour,
+		},
+		IndexStore: IndexStoreConfig{
+			Driver: IndexStoreMemory,
 		},
 	}
 }

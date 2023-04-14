@@ -2,100 +2,38 @@ package core
 
 import (
 	"context"
-	"strings"
-
-	"github.com/milvus-io/milvus-sdk-go/v2/entity"
 )
 
 type (
 	Index struct {
-		ID         string    `json:"-"`
-		AppID      string    `json:"-"`
+		AppID      string    `json:"app_id,omitempty"`
 		Data       string    `json:"data"`
-		DataToken  int64     `json:"-"`
-		Vectors    []float32 `json:"-"`
+		DataToken  int64     `json:"data_token,omitempty"`
+		Vectors    []float32 `json:"vectors,omitempty"`
 		ObjectID   string    `json:"object_id"`
 		Category   string    `json:"category"`
 		Properties string    `json:"properties"`
-		CreatedAt  int64     `db:"created_at" json:"created_at"`
-		Score      float32   `json:"score"`
+		CreatedAt  int64     `json:"created_at"`
+		Score      float64   `json:"score"`
 	}
 
 	IndexStore interface {
-		CreateIndexes(ctx context.Context, idx []*Index) error
+		Init(ctx context.Context) error
+		Upsert(ctx context.Context, appID string, idx []*Index) error
 		Search(ctx context.Context, appId string, vectors []float32, n int) ([]*Index, error)
 		Reset(ctx context.Context, appId string) error
-		DeleteByPks(ctx context.Context, items []*Index) error
+		Delete(ctx context.Context, appID string, items []*Index) error
 	}
 
 	IndexService interface {
-		CreateIndexes(ctx context.Context, userID uint64, items []*Index) error
+		CreateIndexes(ctx context.Context, userID uint64, appId string, items []*Index) error
 		SearchIndex(ctx context.Context, userID uint64, data string, limit int) ([]*Index, error)
 		ResetIndexes(ctx context.Context, appID string) error
 	}
 )
 
-func (i Index) CollectionName() string {
-	return "indices"
-}
-
-func (i Index) PartitionName() string {
-	return strings.ReplaceAll(i.AppID, "-", "_")
-}
-
-// func (i Index) PartitionName() string {
-// 	return fmt.Sprintf("%d_%s", i.AppID, i.IndexName)
-// }
-
-func (i Index) Schema() *entity.Schema {
-	return &entity.Schema{
-		CollectionName: i.CollectionName(),
-		AutoID:         true,
-		Fields: []*entity.Field{
-			{
-				Name:       "id",
-				DataType:   entity.FieldTypeVarChar,
-				PrimaryKey: true,
-				TypeParams: map[string]string{"max_length": "64"},
-			},
-			{
-				Name:       "app_id",
-				DataType:   entity.FieldTypeVarChar,
-				TypeParams: map[string]string{"max_length": "32"},
-			},
-			{
-				Name:       "object_id",
-				DataType:   entity.FieldTypeVarChar,
-				TypeParams: map[string]string{"max_length": "32"},
-			},
-			{
-				Name:       "data",
-				DataType:   entity.FieldTypeVarChar,
-				TypeParams: map[string]string{"max_length": "2048"},
-			},
-			{
-				Name:     "data_token",
-				DataType: entity.FieldTypeInt64,
-			},
-			{
-				Name:       "vectors",
-				DataType:   entity.FieldTypeFloatVector,
-				TypeParams: map[string]string{"dim": "1536"},
-			},
-			{
-				Name:       "category",
-				DataType:   entity.FieldTypeVarChar,
-				TypeParams: map[string]string{"max_length": "32"},
-			},
-			{
-				Name:       "properties",
-				DataType:   entity.FieldTypeVarChar,
-				TypeParams: map[string]string{"max_length": "1024"},
-			},
-			{
-				Name:     "created_at",
-				DataType: entity.FieldTypeInt64,
-			},
-		},
-	}
+func (ix *Index) Mask() {
+	ix.AppID = ""
+	ix.DataToken = 0
+	ix.Vectors = nil
 }
