@@ -8,7 +8,6 @@ import (
 
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/internal/gpt"
-	"github.com/pandodao/botastic/internal/milvus"
 	"github.com/pandodao/botastic/internal/tiktoken"
 	"github.com/pandodao/botastic/session"
 	gogpt "github.com/sashabaranov/go-openai"
@@ -27,7 +26,6 @@ func NewService(ctx context.Context, gptHandler *gpt.Handler, indexes core.Index
 
 type serviceImpl struct {
 	gptHandler                *gpt.Handler
-	milvusClient              *milvus.Client
 	indexes                   core.IndexStore
 	userz                     core.UserService
 	models                    core.ModelStore
@@ -87,7 +85,7 @@ func (s *serviceImpl) SearchIndex(ctx context.Context, userID uint64, query stri
 	return s.indexes.Search(ctx, app.AppID, vs, limit)
 }
 
-func (s *serviceImpl) CreateIndexes(ctx context.Context, userID uint64, items []*core.Index) error {
+func (s *serviceImpl) CreateIndexes(ctx context.Context, userID uint64, appID string, items []*core.Index) error {
 	input := make([]string, 0, len(items))
 	var totalToken int
 
@@ -131,8 +129,7 @@ func (s *serviceImpl) CreateIndexes(ctx context.Context, userID uint64, items []
 		items[i].Vectors = vs
 	}
 
-	// create index in milvus
-	if err := s.indexes.CreateIndexes(ctx, items); err != nil {
+	if err := s.indexes.Upsert(ctx, appID, items); err != nil {
 		return fmt.Errorf("indexes.CreateIndexes: %w", err)
 	}
 

@@ -63,7 +63,7 @@ func CreateIndex(indexes core.IndexService) http.HandlerFunc {
 			return
 		}
 
-		err := indexes.CreateIndexes(r.Context(), app.UserID, is)
+		err := indexes.CreateIndexes(r.Context(), app.UserID, app.AppID, is)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
@@ -84,7 +84,7 @@ func Delete(apps core.AppStore, indexes core.IndexStore) http.HandlerFunc {
 			return
 		}
 
-		if err := indexes.DeleteByPks(ctx, []*core.Index{
+		if err := indexes.Delete(ctx, app.AppID, []*core.Index{
 			{
 				AppID:    app.AppID,
 				ObjectID: objectID,
@@ -124,6 +124,9 @@ func Search(apps core.AppStore, indexes core.IndexService) http.HandlerFunc {
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
+		}
+		for _, r := range result {
+			r.Mask()
 		}
 
 		render.JSON(w, result)

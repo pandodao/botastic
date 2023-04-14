@@ -19,6 +19,7 @@ require (
 	github.com/pandodao/mixpay-go v0.0.0-20230405103808-9f656bd75b03
 	github.com/pkoukk/tiktoken-go v0.1.1-0.20230410080739-eb45b82397d3
 	github.com/pressly/goose/v3 v3.9.0
+	github.com/redis/go-redis/v9 v9.0.3
 	github.com/rs/cors v1.8.3
 	github.com/sashabaranov/go-openai v1.5.7
 	github.com/sirupsen/logrus v1.9.0
@@ -39,10 +40,12 @@ require (
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.2 // indirect
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cockroachdb/errors v1.9.1 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/redact v1.1.3 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dlclark/regexp2 v1.9.0 // indirect
 	github.com/ethereum/go-ethereum v1.11.5 // indirect
 	github.com/fkgi/abnf v1.0.0 // indirect

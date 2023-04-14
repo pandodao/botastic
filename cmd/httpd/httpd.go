@@ -15,7 +15,6 @@ import (
 	"github.com/pandodao/botastic/handler/hc"
 	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/internal/gpt"
-	"github.com/pandodao/botastic/internal/milvus"
 	"github.com/pandodao/botastic/internal/tiktoken"
 	appServ "github.com/pandodao/botastic/service/app"
 	botServ "github.com/pandodao/botastic/service/bot"
@@ -79,13 +78,15 @@ func NewCmdHttpd() *cobra.Command {
 			bots := bot.New(h)
 			orders := order.New(h)
 
-			milvusClient, err := milvus.Init(ctx, cfg.Milvus.Address)
+			indexes, err := index.Init(ctx, cfg.IndexStore)
 			if err != nil {
 				return err
 			}
-			indexes := index.New(ctx, milvusClient)
-			models := model.New(h)
+			if err := indexes.Init(ctx); err != nil {
+				return err
+			}
 
+			models := model.New(h)
 			tiktokenHandler, err := tiktoken.Init()
 			if err != nil {
 				return err
