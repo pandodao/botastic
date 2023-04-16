@@ -35,7 +35,7 @@ type (
 	}
 )
 
-func CreateOrder(orderz core.OrderService, lemon config.Lemonsqueezy) http.HandlerFunc {
+func CreateOrder(orderz core.OrderService, lemon config.Lemonsqueezy, variants []config.TopupVariant) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		user, _ := session.UserFrom(ctx)
@@ -46,27 +46,22 @@ func CreateOrder(orderz core.OrderService, lemon config.Lemonsqueezy) http.Handl
 			return
 		}
 
-		if body.Amount.LessThanOrEqual(decimal.Zero) {
-			render.Error(w, http.StatusBadRequest, errors.New("invalid amount"))
-			return
-		}
-
 		ret := make(map[string]any)
 		if body.Channel == "lemon" {
-			var chosenVariant config.LemonsqueezyVariant
-			for _, v := range lemon.Variants {
-				if body.VariantID == v.ID {
+			var chosenVariant config.TopupVariant
+			for _, v := range variants {
+				if body.VariantID == v.LemonID {
 					chosenVariant = v
 					break
 				}
 			}
 
-			if chosenVariant.ID == 0 {
+			if chosenVariant.LemonID == 0 {
 				render.Error(w, http.StatusBadRequest, nil)
 				return
 			}
 
-			paymentURL, err := orderz.CreateLemonOrder(ctx, user.ID, lemon.StoreID, chosenVariant.ID, decimal.NewFromFloat(chosenVariant.Amount), body.RedirectURL)
+			paymentURL, err := orderz.CreateLemonOrder(ctx, user.ID, lemon.StoreID, chosenVariant.LemonID, decimal.NewFromFloat(chosenVariant.Amount), body.RedirectURL)
 			if err != nil {
 				render.Error(w, http.StatusInternalServerError, err)
 				return
@@ -74,6 +69,11 @@ func CreateOrder(orderz core.OrderService, lemon config.Lemonsqueezy) http.Handl
 			ret["payment_url"] = paymentURL
 
 		} else if body.Channel == "mixpay" {
+			if body.Amount.LessThanOrEqual(decimal.Zero) {
+				render.Error(w, http.StatusBadRequest, errors.New("invalid amount"))
+				return
+			}
+
 			code, err := orderz.CreateMixpayOrder(ctx, user.ID, body.Amount)
 			if err != nil {
 				render.Error(w, http.StatusInternalServerError, err)
@@ -87,9 +87,9 @@ func CreateOrder(orderz core.OrderService, lemon config.Lemonsqueezy) http.Handl
 	}
 }
 
-func GetVariants(lemon config.Lemonsqueezy) http.HandlerFunc {
+func GetVariants(variants []config.TopupVariant) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		render.JSON(w, lemon.Variants)
+		render.JSON(w, variants)
 	}
 }
 

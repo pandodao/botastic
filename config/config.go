@@ -20,12 +20,13 @@ const (
 type Config struct {
 	DB          DBConfig          `yaml:"db"`
 	IndexStore  IndexStoreConfig  `yaml:"index_store"`
-	Sys         System            `yaml:"sys"`
-	OpenAI      OpenAIConfig      `yaml:"openai"`
-	Auth        Auth              `yaml:"auth"`
-	Mixpay      Mixpay            `yaml:"mixpay"`
-	Lemon       Lemonsqueezy      `yaml:"lemonsqueezy"`
-	OrderSyncer OrderSyncerConfig `yaml:"order_syncer"`
+	Sys           System            `yaml:"sys"`
+	OpenAI        OpenAIConfig      `yaml:"openai"`
+	Auth          Auth              `yaml:"auth"`
+	Mixpay        Mixpay            `yaml:"mixpay"`
+	Lemon         Lemonsqueezy      `yaml:"lemonsqueezy"`
+	TopupVariants []TopupVariant    `yaml:"topup_variants"`
+	OrderSyncer   OrderSyncerConfig `yaml:"order_syncer"`
 }
 
 type IndexStoreConfig struct {
@@ -64,15 +65,14 @@ type IndexStoreRedisConfig struct {
 }
 
 type Lemonsqueezy struct {
-	Key      string                `yaml:"key"`
-	StoreID  int64                 `yaml:"store_id"`
-	Variants []LemonsqueezyVariant `yaml:"variants"`
+	Key     string `yaml:"key"`
+	StoreID int64  `yaml:"store_id"`
 }
 
-type LemonsqueezyVariant struct {
-	ID     int64   `yaml:"id" json:"id"`
-	Name   string  `yaml:"name" json:"name"`
-	Amount float64 `yaml:"amount" json:"amount"`
+type TopupVariant struct {
+	Name    string  `yaml:"name" json:"name"`
+	Amount  float64 `yaml:"amount" json:"amount"`
+	LemonID int64   `yaml:"lemon_id" json:"lemon_id"`
 }
 
 type OpenAIConfig struct {

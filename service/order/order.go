@@ -182,7 +182,7 @@ func (s *service) HandleLemonCallback(ctx context.Context, orderID string, userI
 	switch upstreamStatus {
 	case "cancelled":
 		status = core.OrderStatusCanceled
-	case "success":
+	case "paid":
 		status = core.OrderStatusSuccess
 		diff := od.QuoteAmount.Sub(lemonAmount)
 		if diff.Abs().GreaterThan(decimal.NewFromFloat(0.01)) {
@@ -195,11 +195,11 @@ func (s *service) HandleLemonCallback(ctx context.Context, orderID string, userI
 		users := user.New(h)
 		userz := s.userz.ReplaceStore(users)
 
-		if err := orders.UpdateOrder(ctx, orderID, upstreamStatus, core.OrderStatusSuccess, ""); err != nil {
-			return err
-		}
-
 		if status == core.OrderStatusSuccess {
+			if err := orders.UpdateOrder(ctx, orderID, upstreamStatus, core.OrderStatusSuccess, ""); err != nil {
+				return err
+			}
+
 			// TODO select for update
 			user, err := users.GetUser(ctx, od.UserID)
 			if err != nil {
@@ -210,6 +210,11 @@ func (s *service) HandleLemonCallback(ctx context.Context, orderID string, userI
 			if err := userz.Topup(ctx, user, od.QuoteAmount); err != nil {
 				return err
 			}
+		} else if status == core.OrderStatusCanceled {
+			if err := orders.UpdateOrder(ctx, orderID, upstreamStatus, core.OrderStatusCanceled, ""); err != nil {
+				return err
+			}
+
 		}
 
 		return nil

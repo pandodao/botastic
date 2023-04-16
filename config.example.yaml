@@ -34,10 +34,15 @@ mixpay:
 lemonsqueezy:
   key: ""
   store_id: 12345
-  variants:
-    - id: 12345
-      name: "$9.99"
-      amount: 9.99 # 3.99
+
+topup_variants:
+  - name: "$1.00"
+    amount: 1.00
+  - name: "$5.00"
+    amount: 5.00
+  - name: "$10.00"
+    amount: 10.00
+    lemon_id: 123456
 
 order_syncer:
   interval: 1s

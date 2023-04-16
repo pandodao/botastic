@@ -57,6 +57,7 @@ type (
 		ClientID     string
 		TrustDomains []string
 		Lemon        config.Lemonsqueezy
+		Variants     []config.TopupVariant
 	}
 
 	Server struct {
@@ -138,11 +139,11 @@ func (s Server) HandleRest() http.Handler {
 	})
 
 	r.With(auth.LoginRequired()).Route("/orders", func(r chi.Router) {
-		r.Post("/", order.CreateOrder(s.orderz, s.cfg.Lemon))
-		r.Get("/variants", order.GetVariants(s.cfg.Lemon))
+		r.Post("/", order.CreateOrder(s.orderz, s.cfg.Lemon, s.cfg.Variants))
+		r.Get("/variants", order.GetVariants(s.cfg.Variants))
 	})
 
-	r.Route("/callback", func(r chi.Router) {
+	r.Route("/payments", func(r chi.Router) {
 		r.Post("/mixpay", order.HandleMixpayCallback(s.orderz))
 		r.Post("/lemon", order.HandleLemonCallback(s.orderz))
 	})

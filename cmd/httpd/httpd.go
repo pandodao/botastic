@@ -163,6 +163,7 @@ func NewCmdHttpd() *cobra.Command {
 						ClientID:     client.ClientID,
 						TrustDomains: cfg.Auth.TrustDomains,
 						Lemon:        cfg.Lemon,
+						Variants:     cfg.TopupVariants,
 					}, s, apps, indexes, users, convs, models, appz, botz, indexService, userz, convz, orderz, hub)
 
 					// api v1

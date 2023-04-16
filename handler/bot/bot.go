@@ -190,7 +190,7 @@ func CreateBot(botz core.BotService, models core.ModelStore) http.HandlerFunc {
 		}
 
 		botArr, _ := botz.GetBotsByUserID(ctx, user.ID)
-		if len(botArr) >= 3 {
+		if len(botArr) >= 10 {
 			render.Error(w, http.StatusBadRequest, core.ErrAppLimitReached)
 			return
 		}
