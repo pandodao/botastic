@@ -142,30 +142,7 @@ func (s *service) HandleMixpayCallback(ctx context.Context, orderId string, trac
 		}
 	}
 
-	if err := store.Transaction(func(h *store.Handler) error {
-		orders := order.New(h)
-		users := user.New(h)
-		userz := s.userz.ReplaceStore(users)
-
-		if err := orders.UpdateOrder(ctx, orderId, resp.Status, status, resp.Raw); err != nil {
-			return err
-		}
-
-		if status == core.OrderStatusSuccess {
-			// TODO select for update
-			user, err := users.GetUser(ctx, o.UserID)
-			if err != nil {
-				return err
-			}
-
-			// update user credit
-			if err := userz.Topup(ctx, user, o.QuoteAmount); err != nil {
-				return err
-			}
-		}
-
-		return nil
-	}); err != nil {
+	if err := s.CompletOrder(ctx, o.ID, o.UserID, o.QuoteAmount, resp.Status, status); err != nil {
 		return err
 	}
 
@@ -190,31 +167,43 @@ func (s *service) HandleLemonCallback(ctx context.Context, orderID string, userI
 		}
 	}
 
+	if err := s.CompletOrder(ctx, od.ID, od.UserID, od.QuoteAmount, upstreamStatus, status); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *service) CompletOrder(ctx context.Context, orderID string, userID uint64, amount decimal.Decimal, upstreamStatus string, status core.OrderStatus) error {
 	if err := store.Transaction(func(h *store.Handler) error {
 		orders := order.New(h)
 		users := user.New(h)
 		userz := s.userz.ReplaceStore(users)
 
 		if status == core.OrderStatusSuccess {
+			od, err := orders.GetOrder(ctx, orderID)
+			if err != nil || od.UserID != userID || od.Status != core.OrderStatusPending {
+				return err
+			}
+
 			if err := orders.UpdateOrder(ctx, orderID, upstreamStatus, core.OrderStatusSuccess, ""); err != nil {
 				return err
 			}
 
 			// TODO select for update
-			user, err := users.GetUser(ctx, od.UserID)
+			user, err := users.GetUser(ctx, userID)
 			if err != nil {
 				return err
 			}
 
 			// update user credit
-			if err := userz.Topup(ctx, user, od.QuoteAmount); err != nil {
+			if err := userz.Topup(ctx, user, amount); err != nil {
 				return err
 			}
 		} else if status == core.OrderStatusCanceled {
 			if err := orders.UpdateOrder(ctx, orderID, upstreamStatus, core.OrderStatusCanceled, ""); err != nil {
 				return err
 			}
-
 		}
 
 		return nil
