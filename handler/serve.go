@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi"
+	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/handler/app"
 	"github.com/pandodao/botastic/handler/auth"
@@ -55,6 +56,7 @@ type (
 	Config struct {
 		ClientID     string
 		TrustDomains []string
+		Lemon        config.Lemonsqueezy
 	}
 
 	Server struct {
@@ -136,11 +138,13 @@ func (s Server) HandleRest() http.Handler {
 	})
 
 	r.With(auth.LoginRequired()).Route("/orders", func(r chi.Router) {
-		r.Post("/mixpay", order.CreateOrder(s.orderz))
+		r.Post("/", order.CreateOrder(s.orderz, s.cfg.Lemon))
+		r.Get("/variants", order.GetVariants(s.cfg.Lemon))
 	})
 
 	r.Route("/callback", func(r chi.Router) {
 		r.Post("/mixpay", order.HandleMixpayCallback(s.orderz))
+		r.Post("/lemon", order.HandleLemonCallback(s.orderz))
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {

@@ -35,6 +35,7 @@ import (
 	"github.com/pandodao/botastic/worker"
 	"github.com/pandodao/botastic/worker/ordersyncer"
 	"github.com/pandodao/botastic/worker/rotater"
+	"github.com/pandodao/lemon-checkout-go"
 	"github.com/pandodao/mixpay-go"
 	"github.com/rs/cors"
 	"golang.org/x/sync/errgroup"
@@ -71,6 +72,8 @@ func NewCmdHttpd() *cobra.Command {
 			})
 
 			mixpayClient := mixpay.New()
+
+			lemonClient := lemon.New(cfg.Lemon.Key)
 
 			apps := app.New(h)
 			convs := conv.New(h)
@@ -111,7 +114,7 @@ func NewCmdHttpd() *cobra.Command {
 				CallbackUrl:       cfg.Mixpay.CallbackUrl,
 				ReturnTo:          cfg.Mixpay.ReturnTo,
 				FailedReturnTo:    cfg.Mixpay.FailedReturnTo,
-			}, orders, userz, mixpayClient)
+			}, orders, userz, mixpayClient, lemonClient)
 			hub := chanhub.New()
 			// var userz core.UserService
 
@@ -159,6 +162,7 @@ func NewCmdHttpd() *cobra.Command {
 					svr := handler.New(handler.Config{
 						ClientID:     client.ClientID,
 						TrustDomains: cfg.Auth.TrustDomains,
+						Lemon:        cfg.Lemon,
 					}, s, apps, indexes, users, convs, models, appz, botz, indexService, userz, convz, orderz, hub)
 
 					// api v1

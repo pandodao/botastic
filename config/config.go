@@ -24,6 +24,7 @@ type Config struct {
 	OpenAI      OpenAIConfig      `yaml:"openai"`
 	Auth        Auth              `yaml:"auth"`
 	Mixpay      Mixpay            `yaml:"mixpay"`
+	Lemon       Lemonsqueezy      `yaml:"lemonsqueezy"`
 	OrderSyncer OrderSyncerConfig `yaml:"order_syncer"`
 }
 
@@ -60,6 +61,18 @@ type IndexStoreRedisConfig struct {
 	Password  string `yaml:"password"`
 	DB        int    `yaml:"db"`
 	KeyPrefix string `yaml:"key_prefix"`
+}
+
+type Lemonsqueezy struct {
+	Key      string                `yaml:"key"`
+	StoreID  int64                 `yaml:"store_id"`
+	Variants []LemonsqueezyVariant `yaml:"variants"`
+}
+
+type LemonsqueezyVariant struct {
+	ID     int64   `yaml:"id" json:"id"`
+	Name   string  `yaml:"name" json:"name"`
+	Amount float64 `yaml:"amount" json:"amount"`
 }
 
 type OpenAIConfig struct {

@@ -31,6 +31,14 @@ mixpay:
   return_to: ""
   failed_return_to: ""
 
+lemonsqueezy:
+  key: ""
+  store_id: 12345
+  variants:
+    - id: 12345
+      name: "$9.99"
+      amount: 9.99 # 3.99
+
 order_syncer:
   interval: 1s
   check_interval: 10s
