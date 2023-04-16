@@ -37,6 +37,7 @@ import (
 	"github.com/pandodao/botastic/worker/rotater"
 	"github.com/pandodao/lemon-checkout-go"
 	"github.com/pandodao/mixpay-go"
+	"github.com/pandodao/twitter-login-go"
 	"github.com/rs/cors"
 	"golang.org/x/sync/errgroup"
 
@@ -61,6 +62,8 @@ func NewCmdHttpd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
+			twitterClient := twitter.New(cfg.Twitter.ApiKey, cfg.Twitter.ApiSecret)
 
 			h := store.MustInit(store.Config{
 				Driver: cfg.DB.Driver,
@@ -98,7 +101,7 @@ func NewCmdHttpd() *cobra.Command {
 			userz := userServ.New(userServ.Config{
 				ExtraRate:       cfg.Sys.ExtraRate,
 				InitUserCredits: cfg.Sys.InitUserCredits,
-			}, client, users)
+			}, client, twitterClient, users)
 			indexService := indexServ.NewService(ctx, gptHandler, indexes, userz, models, tiktokenHandler)
 			appz := appServ.New(appServ.Config{
 				SecretKey: cfg.Sys.SecretKey,
@@ -160,11 +163,12 @@ func NewCmdHttpd() *cobra.Command {
 
 				{
 					svr := handler.New(handler.Config{
-						ClientID:     client.ClientID,
-						TrustDomains: cfg.Auth.TrustDomains,
-						Lemon:        cfg.Lemon,
-						Variants:     cfg.TopupVariants,
-					}, s, apps, indexes, users, convs, models, appz, botz, indexService, userz, convz, orderz, hub)
+						ClientID:           client.ClientID,
+						TrustDomains:       cfg.Auth.TrustDomains,
+						Lemon:              cfg.Lemon,
+						Variants:           cfg.TopupVariants,
+						TwitterCallbackUrl: cfg.Twitter.CallbackUrl,
+					}, s, twitterClient, apps, indexes, users, convs, models, appz, botz, indexService, userz, convz, orderz, hub)
 
 					// api v1
 					restHandler := svr.HandleRest()

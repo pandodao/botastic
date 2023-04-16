@@ -18,9 +18,11 @@ import (
 	"github.com/pandodao/botastic/handler/user"
 	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/session"
+	"github.com/pandodao/twitter-login-go"
 )
 
 func New(cfg Config, s *session.Session,
+	twitterClient *twitter.Client,
 	apps core.AppStore,
 	indexs core.IndexStore,
 	users core.UserStore,
@@ -35,35 +37,39 @@ func New(cfg Config, s *session.Session,
 	hub *chanhub.Hub,
 ) Server {
 	return Server{
-		cfg:     cfg,
-		apps:    apps,
-		indexes: indexs,
-		users:   users,
-		appz:    appz,
-		models:  models,
-		indexz:  indexz,
-		botz:    botz,
-		convz:   convz,
-		userz:   userz,
-		session: s,
-		convs:   convs,
-		orderz:  orderz,
-		hub:     hub,
+		cfg:           cfg,
+		apps:          apps,
+		indexes:       indexs,
+		users:         users,
+		appz:          appz,
+		models:        models,
+		indexz:        indexz,
+		botz:          botz,
+		convz:         convz,
+		userz:         userz,
+		convs:         convs,
+		orderz:        orderz,
+		hub:           hub,
+		session:       s,
+		twitterClient: twitterClient,
 	}
 }
 
 type (
 	Config struct {
-		ClientID     string
-		TrustDomains []string
-		Lemon        config.Lemonsqueezy
-		Variants     []config.TopupVariant
+		ClientID           string
+		TrustDomains       []string
+		Lemon              config.Lemonsqueezy
+		Variants           []config.TopupVariant
+		TwitterCallbackUrl string
 	}
 
 	Server struct {
 		cfg Config
 
-		session *session.Session
+		session       *session.Session
+		twitterClient *twitter.Client
+
 		apps    core.AppStore
 		indexes core.IndexStore
 		users   core.UserStore
@@ -111,6 +117,7 @@ func (s Server) HandleRest() http.Handler {
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/login", auth.Login(s.session, s.userz, s.cfg.ClientID, s.cfg.TrustDomains))
+		r.Get("/twitter/url", auth.GetTwitterURL(s.twitterClient, s.cfg.TwitterCallbackUrl))
 	})
 
 	r.Route("/bots", func(r chi.Router) {

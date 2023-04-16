@@ -44,6 +44,11 @@ topup_variants:
     amount: 10.00
     lemon_id: 123456
 
+twitter:
+  api_key: ""
+  api_secret: ""
+  callback_url: "https://"
+
 order_syncer:
   interval: 1s
   check_interval: 10s

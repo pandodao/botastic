@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gofrs/uuid"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/passport-go/auth"
+	"github.com/pandodao/twitter-login-go"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 
@@ -18,12 +20,14 @@ import (
 func New(
 	cfg Config,
 	client *mixin.Client,
+	twitterClient *twitter.Client,
 	users core.UserStore,
 ) *UserService {
 	return &UserService{
-		cfg:    cfg,
-		client: client,
-		users:  users,
+		cfg:           cfg,
+		client:        client,
+		twitterClient: twitterClient,
+		users:         users,
 	}
 }
 
@@ -33,13 +37,14 @@ type Config struct {
 }
 
 type UserService struct {
-	cfg    Config
-	client *mixin.Client
-	users  core.UserStore
+	cfg           Config
+	client        *mixin.Client
+	twitterClient *twitter.Client
+	users         core.UserStore
 }
 
 func (s *UserService) ReplaceStore(users core.UserStore) core.UserService {
-	return New(s.cfg, s.client, users)
+	return New(s.cfg, s.client, s.twitterClient, users)
 }
 
 func (s *UserService) LoginWithMixin(ctx context.Context, authUser *auth.User, lang string) (*core.User, error) {
@@ -57,6 +62,7 @@ func (s *UserService) LoginWithMixin(ctx context.Context, authUser *auth.User, l
 		FullName:            authUser.FullName,
 		AvatarURL:           authUser.AvatarURL,
 		MvmPublicKey:        authUser.MvmAddress.Hex(),
+		Credits:             decimal.NewFromFloat(s.cfg.InitUserCredits),
 	}
 
 	existing, err := s.users.GetUserByMixinID(ctx, user.MixinUserID)
@@ -67,8 +73,7 @@ func (s *UserService) LoginWithMixin(ctx context.Context, authUser *auth.User, l
 
 	// create
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		newUserId, err := s.users.CreateUser(ctx, user.FullName, user.AvatarURL, user.MixinUserID, user.MixinIdentityNumber,
-			user.Lang, user.MvmPublicKey, decimal.NewFromFloat(s.cfg.InitUserCredits))
+		newUserId, err := s.users.CreateUser(ctx, user)
 		if err != nil {
 			fmt.Printf("err users.Create: %v\n", err)
 			return nil, err
@@ -82,6 +87,64 @@ func (s *UserService) LoginWithMixin(ctx context.Context, authUser *auth.User, l
 				return nil, err
 			}
 		}
+		return user, nil
+	}
+
+	// update
+	if err := s.users.UpdateInfo(ctx, existing.ID, user.FullName, user.AvatarURL, lang); err != nil {
+		fmt.Printf("err users.Updates: %v\n", err)
+		return nil, err
+	}
+
+	return existing, nil
+}
+
+func (s *UserService) LoginWithTwitter(ctx context.Context, oauthToken, oauthVerifier, lang string) (*core.User, error) {
+	if len(lang) >= 2 {
+		lang = strings.ToLower(lang[:2])
+	} else {
+		lang = "zh"
+	}
+
+	var user = &core.User{
+		Lang:        lang,
+		MixinUserID: uuid.Nil.String(),
+	}
+
+	_, err := s.twitterClient.GetAccessToken(oauthToken, oauthVerifier)
+	if err != nil {
+		return nil, err
+	}
+
+	twitUser, err := s.twitterClient.Verify()
+	if err != nil {
+		return nil, err
+	}
+
+	if twitUser.ID == 0 {
+		return nil, core.ErrUnauthorized
+	}
+
+	user.FullName = twitUser.Name
+	user.TwitterID = twitUser.IDStr
+	user.TwitterScreenName = twitUser.ScreenName
+	user.AvatarURL = twitUser.ProfileImageURLHttps
+
+	existing, err := s.users.GetUserByTwitterID(ctx, twitUser.IDStr)
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		fmt.Printf("err users.GetUserByTwitterID: %v\n", err)
+		return nil, err
+	}
+
+	// create
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		newUserId, err := s.users.CreateUser(ctx, user)
+		if err != nil {
+			fmt.Printf("err users.Create: %v\n", err)
+			return nil, err
+		}
+
+		user.ID = newUserId
 		return user, nil
 	}
 

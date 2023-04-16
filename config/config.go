@@ -26,6 +26,7 @@ type Config struct {
 	Mixpay        Mixpay            `yaml:"mixpay"`
 	Lemon         Lemonsqueezy      `yaml:"lemonsqueezy"`
 	TopupVariants []TopupVariant    `yaml:"topup_variants"`
+	Twitter       Twitter           `yaml:"twitter"`
 	OrderSyncer   OrderSyncerConfig `yaml:"order_syncer"`
 }
 
@@ -67,6 +68,12 @@ type IndexStoreRedisConfig struct {
 type Lemonsqueezy struct {
 	Key     string `yaml:"key"`
 	StoreID int64  `yaml:"store_id"`
+}
+
+type Twitter struct {
+	ApiKey      string `yaml:"api_key"`
+	ApiSecret   string `yaml:"api_secret"`
+	CallbackUrl string `yaml:"callback_url"`
 }
 
 type TopupVariant struct {
