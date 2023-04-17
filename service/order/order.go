@@ -74,7 +74,7 @@ func (s *service) CreateMixpayOrder(ctx context.Context, userId uint64, amount d
 		return "", err
 	}
 
-	return resp.Code, nil
+	return resp.PaymentLink(), nil
 }
 
 func (s *service) CreateLemonOrder(ctx context.Context, userID uint64, storeID int64, variantID int64, amount decimal.Decimal, redirectURL string) (string, error) {

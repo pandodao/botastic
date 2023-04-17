@@ -74,12 +74,12 @@ func CreateOrder(orderz core.OrderService, lemon config.Lemonsqueezy, variants [
 				return
 			}
 
-			code, err := orderz.CreateMixpayOrder(ctx, user.ID, body.Amount)
+			paymentURL, err := orderz.CreateMixpayOrder(ctx, user.ID, body.Amount)
 			if err != nil {
 				render.Error(w, http.StatusInternalServerError, err)
 				return
 			}
-			ret["code"] = code
+			ret["payment_url"] = paymentURL
 
 		}
 

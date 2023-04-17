@@ -13,7 +13,7 @@ import (
 )
 
 type milvusStore struct {
-	cfg    config.IndexStoreMilvusConfig
+	cfg    *config.IndexStoreMilvusConfig
 	client client.Client
 }
 
@@ -24,6 +24,7 @@ func initMilvusStore(ctx context.Context, cfg *config.IndexStoreMilvusConfig) (*
 	}
 
 	return &milvusStore{
+		cfg:    cfg,
 		client: milvusClient,
 	}, nil
 }
