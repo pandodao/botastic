@@ -182,8 +182,16 @@ func (s *service) CompleteOrder(ctx context.Context, orderID string, userID uint
 
 		if status == core.OrderStatusSuccess {
 			od, err := orders.GetOrder(ctx, orderID)
-			if err != nil || od.UserID != userID || od.Status != core.OrderStatusPending {
+			if err != nil {
 				return err
+			}
+
+			if od.UserID != userID {
+				return core.ErrIncorrectOrderUser
+			}
+
+			if od.Status != core.OrderStatusPending {
+				return core.ErrIncorrectOrderStatus
 			}
 
 			if err := orders.UpdateOrder(ctx, orderID, upstreamStatus, core.OrderStatusSuccess, ""); err != nil {

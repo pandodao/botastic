@@ -91,9 +91,16 @@ func (s *UserService) LoginWithMixin(ctx context.Context, authUser *auth.User, l
 	}
 
 	// update
-	if err := s.users.UpdateInfo(ctx, existing.ID, user.FullName, user.AvatarURL, lang); err != nil {
-		fmt.Printf("err users.Updates: %v\n", err)
-		return nil, err
+	if existing.FullName != user.FullName || existing.AvatarURL != user.AvatarURL || existing.Lang != lang {
+
+		if err := s.users.UpdateInfo(ctx, existing.ID, user.FullName, user.AvatarURL, lang); err != nil {
+			fmt.Printf("err users.Updates: %v\n", err)
+			return nil, err
+		}
+
+		existing.FullName = user.FullName
+		existing.AvatarURL = user.AvatarURL
+		existing.Lang = lang
 	}
 
 	return existing, nil
@@ -149,9 +156,16 @@ func (s *UserService) LoginWithTwitter(ctx context.Context, oauthToken, oauthVer
 	}
 
 	// update
-	if err := s.users.UpdateInfo(ctx, existing.ID, user.FullName, user.AvatarURL, lang); err != nil {
-		fmt.Printf("err users.Updates: %v\n", err)
-		return nil, err
+	if existing.FullName != user.FullName || existing.AvatarURL != user.AvatarURL || existing.Lang != lang {
+
+		if err := s.users.UpdateInfo(ctx, existing.ID, user.FullName, user.AvatarURL, lang); err != nil {
+			fmt.Printf("err users.Updates: %v\n", err)
+			return nil, err
+		}
+
+		existing.FullName = user.FullName
+		existing.AvatarURL = user.AvatarURL
+		existing.Lang = lang
 	}
 
 	return existing, nil

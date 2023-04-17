@@ -91,4 +91,8 @@ var (
 	ErrInvalidModel = errors.New("invalid model")
 
 	ErrTokenExceedLimit = errors.New("token exceed limit")
+
+	ErrIncorrectOrderStatus = errors.New("incorrect order status")
+
+	ErrIncorrectOrderUser = errors.New("incorrect order user")
 )
