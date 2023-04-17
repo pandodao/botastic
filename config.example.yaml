@@ -8,7 +8,6 @@ openai:
 
 sys:
   secret_key: ""
-  extra_rate: 0.1
   init_user_credits: 0.1
   app_per_user_limit: 10
   bot_per_user_limit: 10

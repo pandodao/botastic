@@ -94,7 +94,6 @@ type DBConfig struct {
 }
 
 type System struct {
-	ExtraRate       float64 `yaml:"extra_rate"`
 	InitUserCredits float64 `yaml:"init_user_credits"`
 	SecretKey       string  `yaml:"secret_key"`
 	// how many apps and bots a user can create

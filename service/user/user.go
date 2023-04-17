@@ -32,7 +32,6 @@ func New(
 }
 
 type Config struct {
-	ExtraRate       float64
 	InitUserCredits float64
 }
 
@@ -185,13 +184,9 @@ func (s *UserService) Topup(ctx context.Context, user *core.User, amount decimal
 func (s *UserService) ConsumeCreditsByModel(ctx context.Context, userID uint64, model core.Model, promptTokenCount, completionTokenCount int64) error {
 	log := logger.FromContext(ctx).WithField("service", "user.ConsumeCreditsByModel")
 	cost := model.CalculateTokenCost(promptTokenCount, completionTokenCount)
-	credits := cost
-	if s.cfg.ExtraRate > 0 {
-		credits = credits.Mul(decimal.NewFromFloat(1 + s.cfg.ExtraRate))
-	}
 	log.Printf("model: %s:%s, cost: $%s, token: %d->%d, credits: $%s\n", model.Provider, model.ProviderModel,
-		cost.StringFixed(8), promptTokenCount, completionTokenCount, credits.StringFixed(8))
-	return s.ConsumeCredits(ctx, userID, credits)
+		cost.StringFixed(8), promptTokenCount, completionTokenCount, cost.StringFixed(8))
+	return s.ConsumeCredits(ctx, userID, cost)
 }
 
 func (s *UserService) ConsumeCredits(ctx context.Context, userID uint64, amount decimal.Decimal) error {
