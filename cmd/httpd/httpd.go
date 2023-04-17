@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/pandodao/botastic/config"
+	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/handler"
 	"github.com/pandodao/botastic/handler/hc"
 	"github.com/pandodao/botastic/internal/chanhub"
@@ -51,38 +52,68 @@ func NewCmdHttpd() *cobra.Command {
 		Use:   "httpd [port]",
 		Short: "start the httpd daemon",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			var err error
 			ctx := cmd.Context()
 			s := session.From(ctx)
-			s.WithJWTSecret([]byte(config.C().Auth.JwtSecret))
-
 			cfg := config.C()
-
-			client, err := s.GetClient()
-			if err != nil {
-				return err
-			}
-
-			twitterClient := twitter.New(cfg.Twitter.ApiKey, cfg.Twitter.ApiSecret)
 
 			h := store.MustInit(store.Config{
 				Driver: cfg.DB.Driver,
 				DSN:    cfg.DB.DSN,
 			})
+
+			var (
+				users             core.UserStore
+				mixpayClient      *mixpay.Client
+				lemonClient       *lemon.Client
+				twitterClient     *twitter.Client
+				userz             core.UserService
+				mixinClientID     string
+				orders            core.OrderStore
+				orderz            core.OrderService
+				ordersyncerWorker *ordersyncer.Worker
+			)
+
+			if cfg.Sys.Mode == config.SystemModeCloud {
+				s.WithJWTSecret([]byte(config.C().Sys.Cloud.Auth.JwtSecret))
+				client, err := s.GetClient()
+				if err != nil {
+					return err
+				}
+				mixinClientID = client.ClientID
+				users = user.New(h)
+				mixpayClient = mixpay.New()
+				lemonClient = lemon.New(cfg.Sys.Cloud.Lemon.Key)
+				twitterClient = twitter.New(cfg.Sys.Cloud.Twitter.ApiKey, cfg.Sys.Cloud.Twitter.ApiSecret)
+				userz := userServ.New(userServ.Config{
+					InitUserCredits: cfg.Sys.Cloud.InitUserCredits,
+				}, client, twitterClient, users)
+
+				orders = order.New(h)
+				orderz := orderServ.New(orderServ.Config{
+					PayeeId:           cfg.Sys.Cloud.Mixpay.PayeeId,
+					QuoteAssetId:      cfg.Sys.Cloud.Mixpay.QuoteAssetId,
+					SettlementAssetId: cfg.Sys.Cloud.Mixpay.SettlementAssetId,
+					CallbackUrl:       cfg.Sys.Cloud.Mixpay.CallbackUrl,
+					ReturnTo:          cfg.Sys.Cloud.Mixpay.ReturnTo,
+					FailedReturnTo:    cfg.Sys.Cloud.Mixpay.FailedReturnTo,
+				}, orders, userz, mixpayClient, lemonClient)
+				ordersyncerWorker = ordersyncer.New(ordersyncer.Config{
+					Interval:       cfg.Sys.Cloud.OrderSyncer.Interval,
+					CheckInterval:  cfg.Sys.Cloud.OrderSyncer.CheckInterval,
+					CancelInterval: cfg.Sys.Cloud.OrderSyncer.CancelInterval,
+				}, orders, orderz)
+			} else {
+				users = user.NewLocalModeStore(&core.User{})
+			}
+
 			gptHandler := gpt.New(gpt.Config{
 				Keys:    cfg.OpenAI.Keys,
 				Timeout: cfg.OpenAI.Timeout,
 			})
 
-			mixpayClient := mixpay.New()
-
-			lemonClient := lemon.New(cfg.Lemon.Key)
-
 			apps := app.New(h)
 			convs := conv.New(h)
-			users := user.New(h)
 			bots := bot.New(h)
-			orders := order.New(h)
 
 			indexes, err := index.Init(ctx, cfg.IndexStore)
 			if err != nil {
@@ -98,9 +129,6 @@ func NewCmdHttpd() *cobra.Command {
 				return err
 			}
 
-			userz := userServ.New(userServ.Config{
-				InitUserCredits: cfg.Sys.InitUserCredits,
-			}, client, twitterClient, users)
 			indexService := indexServ.NewService(ctx, gptHandler, indexes, userz, models, tiktokenHandler)
 			appz := appServ.New(appServ.Config{
 				SecretKey: cfg.Sys.SecretKey,
@@ -109,14 +137,6 @@ func NewCmdHttpd() *cobra.Command {
 			middlewarez := middlewareServ.New(middlewareServ.Config{}, apps, indexService)
 			botz := botServ.New(botServ.Config{}, apps, bots, models, middlewarez)
 			convz := convServ.New(convServ.Config{}, convs, botz, apps)
-			orderz := orderServ.New(orderServ.Config{
-				PayeeId:           cfg.Mixpay.PayeeId,
-				QuoteAssetId:      cfg.Mixpay.QuoteAssetId,
-				SettlementAssetId: cfg.Mixpay.SettlementAssetId,
-				CallbackUrl:       cfg.Mixpay.CallbackUrl,
-				ReturnTo:          cfg.Mixpay.ReturnTo,
-				FailedReturnTo:    cfg.Mixpay.FailedReturnTo,
-			}, orders, userz, mixpayClient, lemonClient)
 			hub := chanhub.New()
 			// var userz core.UserService
 
@@ -124,12 +144,9 @@ func NewCmdHttpd() *cobra.Command {
 			workers := []worker.Worker{
 				// rotater
 				rotater.New(rotater.Config{}, gptHandler, convs, apps, models, convz, botz, middlewarez, userz, hub, tiktokenHandler),
-
-				ordersyncer.New(ordersyncer.Config{
-					Interval:       cfg.OrderSyncer.Interval,
-					CheckInterval:  cfg.OrderSyncer.CheckInterval,
-					CancelInterval: cfg.OrderSyncer.CancelInterval,
-				}, orders, orderz),
+			}
+			if ordersyncerWorker != nil {
+				workers = append(workers, ordersyncerWorker)
 			}
 
 			g, ctx := errgroup.WithContext(ctx)
@@ -157,24 +174,31 @@ func NewCmdHttpd() *cobra.Command {
 
 				// hc
 				{
-					mux.Mount("/hc", hc.Handle(cmd.Version))
+					mux.Get("/hc", hc.Handle(cmd.Version).ServeHTTP)
 				}
 
 				{
 					svr := handler.New(handler.Config{
-						ClientID:           client.ClientID,
-						TrustDomains:       cfg.Auth.TrustDomains,
-						Lemon:              cfg.Lemon,
-						Variants:           cfg.TopupVariants,
-						TwitterCallbackUrl: cfg.Twitter.CallbackUrl,
-						AppPerUserLimit:    cfg.Sys.AppPerUserLimit,
-						BotPerUserLimit:    cfg.Sys.BotPerUserLimit,
+						Mode:               cfg.Sys.Mode,
+						ClientID:           mixinClientID,
+						TrustDomains:       cfg.Sys.Cloud.Auth.TrustDomains,
+						Lemon:              cfg.Sys.Cloud.Lemon,
+						Variants:           cfg.Sys.Cloud.TopupVariants,
+						TwitterCallbackUrl: cfg.Sys.Cloud.Twitter.CallbackUrl,
+						AppPerUserLimit:    cfg.Sys.Cloud.AppPerUserLimit,
+						BotPerUserLimit:    cfg.Sys.Cloud.BotPerUserLimit,
 					}, s, twitterClient, apps, indexes, users, convs, models, appz, botz, indexService, userz, convz, orderz, hub)
 
 					// api v1
 					restHandler := svr.HandleRest()
 					mux.Mount("/api", restHandler)
 				}
+
+				fmt.Println("All routes:")
+				chi.Walk(mux, func(method string, route string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+					fmt.Printf("[%s]: %s \n", method, route)
+					return nil
+				})
 
 				port := 8080
 				if len(args) > 0 {

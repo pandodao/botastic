@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -17,17 +18,18 @@ const (
 	IndexStoreRedis  IndexStoreDriver = "redis"
 )
 
+type SystemMode string
+
+const (
+	SystemModeCloud SystemMode = "cloud"
+	SystemModeLocal SystemMode = "local"
+)
+
 type Config struct {
-	DB            DBConfig          `yaml:"db"`
-	IndexStore    IndexStoreConfig  `yaml:"index_store"`
-	Sys           System            `yaml:"sys"`
-	OpenAI        OpenAIConfig      `yaml:"openai"`
-	Auth          Auth              `yaml:"auth"`
-	Mixpay        Mixpay            `yaml:"mixpay"`
-	Lemon         Lemonsqueezy      `yaml:"lemonsqueezy"`
-	TopupVariants []TopupVariant    `yaml:"topup_variants"`
-	Twitter       Twitter           `yaml:"twitter"`
-	OrderSyncer   OrderSyncerConfig `yaml:"order_syncer"`
+	DB         DBConfig         `yaml:"db"`
+	Sys        System           `yaml:"sys"`
+	OpenAI     OpenAIConfig     `yaml:"openai"`
+	IndexStore IndexStoreConfig `yaml:"index_store"`
 }
 
 type IndexStoreConfig struct {
@@ -88,17 +90,32 @@ type OpenAIConfig struct {
 }
 
 type DBConfig struct {
-	Driver  string `yaml:"driver"`
-	DSN     string `yaml:"dsn"`
-	AutoGen bool   `yaml:"auto_gen"`
+	Driver string `yaml:"driver"`
+	DSN    string `yaml:"dsn"`
 }
 
 type System struct {
-	InitUserCredits float64 `yaml:"init_user_credits"`
-	SecretKey       string  `yaml:"secret_key"`
+	SecretKey string            `yaml:"secret_key"`
+	Mode      SystemMode        `yaml:"mode"`
+	Cloud     SystemCloudConfig `yaml:"cloud"`
+	Local     SystemLocalConfig `yaml:"local"`
+}
+
+type SystemLocalConfig struct{}
+
+type SystemCloudConfig struct {
 	// how many apps and bots a user can create
 	AppPerUserLimit int `yaml:"app_per_user_limit"`
 	BotPerUserLimit int `yaml:"bot_per_user_limit"`
+
+	ExtraRate       float64           `yaml:"extra_rate"`
+	InitUserCredits float64           `yaml:"init_user_credits"`
+	Auth            Auth              `yaml:"auth"`
+	Mixpay          Mixpay            `yaml:"mixpay"`
+	OrderSyncer     OrderSyncerConfig `yaml:"order_syncer"`
+	Lemon           Lemonsqueezy      `yaml:"lemonsqueezy"`
+	TopupVariants   []TopupVariant    `yaml:"topup_variants"`
+	Twitter         Twitter           `yaml:"twitter"`
 }
 
 type Auth struct {
@@ -121,6 +138,12 @@ func (c Config) validate() error {
 	default:
 		return fmt.Errorf("index_store.driver is invalid: %s", c.IndexStore.Driver)
 	}
+
+	switch c.Sys.Mode {
+	case SystemModeCloud, SystemModeLocal:
+	default:
+		return errors.New("invalid system mode")
+	}
 	return nil
 }
 
@@ -132,10 +155,15 @@ func DefaultConfigString() string {
 
 func defaultConfig() *Config {
 	return &Config{
-		OrderSyncer: OrderSyncerConfig{
-			Interval:       time.Second,
-			CheckInterval:  10 * time.Second,
-			CancelInterval: 2 * time.Hour,
+		Sys: System{
+			Mode: SystemModeLocal,
+			Cloud: SystemCloudConfig{
+				OrderSyncer: OrderSyncerConfig{
+					Interval:       time.Second,
+					CheckInterval:  10 * time.Second,
+					CancelInterval: 2 * time.Hour,
+				},
+			},
 		},
 		IndexStore: IndexStoreConfig{
 			Driver: IndexStoreMemory,
@@ -177,4 +205,8 @@ func Init(fp string) (*Config, error) {
 	}
 
 	return c, nil
+}
+
+func IsCloudMode() bool {
+	return C().Sys.Mode == SystemModeCloud
 }

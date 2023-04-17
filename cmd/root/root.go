@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/pandodao/botastic/cmd/app"
 	"github.com/pandodao/botastic/cmd/gen"
 	"github.com/pandodao/botastic/cmd/httpd"
@@ -14,7 +13,6 @@ import (
 	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/session"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var opt struct {
@@ -30,28 +28,16 @@ func NewCmdRoot(version string) *cobra.Command {
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			s := session.From(cmd.Context())
 
-			v := viper.New()
-			v.SetConfigType("yaml")
-
 			if opt.KeystoreFile != "" {
-				f, err := os.Open(opt.KeystoreFile)
+				data, err := os.ReadFile(opt.KeystoreFile)
 				if err != nil {
-					return fmt.Errorf("open keystore file %s failed: %w", opt.KeystoreFile, err)
+					return fmt.Errorf("read keystore file %s failed: %w", opt.KeystoreFile, err)
 				}
-
-				defer f.Close()
-				_ = v.ReadConfig(f)
-			}
-
-			if values := v.AllSettings(); len(values) > 0 {
-				b, _ := jsoniter.Marshal(values)
-				keystore, pin, err := cmdutil.DecodeKeystore(b)
+				keystore, pin, err := cmdutil.DecodeKeystore(data)
 				if err != nil {
 					return fmt.Errorf("decode keystore failed: %w", err)
 				}
-
 				s.WithKeystore(keystore)
-
 				if pin != "" {
 					s.WithPin(pin)
 				}

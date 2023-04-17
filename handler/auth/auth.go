@@ -8,6 +8,7 @@ import (
 
 	"github.com/fox-one/pkg/httputil/param"
 	"github.com/golang-jwt/jwt"
+	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/handler/render"
 	"github.com/pandodao/botastic/session"
@@ -134,36 +135,39 @@ func GetTwitterURL(twitterClient *twitter.Client, callbackURL string) http.Handl
 	}
 }
 
-func HandleAuthentication(s *session.Session, users core.UserStore) func(http.Handler) http.Handler {
+func HandleAuthentication(s *session.Session, users core.UserStore, mode config.SystemMode) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 
-			accessToken := getBearerToken(r)
-			if accessToken == "" {
-				next.ServeHTTP(w, r)
-				return
+			var userID uint64
+			if mode == config.SystemModeCloud {
+				accessToken := getBearerToken(r)
+				if accessToken == "" {
+					next.ServeHTTP(w, r)
+					return
+				}
+
+				claims := &session.JwtClaims{}
+				tkn, err := jwt.ParseWithClaims(accessToken, claims,
+					func(token *jwt.Token) (interface{}, error) {
+						return s.JwtSecret, nil
+					},
+				)
+
+				if err != nil {
+					fmt.Println("jwt.ParseWithClaims", err)
+					next.ServeHTTP(w, r)
+					return
+				}
+				if !tkn.Valid {
+					next.ServeHTTP(w, r)
+					return
+				}
+				userID = claims.UserID
 			}
 
-			claims := &session.JwtClaims{}
-
-			tkn, err := jwt.ParseWithClaims(accessToken, claims,
-				func(token *jwt.Token) (interface{}, error) {
-					return s.JwtSecret, nil
-				},
-			)
-
-			if err != nil {
-				fmt.Println("jwt.ParseWithClaims", err)
-				next.ServeHTTP(w, r)
-				return
-			}
-			if !tkn.Valid {
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			user, err := users.GetUser(ctx, claims.UserID)
+			user, err := users.GetUser(ctx, userID)
 			if err != nil {
 				fmt.Println("users.GetUser", err)
 				next.ServeHTTP(w, r)
@@ -274,9 +278,14 @@ func LoginRequired() func(http.Handler) http.Handler {
 	}
 }
 
-func UserCreditRequired(users core.UserStore) func(http.Handler) http.Handler {
+func UserCreditRequired(users core.UserStore, mode config.SystemMode) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
+			if mode == config.SystemModeLocal {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			ctx := r.Context()
 			var user *core.User
 			user, found := session.UserFrom(ctx)

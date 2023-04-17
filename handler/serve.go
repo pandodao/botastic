@@ -57,6 +57,7 @@ func New(cfg Config, s *session.Session,
 
 type (
 	Config struct {
+		Mode               config.SystemMode
 		ClientID           string
 		TrustDomains       []string
 		Lemon              config.Lemonsqueezy
@@ -93,12 +94,14 @@ func (s Server) HandleRest() http.Handler {
 	r := chi.NewRouter()
 	r.Use(render.WrapResponse(true))
 	r.Use(auth.HandleAppAuthentication(s.session, s.appz))
-	r.Use(auth.HandleAuthentication(s.session, s.users))
+	r.Use(auth.HandleAuthentication(s.session, s.users, s.cfg.Mode))
+
+	userCreditRequiredHandler := auth.UserCreditRequired(s.users, s.cfg.Mode)
 
 	r.Route("/indexes", func(r chi.Router) {
-		r.With(auth.HandleAppSecretRequired(), auth.UserCreditRequired(s.users)).Post("/", indexHandler.CreateIndex(s.indexz))
+		r.With(auth.HandleAppSecretRequired(), userCreditRequiredHandler).Post("/", indexHandler.CreateIndex(s.indexz))
 		r.With(auth.HandleAppSecretRequired()).Post("/reset", indexHandler.ResetIndexes(s.indexz))
-		r.With(auth.UserCreditRequired(s.users)).Get("/search", indexHandler.Search(s.apps, s.indexz))
+		r.With(userCreditRequiredHandler).Get("/search", indexHandler.Search(s.apps, s.indexz))
 		r.With(auth.HandleAppSecretRequired()).Delete("/{objectID}", indexHandler.Delete(s.apps, s.indexes))
 	})
 
@@ -109,17 +112,12 @@ func (s Server) HandleRest() http.Handler {
 
 	r.Route("/conversations", func(r chi.Router) {
 		r.Post("/", conv.CreateConversation(s.botz, s.convz))
-		r.With(auth.UserCreditRequired(s.users)).Post("/oneway", conv.CreateOnewayConversation(s.convz, s.convs, s.hub))
+		r.With(userCreditRequiredHandler).Post("/oneway", conv.CreateOnewayConversation(s.convz, s.convs, s.hub))
 		r.Get("/{conversationID}", conv.GetConversation(s.botz, s.convz))
-		r.With(auth.UserCreditRequired(s.users)).Post("/{conversationID}", conv.PostToConversation(s.botz, s.convz))
+		r.With(userCreditRequiredHandler).Post("/{conversationID}", conv.PostToConversation(s.botz, s.convz))
 		r.Delete("/{conversationID}", conv.DeleteConversation(s.botz, s.convz))
 		r.Put("/{conversationID}", conv.UpdateConversation())
 		r.Get("/{conversationID}/{turnID}", conv.GetConversationTurn(s.botz, s.convs, s.hub))
-	})
-
-	r.Route("/auth", func(r chi.Router) {
-		r.Post("/login", auth.Login(s.session, s.userz, s.cfg.ClientID, s.cfg.TrustDomains))
-		r.Get("/twitter/url", auth.GetTwitterURL(s.twitterClient, s.cfg.TwitterCallbackUrl))
 	})
 
 	r.Route("/bots", func(r chi.Router) {
@@ -147,15 +145,21 @@ func (s Server) HandleRest() http.Handler {
 		r.Delete("/{appID}", app.DeleteApp(s.appz))
 	})
 
-	r.With(auth.LoginRequired()).Route("/orders", func(r chi.Router) {
-		r.Post("/", order.CreateOrder(s.orderz, s.cfg.Lemon, s.cfg.Variants))
-		r.Get("/variants", order.GetVariants(s.cfg.Variants))
-	})
+	if s.cfg.Mode == config.SystemModeCloud {
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/login", auth.Login(s.session, s.userz, s.cfg.ClientID, s.cfg.TrustDomains))
+			r.Get("/twitter/url", auth.GetTwitterURL(s.twitterClient, s.cfg.TwitterCallbackUrl))
+		})
 
-	r.Route("/payments", func(r chi.Router) {
-		r.Post("/mixpay", order.HandleMixpayCallback(s.orderz))
-		r.Post("/lemon", order.HandleLemonCallback(s.orderz))
-	})
+		r.With(auth.LoginRequired()).Route("/orders", func(r chi.Router) {
+			r.Post("/", order.CreateOrder(s.orderz, s.cfg.Lemon, s.cfg.Variants))
+			r.Get("/variants", order.GetVariants(s.cfg.Variants))
+		})
+		r.Route("/payments", func(r chi.Router) {
+			r.Post("/mixpay", order.HandleMixpayCallback(s.orderz))
+			r.Post("/lemon", order.HandleLemonCallback(s.orderz))
+		})
+	}
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		render.Error(w, http.StatusNotFound, fmt.Errorf("not found"))
