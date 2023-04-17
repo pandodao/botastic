@@ -167,6 +167,8 @@ func NewCmdHttpd() *cobra.Command {
 						Lemon:              cfg.Lemon,
 						Variants:           cfg.TopupVariants,
 						TwitterCallbackUrl: cfg.Twitter.CallbackUrl,
+						AppPerUserLimit:    cfg.Sys.AppPerUserLimit,
+						BotPerUserLimit:    cfg.Sys.BotPerUserLimit,
 					}, s, twitterClient, apps, indexes, users, convs, models, appz, botz, indexService, userz, convz, orderz, hub)
 
 					// api v1
