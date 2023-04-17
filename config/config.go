@@ -18,8 +18,8 @@ const (
 )
 
 type Config struct {
-	DB          DBConfig          `yaml:"db"`
-	IndexStore  IndexStoreConfig  `yaml:"index_store"`
+	DB            DBConfig          `yaml:"db"`
+	IndexStore    IndexStoreConfig  `yaml:"index_store"`
 	Sys           System            `yaml:"sys"`
 	OpenAI        OpenAIConfig      `yaml:"openai"`
 	Auth          Auth              `yaml:"auth"`
@@ -97,6 +97,9 @@ type System struct {
 	ExtraRate       float64 `yaml:"extra_rate"`
 	InitUserCredits float64 `yaml:"init_user_credits"`
 	SecretKey       string  `yaml:"secret_key"`
+	// how many apps and bots a user can create
+	AppPerUserLimit int `yaml:"app_per_user_limit"`
+	BotPerUserLimit int `yaml:"bot_per_user_limit"`
 }
 
 type Auth struct {

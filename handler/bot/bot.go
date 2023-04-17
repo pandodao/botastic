@@ -179,7 +179,7 @@ func UpdateBot(botz core.BotService) http.HandlerFunc {
 	}
 }
 
-func CreateBot(botz core.BotService, models core.ModelStore) http.HandlerFunc {
+func CreateBot(botz core.BotService, models core.ModelStore, appPerUserLimit int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -190,7 +190,7 @@ func CreateBot(botz core.BotService, models core.ModelStore) http.HandlerFunc {
 		}
 
 		botArr, _ := botz.GetBotsByUserID(ctx, user.ID)
-		if len(botArr) >= 10 {
+		if len(botArr) >= appPerUserLimit {
 			render.Error(w, http.StatusBadRequest, core.ErrAppLimitReached)
 			return
 		}

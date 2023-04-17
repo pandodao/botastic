@@ -15,10 +15,10 @@ import (
 )
 
 type CreateOrderRequest struct {
-	Channel     string          `json:"channel"`
-	Amount      decimal.Decimal `json:"amount"`
-	VariantID   int64           `json:"variant_id"`
-	RedirectURL string          `json:"redirect_url"`
+	Channel     core.OrderChannel `json:"channel"`
+	Amount      decimal.Decimal   `json:"amount"`
+	VariantID   int64             `json:"variant_id"`
+	RedirectURL string            `json:"redirect_url"`
 }
 
 type (
@@ -47,7 +47,7 @@ func CreateOrder(orderz core.OrderService, lemon config.Lemonsqueezy, variants [
 		}
 
 		ret := make(map[string]any)
-		if body.Channel == "lemon" {
+		if body.Channel == core.OrderChannelLemon {
 			var chosenVariant config.TopupVariant
 			for _, v := range variants {
 				if body.VariantID == v.LemonID {
@@ -68,7 +68,7 @@ func CreateOrder(orderz core.OrderService, lemon config.Lemonsqueezy, variants [
 			}
 			ret["payment_url"] = paymentURL
 
-		} else if body.Channel == "mixpay" {
+		} else if body.Channel == core.OrderChannelMixpay {
 			if body.Amount.LessThanOrEqual(decimal.Zero) {
 				render.Error(w, http.StatusBadRequest, errors.New("invalid amount"))
 				return

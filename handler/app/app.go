@@ -49,7 +49,7 @@ func GetApp(appz core.AppService) http.HandlerFunc {
 	}
 }
 
-func CreateApp(appz core.AppService) http.HandlerFunc {
+func CreateApp(appz core.AppService, appPerUserLimit int) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -69,6 +69,11 @@ func CreateApp(appz core.AppService) http.HandlerFunc {
 
 		appArr, _ := appz.GetAppsByUser(ctx, user.ID)
 		if len(appArr) >= 10 {
+			render.Error(w, http.StatusBadRequest, core.ErrAppLimitReached)
+			return
+		}
+
+		if len(appArr) >= appPerUserLimit {
 			render.Error(w, http.StatusBadRequest, core.ErrAppLimitReached)
 			return
 		}

@@ -62,6 +62,8 @@ type (
 		Lemon              config.Lemonsqueezy
 		Variants           []config.TopupVariant
 		TwitterCallbackUrl string
+		AppPerUserLimit    int
+		BotPerUserLimit    int
 	}
 
 	Server struct {
@@ -123,7 +125,7 @@ func (s Server) HandleRest() http.Handler {
 	r.Route("/bots", func(r chi.Router) {
 		r.Get("/public", bot.GetPublicBots(s.botz))
 		r.With(auth.LoginRequired()).Get("/{botID}", bot.GetBot(s.botz))
-		r.With(auth.LoginRequired()).Post("/", bot.CreateBot(s.botz, s.models))
+		r.With(auth.LoginRequired()).Post("/", bot.CreateBot(s.botz, s.models, s.cfg.BotPerUserLimit))
 		r.With(auth.LoginRequired()).Put("/{botID}", bot.UpdateBot(s.botz))
 		r.With(auth.LoginRequired()).Get("/", bot.GetMyBots(s.botz))
 		r.With(auth.LoginRequired()).Delete("/{botID}", bot.DeleteBot(s.botz))
@@ -139,7 +141,7 @@ func (s Server) HandleRest() http.Handler {
 
 	r.With(auth.LoginRequired()).Route("/apps", func(r chi.Router) {
 		r.Get("/{appID}", app.GetApp(s.appz))
-		r.Post("/", app.CreateApp(s.appz))
+		r.Post("/", app.CreateApp(s.appz, s.cfg.AppPerUserLimit))
 		r.Get("/", app.GetMyApps(s.appz))
 		r.Put("/{appID}", app.UpdateApp(s.appz))
 		r.Delete("/{appID}", app.DeleteApp(s.appz))

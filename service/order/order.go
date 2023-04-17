@@ -142,7 +142,7 @@ func (s *service) HandleMixpayCallback(ctx context.Context, orderId string, trac
 		}
 	}
 
-	if err := s.CompletOrder(ctx, o.ID, o.UserID, o.QuoteAmount, resp.Status, status); err != nil {
+	if err := s.CompleteOrder(ctx, o.ID, o.UserID, o.QuoteAmount, resp.Status, status); err != nil {
 		return err
 	}
 
@@ -167,14 +167,14 @@ func (s *service) HandleLemonCallback(ctx context.Context, orderID string, userI
 		}
 	}
 
-	if err := s.CompletOrder(ctx, od.ID, od.UserID, od.QuoteAmount, upstreamStatus, status); err != nil {
+	if err := s.CompleteOrder(ctx, od.ID, od.UserID, od.QuoteAmount, upstreamStatus, status); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (s *service) CompletOrder(ctx context.Context, orderID string, userID uint64, amount decimal.Decimal, upstreamStatus string, status core.OrderStatus) error {
+func (s *service) CompleteOrder(ctx context.Context, orderID string, userID uint64, amount decimal.Decimal, upstreamStatus string, status core.OrderStatus) error {
 	if err := store.Transaction(func(h *store.Handler) error {
 		orders := order.New(h)
 		users := user.New(h)
