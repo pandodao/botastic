@@ -35,7 +35,9 @@ import (
 	"github.com/pandodao/botastic/worker"
 	"github.com/pandodao/botastic/worker/ordersyncer"
 	"github.com/pandodao/botastic/worker/rotater"
+	"github.com/pandodao/lemon-checkout-go"
 	"github.com/pandodao/mixpay-go"
+	"github.com/pandodao/twitter-login-go"
 	"github.com/rs/cors"
 	"golang.org/x/sync/errgroup"
 
@@ -61,6 +63,8 @@ func NewCmdHttpd() *cobra.Command {
 				return err
 			}
 
+			twitterClient := twitter.New(cfg.Twitter.ApiKey, cfg.Twitter.ApiSecret)
+
 			h := store.MustInit(store.Config{
 				Driver: cfg.DB.Driver,
 				DSN:    cfg.DB.DSN,
@@ -71,6 +75,8 @@ func NewCmdHttpd() *cobra.Command {
 			})
 
 			mixpayClient := mixpay.New()
+
+			lemonClient := lemon.New(cfg.Lemon.Key)
 
 			apps := app.New(h)
 			convs := conv.New(h)
@@ -95,7 +101,7 @@ func NewCmdHttpd() *cobra.Command {
 			userz := userServ.New(userServ.Config{
 				ExtraRate:       cfg.Sys.ExtraRate,
 				InitUserCredits: cfg.Sys.InitUserCredits,
-			}, client, users)
+			}, client, twitterClient, users)
 			indexService := indexServ.NewService(ctx, gptHandler, indexes, userz, models, tiktokenHandler)
 			appz := appServ.New(appServ.Config{
 				SecretKey: cfg.Sys.SecretKey,
@@ -111,7 +117,7 @@ func NewCmdHttpd() *cobra.Command {
 				CallbackUrl:       cfg.Mixpay.CallbackUrl,
 				ReturnTo:          cfg.Mixpay.ReturnTo,
 				FailedReturnTo:    cfg.Mixpay.FailedReturnTo,
-			}, orders, userz, mixpayClient)
+			}, orders, userz, mixpayClient, lemonClient)
 			hub := chanhub.New()
 			// var userz core.UserService
 
@@ -157,9 +163,12 @@ func NewCmdHttpd() *cobra.Command {
 
 				{
 					svr := handler.New(handler.Config{
-						ClientID:     client.ClientID,
-						TrustDomains: cfg.Auth.TrustDomains,
-					}, s, apps, indexes, users, convs, models, appz, botz, indexService, userz, convz, orderz, hub)
+						ClientID:           client.ClientID,
+						TrustDomains:       cfg.Auth.TrustDomains,
+						Lemon:              cfg.Lemon,
+						Variants:           cfg.TopupVariants,
+						TwitterCallbackUrl: cfg.Twitter.CallbackUrl,
+					}, s, twitterClient, apps, indexes, users, convs, models, appz, botz, indexService, userz, convz, orderz, hub)
 
 					// api v1
 					restHandler := svr.HandleRest()

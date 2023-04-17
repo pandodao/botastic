@@ -7,7 +7,6 @@ import (
 	"github.com/fox-one/mixin-sdk-go"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/pandodao/botastic/core"
-	"github.com/pandodao/passport-go/auth"
 )
 
 type Session struct {
@@ -62,15 +61,34 @@ func (s *Session) GetClient() (*mixin.Client, error) {
 	return mixin.NewFromKeystore(store)
 }
 
-func (s *Session) LoginWithMixin(ctx context.Context, userz core.UserService, authUser *auth.User, lang string) (*core.User, string, error) {
-	user, err := userz.LoginWithMixin(ctx, authUser, lang)
-	if err != nil {
-		return nil, "", err
-	}
+// func (s *Session) LoginWithMixin(ctx context.Context, userz core.UserService, authUser *auth.User, lang string) (*core.User, string, error) {
+// 	user, err := userz.LoginWithMixin(ctx, authUser, lang)
+// 	if err != nil {
+// 		return nil, "", err
+// 	}
 
+// 	expirationTime := time.Now().Add(24 * 365 * time.Hour)
+// 	claims := &JwtClaims{
+// 		UserID: user.ID,
+// 		RegisteredClaims: jwt.RegisteredClaims{
+// 			ExpiresAt: jwt.NewNumericDate(expirationTime),
+// 		},
+// 	}
+
+// 	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+// 	tokenString, err := newToken.SignedString(s.JwtSecret)
+// 	if err != nil {
+// 		return nil, "", err
+// 	}
+
+// 	return user, tokenString, nil
+// }
+
+func (s *Session) GetAccessToken(ctx context.Context, userID uint64) (tokenString string, err error) {
 	expirationTime := time.Now().Add(24 * 365 * time.Hour)
 	claims := &JwtClaims{
-		UserID: user.ID,
+		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
@@ -78,10 +96,10 @@ func (s *Session) LoginWithMixin(ctx context.Context, userz core.UserService, au
 
 	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	tokenString, err := newToken.SignedString(s.JwtSecret)
+	tokenString, err = newToken.SignedString(s.JwtSecret)
 	if err != nil {
-		return nil, "", err
+		return
 	}
 
-	return user, tokenString, nil
+	return
 }

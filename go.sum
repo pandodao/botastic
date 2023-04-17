@@ -244,6 +244,8 @@ github.com/golang/protobuf v1.5.2/go.mod h1:XVQd3VNwM+JqD3oG2Ue2ip4fOMUkwXdXDdiu
 github.com/golang/protobuf v1.5.3 h1:KhyjKVUg7Usr/dYsdSqoFveMYd5ko72D+zANwlG1mmg=
 github.com/golang/protobuf v1.5.3/go.mod h1:XVQd3VNwM+JqD3oG2Ue2ip4fOMUkwXdXDdiuN0vRsmY=
 github.com/golang/snappy v0.0.4 h1:yAGX7huGHXlcLOEtBnF4w7FQwA26wojNCwOYAEhLjQM=
+github.com/gomodule/oauth1 v0.2.0 h1:/nNHAD99yipOEspQFbAnNmwGTZ1UNXiD/+JLxwx79fo=
+github.com/gomodule/oauth1 v0.2.0/go.mod h1:4r/a8/3RkhMBxJQWL5qzbOEcaQmNPIkNoI7P8sXeI08=
 github.com/gomodule/redigo v1.7.1-0.20190724094224-574c33c3df38/go.mod h1:B4C85qUVwatsJoIUNIfCRsp7qO0iAmpGFZ4EELWSbC4=
 github.com/google/btree v0.0.0-20180813153112-4030bb1f1f0c/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
 github.com/google/btree v1.0.0/go.mod h1:lNA+9X1NB3Zf8V7Ke586lFgjr2dZNuvo3lPJSGZ5JPQ=
@@ -464,12 +466,16 @@ github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c h1:rp5dCmg/yLR3mgF
 github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c/go.mod h1:X07ZCGwUbLaax7L0S3Tw4hpejzu63ZrrQiUe6W0hcy0=
 github.com/pandodao/gen v0.0.0-20230215020331-916e2ec8363e h1:J+FaCS5gZaA0SPWFTdrLo88kx4HtAwFmDKMoRMRRqKk=
 github.com/pandodao/gen v0.0.0-20230215020331-916e2ec8363e/go.mod h1:qy47gg8yYvXuT9aUxl3Sukr6Oo5QBuzhbc1zNsC16m4=
+github.com/pandodao/lemon-checkout-go v0.0.0-20230328015639-cf8cd76dd06e h1:TczyyD9lyzoC6PM0l/7UZ0UA38rHYRyOAyoyZziwd+s=
+github.com/pandodao/lemon-checkout-go v0.0.0-20230328015639-cf8cd76dd06e/go.mod h1:qLpfVeY6gIh1HrVhjCLkXy7xUME7RErVF6R+C0OqvCg=
 github.com/pandodao/milvus-sdk-go/v2 v2.0.0-20230327110027-9f97cf0e4642 h1:OT9jm+irERTFrmn307B0fvVO1z/Z/8M7Jrrn6p1IMyg=
 github.com/pandodao/milvus-sdk-go/v2 v2.0.0-20230327110027-9f97cf0e4642/go.mod h1:pLq/EZwHiqnVZFtnCxUMZtS4/qk8YcJsQq8uHZxLns8=
 github.com/pandodao/mixpay-go v0.0.0-20230405103808-9f656bd75b03 h1:TOcnjRJI0OCiwD5Hiq49ZFUUKDzioPNvfcgFwo7rBzA=
 github.com/pandodao/mixpay-go v0.0.0-20230405103808-9f656bd75b03/go.mod h1:PYFFg5bTeuZAnqZu3oXUDPIUCdrOZ+Hv1FrbJzBw5LA=
 github.com/pandodao/passport-go v1.0.8 h1:TpX1rmQh2Mian1z1/2ah94e6gYUjOJD1Q0sTrM1jwTM=
 github.com/pandodao/passport-go v1.0.8/go.mod h1:wDXFINRWI/mhckKb2jmWFbx9WFm8PyFPH4Zv9jlxd6s=
+github.com/pandodao/twitter-login-go v0.0.1 h1:BR3N0DjnmYvp+aSN/mJqpIzSlqH3YPv7lDH0TK/uFo8=
+github.com/pandodao/twitter-login-go v0.0.1/go.mod h1:xhxK+MgCCy4yT4OYcsjHE9kKzmjpH5rwWWmlQ6Wl/mQ=
 github.com/patrickmn/go-cache v2.1.0+incompatible h1:HRMgzkcYKYpi3C8ajMPV8OFXaaRUnok+kx1WdO15EQc=
 github.com/patrickmn/go-cache v2.1.0+incompatible/go.mod h1:3Qf8kWWT7OJRJbdiICTKqZju1ZixQ/KpMGzzAfe6+WQ=
 github.com/pelletier/go-toml v1.2.0/go.mod h1:5z9KED0ma1S8pY6P1sdut58dfprrGBbd/94hg7ilaic=

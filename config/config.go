@@ -18,13 +18,16 @@ const (
 )
 
 type Config struct {
-	DB          DBConfig          `yaml:"db"`
-	IndexStore  IndexStoreConfig  `yaml:"index_store"`
-	Sys         System            `yaml:"sys"`
-	OpenAI      OpenAIConfig      `yaml:"openai"`
-	Auth        Auth              `yaml:"auth"`
-	Mixpay      Mixpay            `yaml:"mixpay"`
-	OrderSyncer OrderSyncerConfig `yaml:"order_syncer"`
+	DB            DBConfig          `yaml:"db"`
+	IndexStore    IndexStoreConfig  `yaml:"index_store"`
+	Sys           System            `yaml:"sys"`
+	OpenAI        OpenAIConfig      `yaml:"openai"`
+	Auth          Auth              `yaml:"auth"`
+	Mixpay        Mixpay            `yaml:"mixpay"`
+	Lemon         Lemonsqueezy      `yaml:"lemonsqueezy"`
+	TopupVariants []TopupVariant    `yaml:"topup_variants"`
+	Twitter       Twitter           `yaml:"twitter"`
+	OrderSyncer   OrderSyncerConfig `yaml:"order_syncer"`
 }
 
 type IndexStoreConfig struct {
@@ -62,6 +65,23 @@ type IndexStoreRedisConfig struct {
 	KeyPrefix string `yaml:"key_prefix"`
 }
 
+type Lemonsqueezy struct {
+	Key     string `yaml:"key"`
+	StoreID int64  `yaml:"store_id"`
+}
+
+type Twitter struct {
+	ApiKey      string `yaml:"api_key"`
+	ApiSecret   string `yaml:"api_secret"`
+	CallbackUrl string `yaml:"callback_url"`
+}
+
+type TopupVariant struct {
+	Name    string  `yaml:"name" json:"name"`
+	Amount  float64 `yaml:"amount" json:"amount"`
+	LemonID int64   `yaml:"lemon_id" json:"lemon_id"`
+}
+
 type OpenAIConfig struct {
 	Keys    []string      `yaml:"keys"`
 	Timeout time.Duration `yaml:"timeout"`
@@ -77,6 +97,9 @@ type System struct {
 	ExtraRate       float64 `yaml:"extra_rate"`
 	InitUserCredits float64 `yaml:"init_user_credits"`
 	SecretKey       string  `yaml:"secret_key"`
+	// how many apps and bots a user can create
+	AppPerUserLimit int `yaml:"app_per_user_limit"`
+	BotPerUserLimit int `yaml:"bot_per_user_limit"`
 }
 
 type Auth struct {

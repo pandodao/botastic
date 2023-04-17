@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi"
+	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/handler/app"
 	"github.com/pandodao/botastic/handler/auth"
@@ -17,9 +18,11 @@ import (
 	"github.com/pandodao/botastic/handler/user"
 	"github.com/pandodao/botastic/internal/chanhub"
 	"github.com/pandodao/botastic/session"
+	"github.com/pandodao/twitter-login-go"
 )
 
 func New(cfg Config, s *session.Session,
+	twitterClient *twitter.Client,
 	apps core.AppStore,
 	indexs core.IndexStore,
 	users core.UserStore,
@@ -34,33 +37,41 @@ func New(cfg Config, s *session.Session,
 	hub *chanhub.Hub,
 ) Server {
 	return Server{
-		cfg:     cfg,
-		apps:    apps,
-		indexes: indexs,
-		users:   users,
-		appz:    appz,
-		models:  models,
-		indexz:  indexz,
-		botz:    botz,
-		convz:   convz,
-		userz:   userz,
-		session: s,
-		convs:   convs,
-		orderz:  orderz,
-		hub:     hub,
+		cfg:           cfg,
+		apps:          apps,
+		indexes:       indexs,
+		users:         users,
+		appz:          appz,
+		models:        models,
+		indexz:        indexz,
+		botz:          botz,
+		convz:         convz,
+		userz:         userz,
+		convs:         convs,
+		orderz:        orderz,
+		hub:           hub,
+		session:       s,
+		twitterClient: twitterClient,
 	}
 }
 
 type (
 	Config struct {
-		ClientID     string
-		TrustDomains []string
+		ClientID           string
+		TrustDomains       []string
+		Lemon              config.Lemonsqueezy
+		Variants           []config.TopupVariant
+		TwitterCallbackUrl string
+		AppPerUserLimit    int
+		BotPerUserLimit    int
 	}
 
 	Server struct {
 		cfg Config
 
-		session *session.Session
+		session       *session.Session
+		twitterClient *twitter.Client
+
 		apps    core.AppStore
 		indexes core.IndexStore
 		users   core.UserStore
@@ -108,12 +119,13 @@ func (s Server) HandleRest() http.Handler {
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/login", auth.Login(s.session, s.userz, s.cfg.ClientID, s.cfg.TrustDomains))
+		r.Get("/twitter/url", auth.GetTwitterURL(s.twitterClient, s.cfg.TwitterCallbackUrl))
 	})
 
 	r.Route("/bots", func(r chi.Router) {
 		r.Get("/public", bot.GetPublicBots(s.botz))
 		r.With(auth.LoginRequired()).Get("/{botID}", bot.GetBot(s.botz))
-		r.With(auth.LoginRequired()).Post("/", bot.CreateBot(s.botz, s.models))
+		r.With(auth.LoginRequired()).Post("/", bot.CreateBot(s.botz, s.models, s.cfg.BotPerUserLimit))
 		r.With(auth.LoginRequired()).Put("/{botID}", bot.UpdateBot(s.botz))
 		r.With(auth.LoginRequired()).Get("/", bot.GetMyBots(s.botz))
 		r.With(auth.LoginRequired()).Delete("/{botID}", bot.DeleteBot(s.botz))
@@ -129,18 +141,20 @@ func (s Server) HandleRest() http.Handler {
 
 	r.With(auth.LoginRequired()).Route("/apps", func(r chi.Router) {
 		r.Get("/{appID}", app.GetApp(s.appz))
-		r.Post("/", app.CreateApp(s.appz))
+		r.Post("/", app.CreateApp(s.appz, s.cfg.AppPerUserLimit))
 		r.Get("/", app.GetMyApps(s.appz))
 		r.Put("/{appID}", app.UpdateApp(s.appz))
 		r.Delete("/{appID}", app.DeleteApp(s.appz))
 	})
 
 	r.With(auth.LoginRequired()).Route("/orders", func(r chi.Router) {
-		r.Post("/mixpay", order.CreateOrder(s.orderz))
+		r.Post("/", order.CreateOrder(s.orderz, s.cfg.Lemon, s.cfg.Variants))
+		r.Get("/variants", order.GetVariants(s.cfg.Variants))
 	})
 
-	r.Route("/callback", func(r chi.Router) {
+	r.Route("/payments", func(r chi.Router) {
 		r.Post("/mixpay", order.HandleMixpayCallback(s.orderz))
+		r.Post("/lemon", order.HandleLemonCallback(s.orderz))
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {

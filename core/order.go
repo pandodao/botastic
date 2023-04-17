@@ -19,6 +19,7 @@ const (
 	OrderStatusCanceled OrderStatus = "CANCELED"
 
 	OrderChannelMixpay OrderChannel = "Mixpay"
+	OrderChannelLemon  OrderChannel = "Lemon"
 )
 
 type Order struct {
@@ -79,5 +80,7 @@ type OrderStore interface {
 
 type OrderService interface {
 	CreateMixpayOrder(ctx context.Context, userId uint64, amount decimal.Decimal) (string, error)
+	CreateLemonOrder(ctx context.Context, userID uint64, storeID int64, variantID int64, amount decimal.Decimal, redirectURL string) (string, error)
 	HandleMixpayCallback(ctx context.Context, orderId string, traceId string, payeeId string) error
+	HandleLemonCallback(ctx context.Context, orderID string, userID uint64, lemonAmount decimal.Decimal, upstreamStatus string) error
 }

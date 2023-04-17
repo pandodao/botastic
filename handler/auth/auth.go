@@ -13,15 +13,18 @@ import (
 	"github.com/pandodao/botastic/session"
 	"github.com/pandodao/botastic/util"
 	"github.com/pandodao/passport-go/auth"
+	"github.com/pandodao/twitter-login-go"
 	"gorm.io/gorm"
 )
 
 type LoginPayload struct {
-	Method        string `json:"method"`
-	MixinToken    string `json:"mixin_token"`
-	Signature     string `json:"signature"`
-	SignedMessage string `json:"signed_message"`
-	Lang          string `json:"lang"`
+	Method               string `json:"method"`
+	MixinToken           string `json:"mixin_token"`
+	Signature            string `json:"signature"`
+	SignedMessage        string `json:"signed_message"`
+	TwitterOAuthToken    string `json:"twitter_oauth_token"`
+	TwitterOAuthVerifier string `json:"twitter_oauth_verifier"`
+	Lang                 string `json:"lang"`
 }
 
 func Login(s *session.Session, userz core.UserService, clientID string, domains []string) http.HandlerFunc {
@@ -49,7 +52,12 @@ func Login(s *session.Session, userz core.UserService, clientID string, domains 
 					render.Error(w, http.StatusUnauthorized, err)
 					return
 				}
-				user, token, err := s.LoginWithMixin(ctx, userz, authUser, body.Lang)
+				user, err := userz.LoginWithMixin(ctx, authUser, body.Lang)
+				if err != nil {
+					render.Error(w, http.StatusUnauthorized, err)
+					return
+				}
+				token, err := s.GetAccessToken(ctx, user.ID)
 				if err != nil {
 					render.Error(w, http.StatusUnauthorized, err)
 					return
@@ -71,7 +79,30 @@ func Login(s *session.Session, userz core.UserService, clientID string, domains 
 					render.Error(w, http.StatusUnauthorized, err)
 					return
 				}
-				user, token, err := s.LoginWithMixin(ctx, userz, authUser, body.Lang)
+				user, err := userz.LoginWithMixin(ctx, authUser, body.Lang)
+				if err != nil {
+					render.Error(w, http.StatusUnauthorized, err)
+					return
+				}
+				token, err := s.GetAccessToken(ctx, user.ID)
+				if err != nil {
+					render.Error(w, http.StatusUnauthorized, err)
+					return
+				}
+				render.JSON(w, map[string]interface{}{
+					"user":         user,
+					"access_token": token,
+				})
+				return
+			}
+		case "twitter":
+			{
+				user, err := userz.LoginWithTwitter(ctx, body.TwitterOAuthToken, body.TwitterOAuthVerifier, body.Lang)
+				if err != nil {
+					render.Error(w, http.StatusUnauthorized, err)
+					return
+				}
+				token, err := s.GetAccessToken(ctx, user.ID)
 				if err != nil {
 					render.Error(w, http.StatusUnauthorized, err)
 					return
@@ -86,6 +117,20 @@ func Login(s *session.Session, userz core.UserService, clientID string, domains 
 			render.JSON(w, nil)
 			return
 		}
+	}
+}
+
+func GetTwitterURL(twitterClient *twitter.Client, callbackURL string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		requestUrl, err := twitterClient.GetAuthURL(callbackURL)
+		if err != nil {
+			render.Error(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		render.JSON(w, map[string]interface{}{
+			"url": requestUrl,
+		})
 	}
 }
 

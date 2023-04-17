@@ -33,6 +33,9 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.FullName = field.NewString(tableName, "full_name")
 	_user.AvatarURL = field.NewString(tableName, "avatar_url")
 	_user.MvmPublicKey = field.NewString(tableName, "mvm_public_key")
+	_user.Email = field.NewString(tableName, "email")
+	_user.TwitterID = field.NewString(tableName, "twitter_id")
+	_user.TwitterScreenName = field.NewString(tableName, "twitter_screen_name")
 	_user.Lang = field.NewString(tableName, "lang")
 	_user.Credits = field.NewField(tableName, "credits")
 	_user.CreatedAt = field.NewTime(tableName, "created_at")
@@ -54,6 +57,9 @@ type user struct {
 	FullName            field.String
 	AvatarURL           field.String
 	MvmPublicKey        field.String
+	Email               field.String
+	TwitterID           field.String
+	TwitterScreenName   field.String
 	Lang                field.String
 	Credits             field.Field
 	CreatedAt           field.Time
@@ -81,6 +87,9 @@ func (u *user) updateTableName(table string) *user {
 	u.FullName = field.NewString(table, "full_name")
 	u.AvatarURL = field.NewString(table, "avatar_url")
 	u.MvmPublicKey = field.NewString(table, "mvm_public_key")
+	u.Email = field.NewString(table, "email")
+	u.TwitterID = field.NewString(table, "twitter_id")
+	u.TwitterScreenName = field.NewString(table, "twitter_screen_name")
 	u.Lang = field.NewString(table, "lang")
 	u.Credits = field.NewField(table, "credits")
 	u.CreatedAt = field.NewTime(table, "created_at")
@@ -102,13 +111,16 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 11)
+	u.fieldMap = make(map[string]field.Expr, 14)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["mixin_user_id"] = u.MixinUserID
 	u.fieldMap["mixin_identity_number"] = u.MixinIdentityNumber
 	u.fieldMap["full_name"] = u.FullName
 	u.fieldMap["avatar_url"] = u.AvatarURL
 	u.fieldMap["mvm_public_key"] = u.MvmPublicKey
+	u.fieldMap["email"] = u.Email
+	u.fieldMap["twitter_id"] = u.TwitterID
+	u.fieldMap["twitter_screen_name"] = u.TwitterScreenName
 	u.fieldMap["lang"] = u.Lang
 	u.fieldMap["credits"] = u.Credits
 	u.fieldMap["created_at"] = u.CreatedAt
@@ -133,17 +145,15 @@ type IUserDo interface {
 
 	GetUser(ctx context.Context, id uint64) (result *core.User, err error)
 	GetUserByMixinID(ctx context.Context, mixinUserID string) (result *core.User, err error)
-	CreateUser(ctx context.Context, fullName string, avatarURL string, mixinUserID string, mixinIdentityNumber string, lang string, mvmPublicKey string, credits decimal.Decimal) (result uint64, err error)
+	GetUserByTwitterID(ctx context.Context, twitterID string) (result *core.User, err error)
+	CreateUser(ctx context.Context, user *core.User) (result uint64, err error)
 	UpdateInfo(ctx context.Context, id uint64, fullName string, avatarURL string, lang string) (err error)
 	UpdateCredits(ctx context.Context, id uint64, amount decimal.Decimal) (err error)
 }
 
 // SELECT
 //
-//	"id", "mixin_user_id", "mixin_identity_number", "full_name", "avatar_url",
-//	"mvm_public_key",
-//	"lang", "credits",
-//	"created_at", "updated_at"
+//	*
 //
 // FROM @@table WHERE
 //
@@ -155,7 +165,7 @@ func (u userDo) GetUser(ctx context.Context, id uint64) (result *core.User, err 
 
 	var generateSQL strings.Builder
 	params = append(params, id)
-	generateSQL.WriteString("SELECT \"id\", \"mixin_user_id\", \"mixin_identity_number\", \"full_name\", \"avatar_url\", \"mvm_public_key\", \"lang\", \"credits\", \"created_at\", \"updated_at\" FROM users WHERE \"id\"=? AND \"deleted_at\" IS NULL LIMIT 1 ")
+	generateSQL.WriteString("SELECT * FROM users WHERE \"id\"=? AND \"deleted_at\" IS NULL LIMIT 1 ")
 
 	var executeSQL *gorm.DB
 	executeSQL = u.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert
@@ -166,10 +176,7 @@ func (u userDo) GetUser(ctx context.Context, id uint64) (result *core.User, err 
 
 // SELECT
 //
-//	"id", "mixin_user_id", "mixin_identity_number", "full_name", "avatar_url",
-//	"mvm_public_key",
-//	"lang", "credits",
-//	"created_at", "updated_at"
+//	*
 //
 // FROM @@table WHERE
 //
@@ -181,7 +188,30 @@ func (u userDo) GetUserByMixinID(ctx context.Context, mixinUserID string) (resul
 
 	var generateSQL strings.Builder
 	params = append(params, mixinUserID)
-	generateSQL.WriteString("SELECT \"id\", \"mixin_user_id\", \"mixin_identity_number\", \"full_name\", \"avatar_url\", \"mvm_public_key\", \"lang\", \"credits\", \"created_at\", \"updated_at\" FROM users WHERE \"mixin_user_id\"=? AND \"deleted_at\" IS NULL LIMIT 1 ")
+	generateSQL.WriteString("SELECT * FROM users WHERE \"mixin_user_id\"=? AND \"deleted_at\" IS NULL LIMIT 1 ")
+
+	var executeSQL *gorm.DB
+	executeSQL = u.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert
+	err = executeSQL.Error
+
+	return
+}
+
+// SELECT
+//
+//	*
+//
+// FROM @@table WHERE
+//
+//	"twitter_id"=@twitterID AND "deleted_at" IS NULL
+//
+// LIMIT 1
+func (u userDo) GetUserByTwitterID(ctx context.Context, twitterID string) (result *core.User, err error) {
+	var params []interface{}
+
+	var generateSQL strings.Builder
+	params = append(params, twitterID)
+	generateSQL.WriteString("SELECT * FROM users WHERE \"twitter_id\"=? AND \"deleted_at\" IS NULL LIMIT 1 ")
 
 	var executeSQL *gorm.DB
 	executeSQL = u.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert
@@ -195,34 +225,39 @@ func (u userDo) GetUserByMixinID(ctx context.Context, mixinUserID string) (resul
 //
 //		 "full_name", "avatar_url",
 //		 "mixin_user_id", "mixin_identity_number",
-//	 "lang", "credits",
 //	 "mvm_public_key",
+//	 "email", "twitter_id", "twitter_screen_name",
+//	 "lang", "credits",
 //		 "created_at", "updated_at"
 //
 // )
 // VALUES
 // (
 //
-//	@fullName, @avatarURL,
-//	@mixinUserID, @mixinIdentityNumber,
-//	@lang, @credits,
-//	@mvmPublicKey,
+//	@user.FullName, @user.AvatarURL,
+//	@user.MixinUserID, @user.MixinIdentityNumber,
+//	@user.MvmPublicKey,
+//	@user.Email, @user.TwitterID, @user.TwitterScreenName,
+//	@user.Lang, @user.Credits,
 //	NOW(), NOW()
 //
 // )
 // RETURNING "id"
-func (u userDo) CreateUser(ctx context.Context, fullName string, avatarURL string, mixinUserID string, mixinIdentityNumber string, lang string, mvmPublicKey string, credits decimal.Decimal) (result uint64, err error) {
+func (u userDo) CreateUser(ctx context.Context, user *core.User) (result uint64, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
-	params = append(params, fullName)
-	params = append(params, avatarURL)
-	params = append(params, mixinUserID)
-	params = append(params, mixinIdentityNumber)
-	params = append(params, lang)
-	params = append(params, credits)
-	params = append(params, mvmPublicKey)
-	generateSQL.WriteString("INSERT INTO users ( \"full_name\", \"avatar_url\", \"mixin_user_id\", \"mixin_identity_number\", \"lang\", \"credits\", \"mvm_public_key\", \"created_at\", \"updated_at\" ) VALUES ( ?, ?, ?, ?, ?, ?, ?, NOW(), NOW() ) RETURNING \"id\" ")
+	params = append(params, user.FullName)
+	params = append(params, user.AvatarURL)
+	params = append(params, user.MixinUserID)
+	params = append(params, user.MixinIdentityNumber)
+	params = append(params, user.MvmPublicKey)
+	params = append(params, user.Email)
+	params = append(params, user.TwitterID)
+	params = append(params, user.TwitterScreenName)
+	params = append(params, user.Lang)
+	params = append(params, user.Credits)
+	generateSQL.WriteString("INSERT INTO users ( \"full_name\", \"avatar_url\", \"mixin_user_id\", \"mixin_identity_number\", \"mvm_public_key\", \"email\", \"twitter_id\", \"twitter_screen_name\", \"lang\", \"credits\", \"created_at\", \"updated_at\" ) VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW() ) RETURNING \"id\" ")
 
 	var executeSQL *gorm.DB
 	executeSQL = u.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert

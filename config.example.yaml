@@ -10,6 +10,8 @@ sys:
   secret_key: ""
   extra_rate: 0.1
   init_user_credits: 0.1
+  app_per_user_limit: 10
+  bot_per_user_limit: 10
 
 index_store:
   driver: memory # redis, milvus
@@ -30,6 +32,24 @@ mixpay:
   callback_url: "$API_HOST/api/callback/mixpay"
   return_to: ""
   failed_return_to: ""
+
+lemonsqueezy:
+  key: ""
+  store_id: 12345
+
+topup_variants:
+  - name: "$1.00"
+    amount: 1.00
+  - name: "$5.00"
+    amount: 5.00
+  - name: "$10.00"
+    amount: 10.00
+    lemon_id: 123456
+
+twitter:
+  api_key: ""
+  api_secret: ""
+  callback_url: "https://"
 
 order_syncer:
   interval: 1s
