@@ -204,7 +204,7 @@ func CreateBot(botz core.BotService, models core.ModelStore, botPerUserLimit int
 		}
 
 		botArr, _ := botz.GetBotsByUserID(ctx, user.ID)
-		if len(botArr) >= botPerUserLimit {
+		if botPerUserLimit != 0 && len(botArr) >= botPerUserLimit {
 			render.Error(w, http.StatusBadRequest, core.ErrAppLimitReached)
 			return
 		}

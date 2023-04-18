@@ -73,7 +73,7 @@ func CreateApp(appz core.AppService, appPerUserLimit int) http.HandlerFunc {
 			return
 		}
 
-		if len(appArr) >= appPerUserLimit {
+		if appPerUserLimit != 0 && len(appArr) >= appPerUserLimit {
 			render.Error(w, http.StatusBadRequest, core.ErrAppLimitReached)
 			return
 		}
