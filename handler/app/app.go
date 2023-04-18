@@ -120,7 +120,7 @@ func UpdateApp(appz core.AppService) http.HandlerFunc {
 
 		// validate uuid
 		if _, err := uuid.Parse(appID); err != nil {
-			render.Error(w, http.StatusBadRequest, core.ErrAppNotFound)
+			render.Error(w, http.StatusNotFound, core.ErrAppNotFound)
 			return
 		}
 
@@ -135,10 +135,12 @@ func UpdateApp(appz core.AppService) http.HandlerFunc {
 			return
 		}
 
-		if err := appz.UpdateApp(ctx, user.ID, body.Name); err != nil {
+		if err := appz.UpdateApp(ctx, app.ID, body.Name); err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
 		}
+
+		app.Name = body.Name
 
 		render.JSON(w, app)
 	}
