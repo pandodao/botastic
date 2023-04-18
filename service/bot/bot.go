@@ -98,58 +98,56 @@ func (s *service) GetBotsByUserID(ctx context.Context, userID uint64) ([]*core.B
 	return bots, nil
 }
 
-func (s *service) CreateBot(ctx context.Context,
-	id uint64,
-	name, model, prompt string,
-	temperature float32,
-	max_turn_count, context_turn_count int,
-	middlewares core.MiddlewareConfig,
-	public bool,
-) (*core.Bot, error) {
-
+func (s *service) CreateBot(ctx context.Context, bot *core.Bot) error {
 	// check model if exists
-	if _, err := s.models.GetModel(ctx, model); err != nil {
+	if _, err := s.models.GetModel(ctx, bot.Model); err != nil {
 		if store.IsNotFoundErr(err) {
-			return nil, core.ErrInvalidModel
+			return core.ErrInvalidModel
 		}
 		fmt.Printf("models.GetModel err: %v\n", err)
-		return nil, err
+		return err
 	}
 
-	botID, err := s.bots.CreateBot(ctx, id, name, model, prompt, temperature, max_turn_count, context_turn_count, middlewares, public)
+	botID, err := s.bots.CreateBot(ctx, bot)
 	if err != nil {
 		fmt.Printf("bots.CreateBot err: %v\n", err)
-		return nil, err
+		return err
 	}
 
-	bot, err := s.bots.GetBot(ctx, botID)
+	b, err := s.bots.GetBot(ctx, botID)
 	if err != nil {
 		fmt.Printf("bots.GetBot err: %v\n", err)
-		return nil, err
+		return err
 	}
+	*bot = *b
 
 	key := fmt.Sprintf("bot-%d", botID)
 
 	s.botCache.Set(key, bot, cache.DefaultExpiration)
-	s.botCache.Delete(fmt.Sprintf("user-bots-%d", id))
+	s.botCache.Delete(fmt.Sprintf("user-bots-%d", bot.UserID))
 
-	return bot, nil
+	return nil
 }
 
-func (s *service) UpdateBot(ctx context.Context, id uint64, name, model, prompt string, temperature float32, maxTurnCount, contextTurnCount int, middlewares core.MiddlewareConfig, public bool) error {
-	bot, err := s.bots.GetBot(ctx, id)
+func (s *service) UpdateBot(ctx context.Context, bot *core.Bot) error {
+	err := s.bots.UpdateBot(ctx, bot)
 	if err != nil {
-		fmt.Printf("bots.GetBot err: %v\n", err)
-		return err
-	}
+		if store.IsNotFoundErr(err) {
+			return core.ErrBotNotFound
+		}
 
-	err = s.bots.UpdateBot(ctx, id, name, model, prompt, temperature, maxTurnCount, contextTurnCount, middlewares, public)
-	if err != nil {
 		fmt.Printf("bots.UpdateBot err: %v\n", err)
 		return err
 	}
 
-	s.botCache.Delete(fmt.Sprintf("bot-%d", id))
+	b, err := s.bots.GetBot(ctx, bot.ID)
+	if err != nil {
+		fmt.Printf("bots.GetBot err: %v\n", err)
+		return err
+	}
+	*bot = *b
+
+	s.botCache.Delete(fmt.Sprintf("bot-%d", bot.ID))
 	s.botCache.Delete(fmt.Sprintf("user-bots-%d", bot.UserID))
 	return nil
 }
