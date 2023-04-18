@@ -269,7 +269,7 @@ func (w *Worker) handleCustomProvider(ctx context.Context, turnReq TurnRequest) 
 		return nil, err
 	}
 
-	prompt := bot.GetPrompt(conv, turn.Request, turnReq.Additional)
+	prompt := bot.GetRequestContent(conv, turn.Request, turnReq.Additional)
 	for key, value := range cc.Request.Data {
 		vs, ok := value.(string)
 		if !ok {
@@ -367,7 +367,7 @@ func (w *Worker) handleOpenAIProvider(ctx context.Context, req TurnRequest) (*re
 			Temperature: temperature,
 		}
 	} else if model.IsOpenAICompletionModel() {
-		prompt := bot.GetPrompt(conv, turn.Request, req.Additional)
+		prompt := bot.GetRequestContent(conv, turn.Request, req.Additional)
 		completionRequest = &gogpt.CompletionRequest{
 			Model:       model.ProviderModel,
 			Prompt:      prompt,

@@ -17,6 +17,7 @@ type CreateOrUpdateBotPayload struct {
 	Name             string                `json:"name"`
 	Model            string                `json:"model"`
 	Prompt           string                `json:"prompt"`
+	BoundaryPrompt   string                `json:"boundary_prompt"`
 	Temperature      float32               `json:"temperature"`
 	MaxTurnCount     int                   `json:"max_turn_count"`
 	ContextTurnCount int                   `json:"context_turn_count"`
@@ -169,13 +170,26 @@ func UpdateBot(botz core.BotService) http.HandlerFunc {
 			return
 		}
 
-		err = botz.UpdateBot(ctx, botID, body.Name, body.Model, body.Prompt, body.Temperature, body.MaxTurnCount, body.ContextTurnCount, body.Middlewares, false)
+		b := &core.Bot{
+			ID:               bot.ID,
+			Name:             body.Name,
+			UserID:           bot.UserID,
+			Prompt:           body.Prompt,
+			BoundaryPrompt:   body.BoundaryPrompt,
+			Model:            body.Model,
+			MaxTurnCount:     body.MaxTurnCount,
+			ContextTurnCount: body.ContextTurnCount,
+			Temperature:      body.Temperature,
+			MiddlewareJson:   body.Middlewares,
+			Public:           false,
+		}
+		err = botz.UpdateBot(ctx, b)
 		if err != nil {
 			render.Error(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		render.JSON(w, bot)
+		render.JSON(w, b)
 	}
 }
 
@@ -206,8 +220,19 @@ func CreateBot(botz core.BotService, models core.ModelStore, botPerUserLimit int
 			return
 		}
 
-		bot, err := botz.CreateBot(ctx, user.ID, body.Name, body.Model, body.Prompt, body.Temperature, body.MaxTurnCount, body.ContextTurnCount, body.Middlewares, false)
-		if err != nil {
+		bot := &core.Bot{
+			UserID:           user.ID,
+			Name:             body.Name,
+			Model:            body.Model,
+			Prompt:           body.Prompt,
+			BoundaryPrompt:   body.BoundaryPrompt,
+			Temperature:      body.Temperature,
+			MaxTurnCount:     body.MaxTurnCount,
+			ContextTurnCount: body.ContextTurnCount,
+			MiddlewareJson:   body.Middlewares,
+			Public:           false,
+		}
+		if err := botz.CreateBot(ctx, bot); err != nil {
 			statusCode := http.StatusInternalServerError
 			if errors.Is(err, core.ErrInvalidModel) {
 				statusCode = http.StatusBadRequest

@@ -29,6 +29,7 @@ func newBot(db *gorm.DB, opts ...gen.DOOption) bot {
 	_bot.Name = field.NewString(tableName, "name")
 	_bot.UserID = field.NewUint64(tableName, "user_id")
 	_bot.Prompt = field.NewString(tableName, "prompt")
+	_bot.BoundaryPrompt = field.NewString(tableName, "boundary_prompt")
 	_bot.Model = field.NewString(tableName, "model")
 	_bot.MaxTurnCount = field.NewInt(tableName, "max_turn_count")
 	_bot.ContextTurnCount = field.NewInt(tableName, "context_turn_count")
@@ -52,6 +53,7 @@ type bot struct {
 	Name             field.String
 	UserID           field.Uint64
 	Prompt           field.String
+	BoundaryPrompt   field.String
 	Model            field.String
 	MaxTurnCount     field.Int
 	ContextTurnCount field.Int
@@ -81,6 +83,7 @@ func (b *bot) updateTableName(table string) *bot {
 	b.Name = field.NewString(table, "name")
 	b.UserID = field.NewUint64(table, "user_id")
 	b.Prompt = field.NewString(table, "prompt")
+	b.BoundaryPrompt = field.NewString(table, "boundary_prompt")
 	b.Model = field.NewString(table, "model")
 	b.MaxTurnCount = field.NewInt(table, "max_turn_count")
 	b.ContextTurnCount = field.NewInt(table, "context_turn_count")
@@ -106,11 +109,12 @@ func (b *bot) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (b *bot) fillFieldMap() {
-	b.fieldMap = make(map[string]field.Expr, 13)
+	b.fieldMap = make(map[string]field.Expr, 14)
 	b.fieldMap["id"] = b.ID
 	b.fieldMap["name"] = b.Name
 	b.fieldMap["user_id"] = b.UserID
 	b.fieldMap["prompt"] = b.Prompt
+	b.fieldMap["boundary_prompt"] = b.BoundaryPrompt
 	b.fieldMap["model"] = b.Model
 	b.fieldMap["max_turn_count"] = b.MaxTurnCount
 	b.fieldMap["context_turn_count"] = b.ContextTurnCount
@@ -140,18 +144,12 @@ type IBotDo interface {
 	GetBot(ctx context.Context, id uint64) (result *core.Bot, err error)
 	GetBotsByUserID(ctx context.Context, userID uint64) (result []*core.Bot, err error)
 	GetPublicBots(ctx context.Context) (result []*core.Bot, err error)
-	CreateBot(ctx context.Context, userID uint64, name string, model string, prompt string, temperature float32, maxTurnCount int, contextTurnCount int, middlewareJson core.MiddlewareConfig, public bool) (result uint64, err error)
-	UpdateBot(ctx context.Context, id uint64, name string, model string, prompt string, temperature float32, maxTurnCount int, contextTurnCount int, middlewareJson core.MiddlewareConfig, public bool) (err error)
+	CreateBot(ctx context.Context, bot *core.Bot) (result uint64, err error)
+	UpdateBot(ctx context.Context, bot *core.Bot) (err error)
 	DeleteBot(ctx context.Context, id uint64) (err error)
 }
 
-// SELECT "id",
-//
-//		 "user_id", "name", "model", "prompt", "temperature",
-//		 "max_turn_count", "context_turn_count",
-//	 "middleware_json", "public",
-//	 "created_at", "updated_at"
-//
+// SELECT *
 // FROM @@table WHERE
 //
 //	"id"=@id AND "deleted_at" IS NULL
@@ -162,7 +160,7 @@ func (b botDo) GetBot(ctx context.Context, id uint64) (result *core.Bot, err err
 
 	var generateSQL strings.Builder
 	params = append(params, id)
-	generateSQL.WriteString("SELECT \"id\", \"user_id\", \"name\", \"model\", \"prompt\", \"temperature\", \"max_turn_count\", \"context_turn_count\", \"middleware_json\", \"public\", \"created_at\", \"updated_at\" FROM bots WHERE \"id\"=? AND \"deleted_at\" IS NULL LIMIT 1 ")
+	generateSQL.WriteString("SELECT * FROM bots WHERE \"id\"=? AND \"deleted_at\" IS NULL LIMIT 1 ")
 
 	var executeSQL *gorm.DB
 	executeSQL = b.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert
@@ -171,13 +169,7 @@ func (b botDo) GetBot(ctx context.Context, id uint64) (result *core.Bot, err err
 	return
 }
 
-// SELECT "id",
-//
-//		 "user_id", "name", "model", "prompt", "temperature",
-//		 "max_turn_count", "context_turn_count",
-//	 "middleware_json", "public",
-//	 "created_at", "updated_at"
-//
+// SELECT *
 // FROM @@table WHERE
 //
 //	"user_id"=@userID AND "deleted_at" IS NULL
@@ -186,7 +178,7 @@ func (b botDo) GetBotsByUserID(ctx context.Context, userID uint64) (result []*co
 
 	var generateSQL strings.Builder
 	params = append(params, userID)
-	generateSQL.WriteString("SELECT \"id\", \"user_id\", \"name\", \"model\", \"prompt\", \"temperature\", \"max_turn_count\", \"context_turn_count\", \"middleware_json\", \"public\", \"created_at\", \"updated_at\" FROM bots WHERE \"user_id\"=? AND \"deleted_at\" IS NULL ")
+	generateSQL.WriteString("SELECT * FROM bots WHERE \"user_id\"=? AND \"deleted_at\" IS NULL ")
 
 	var executeSQL *gorm.DB
 	executeSQL = b.UnderlyingDB().Raw(generateSQL.String(), params...).Find(&result) // ignore_security_alert
@@ -195,19 +187,13 @@ func (b botDo) GetBotsByUserID(ctx context.Context, userID uint64) (result []*co
 	return
 }
 
-// SELECT "id",
-//
-//		 "user_id", "name", "model", "prompt", "temperature",
-//		 "max_turn_count", "context_turn_count",
-//	 "middleware_json", "public",
-//	 "created_at", "updated_at"
-//
+// SELECT *
 // FROM @@table WHERE
 //
 //	"public"='t' AND "deleted_at" IS NULL
 func (b botDo) GetPublicBots(ctx context.Context) (result []*core.Bot, err error) {
 	var generateSQL strings.Builder
-	generateSQL.WriteString("SELECT \"id\", \"user_id\", \"name\", \"model\", \"prompt\", \"temperature\", \"max_turn_count\", \"context_turn_count\", \"middleware_json\", \"public\", \"created_at\", \"updated_at\" FROM bots WHERE \"public\"='t' AND \"deleted_at\" IS NULL ")
+	generateSQL.WriteString("SELECT * FROM bots WHERE \"public\"='t' AND \"deleted_at\" IS NULL ")
 
 	var executeSQL *gorm.DB
 	executeSQL = b.UnderlyingDB().Raw(generateSQL.String()).Find(&result) // ignore_security_alert
@@ -218,33 +204,34 @@ func (b botDo) GetPublicBots(ctx context.Context) (result []*core.Bot, err error
 
 // INSERT INTO @@table
 //
-//		("user_id", "name", "model", "prompt", "temperature",
+//		("user_id", "name", "model", "prompt", "boundary_prompt", "temperature",
 //		 "max_turn_count", "context_turn_count",
 //	 "middleware_json", "public",
 //	 "created_at", "updated_at")
 //
 // VALUES
 //
-//		(@userID, @name, @model, @prompt, @temperature,
-//	 @maxTurnCount, @contextTurnCount,
-//	 @middlewareJson, @public,
+//		(@bot.UserID, @bot.Name, @bot.Model, @bot.Prompt, @bot.BoundaryPrompt, @bot.Temperature,
+//	 @bot.MaxTurnCount, @bot.ContextTurnCount,
+//	 @bot.MiddlewareJson, @bot.Public,
 //	 NOW(), NOW())
 //
 // RETURNING "id"
-func (b botDo) CreateBot(ctx context.Context, userID uint64, name string, model string, prompt string, temperature float32, maxTurnCount int, contextTurnCount int, middlewareJson core.MiddlewareConfig, public bool) (result uint64, err error) {
+func (b botDo) CreateBot(ctx context.Context, bot *core.Bot) (result uint64, err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
-	params = append(params, userID)
-	params = append(params, name)
-	params = append(params, model)
-	params = append(params, prompt)
-	params = append(params, temperature)
-	params = append(params, maxTurnCount)
-	params = append(params, contextTurnCount)
-	params = append(params, middlewareJson)
-	params = append(params, public)
-	generateSQL.WriteString("INSERT INTO bots (\"user_id\", \"name\", \"model\", \"prompt\", \"temperature\", \"max_turn_count\", \"context_turn_count\", \"middleware_json\", \"public\", \"created_at\", \"updated_at\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) RETURNING \"id\" ")
+	params = append(params, bot.UserID)
+	params = append(params, bot.Name)
+	params = append(params, bot.Model)
+	params = append(params, bot.Prompt)
+	params = append(params, bot.BoundaryPrompt)
+	params = append(params, bot.Temperature)
+	params = append(params, bot.MaxTurnCount)
+	params = append(params, bot.ContextTurnCount)
+	params = append(params, bot.MiddlewareJson)
+	params = append(params, bot.Public)
+	generateSQL.WriteString("INSERT INTO bots (\"user_id\", \"name\", \"model\", \"prompt\", \"boundary_prompt\", \"temperature\", \"max_turn_count\", \"context_turn_count\", \"middleware_json\", \"public\", \"created_at\", \"updated_at\") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW()) RETURNING \"id\" ")
 
 	var executeSQL *gorm.DB
 	executeSQL = b.UnderlyingDB().Raw(generateSQL.String(), params...).Take(&result) // ignore_security_alert
@@ -256,37 +243,39 @@ func (b botDo) CreateBot(ctx context.Context, userID uint64, name string, model 
 // UPDATE @@table
 //
 //		{{set}}
-//			"name"=@name,
-//			"model"=@model,
-//			"prompt"=@prompt,
-//			"temperature"=@temperature,
-//			"max_turn_count"=@maxTurnCount,
-//			"context_turn_count"=@contextTurnCount,
-//			"middleware_json"=@middlewareJson,
-//	  "public"=@public,
+//			"name"=@bot.Name,
+//			"model"=@bot.Model,
+//			"prompt"=@bot.Prompt,
+//			"boundary_prompt"=@bot.BoundaryPrompt,
+//			"temperature"=@bot.Temperature,
+//			"max_turn_count"=@bot.MaxTurnCount,
+//			"context_turn_count"=@bot.ContextTurnCount,
+//			"middleware_json"=@bot.MiddlewareJson,
+//	  "public"=@bot.Public,
 //			"updated_at"=NOW()
 //		{{end}}
 //
 // WHERE
 //
-//	"id"=@id AND "deleted_at" is NULL
-func (b botDo) UpdateBot(ctx context.Context, id uint64, name string, model string, prompt string, temperature float32, maxTurnCount int, contextTurnCount int, middlewareJson core.MiddlewareConfig, public bool) (err error) {
+//	"id"=@bot.ID AND "deleted_at" is NULL
+func (b botDo) UpdateBot(ctx context.Context, bot *core.Bot) (err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder
 	generateSQL.WriteString("UPDATE bots ")
 	var setSQL0 strings.Builder
-	params = append(params, name)
-	params = append(params, model)
-	params = append(params, prompt)
-	params = append(params, temperature)
-	params = append(params, maxTurnCount)
-	params = append(params, contextTurnCount)
-	params = append(params, middlewareJson)
-	params = append(params, public)
-	setSQL0.WriteString("\"name\"=?, \"model\"=?, \"prompt\"=?, \"temperature\"=?, \"max_turn_count\"=?, \"context_turn_count\"=?, \"middleware_json\"=?, \"public\"=?, \"updated_at\"=NOW() ")
+	params = append(params, bot.Name)
+	params = append(params, bot.Model)
+	params = append(params, bot.Prompt)
+	params = append(params, bot.BoundaryPrompt)
+	params = append(params, bot.Temperature)
+	params = append(params, bot.MaxTurnCount)
+	params = append(params, bot.ContextTurnCount)
+	params = append(params, bot.MiddlewareJson)
+	params = append(params, bot.Public)
+	setSQL0.WriteString("\"name\"=?, \"model\"=?, \"prompt\"=?, \"boundary_prompt\"=?, \"temperature\"=?, \"max_turn_count\"=?, \"context_turn_count\"=?, \"middleware_json\"=?, \"public\"=?, \"updated_at\"=NOW() ")
 	helper.JoinSetBuilder(&generateSQL, setSQL0)
-	params = append(params, id)
+	params = append(params, bot.ID)
 	generateSQL.WriteString("WHERE \"id\"=? AND \"deleted_at\" is NULL ")
 
 	var executeSQL *gorm.DB
