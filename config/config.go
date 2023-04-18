@@ -18,14 +18,17 @@ const (
 	IndexStoreRedis  IndexStoreDriver = "redis"
 )
 
-type SystemMode string
+type Mode string
 
 const (
-	SystemModeCloud SystemMode = "cloud"
-	SystemModeLocal SystemMode = "local"
+	ModeSaaS  Mode = "saas"
+	ModeLocal Mode = "local"
 )
 
 type Config struct {
+	Mode       Mode             `yaml:"mode"`
+	SaaS       SaasModeConfig   `yaml:"saas"`
+	Local      LocalModeConfig  `yaml:"local"`
 	DB         DBConfig         `yaml:"db"`
 	Sys        System           `yaml:"sys"`
 	OpenAI     OpenAIConfig     `yaml:"openai"`
@@ -95,16 +98,13 @@ type DBConfig struct {
 }
 
 type System struct {
-	SecretKey string            `yaml:"secret_key"`
-	Mode      SystemMode        `yaml:"mode"`
-	Cloud     SystemCloudConfig `yaml:"cloud"`
-	Local     SystemLocalConfig `yaml:"local"`
+	SecretKey string `yaml:"secret_key"`
 }
 
-type SystemLocalConfig struct{}
+type LocalModeConfig struct{}
 
-type SystemCloudConfig struct {
-	// how many apps and bots a user can create
+type SaasModeConfig struct {
+	// how many apps and bots a user can create, zero means unlimited
 	AppPerUserLimit int `yaml:"app_per_user_limit"`
 	BotPerUserLimit int `yaml:"bot_per_user_limit"`
 
@@ -139,10 +139,10 @@ func (c Config) validate() error {
 		return fmt.Errorf("index_store.driver is invalid: %s", c.IndexStore.Driver)
 	}
 
-	switch c.Sys.Mode {
-	case SystemModeCloud, SystemModeLocal:
+	switch c.Mode {
+	case ModeSaaS, ModeLocal:
 	default:
-		return errors.New("invalid system mode")
+		return errors.New("invalid mode")
 	}
 	return nil
 }
@@ -155,16 +155,17 @@ func DefaultConfigString() string {
 
 func defaultConfig() *Config {
 	return &Config{
-		Sys: System{
-			Mode: SystemModeLocal,
-			Cloud: SystemCloudConfig{
-				OrderSyncer: OrderSyncerConfig{
-					Interval:       time.Second,
-					CheckInterval:  10 * time.Second,
-					CancelInterval: 2 * time.Hour,
-				},
+		Mode: ModeLocal,
+		SaaS: SaasModeConfig{
+			AppPerUserLimit: 10,
+			BotPerUserLimit: 10,
+			OrderSyncer: OrderSyncerConfig{
+				Interval:       time.Second,
+				CheckInterval:  10 * time.Second,
+				CancelInterval: 2 * time.Hour,
 			},
 		},
+		Sys: System{},
 		IndexStore: IndexStoreConfig{
 			Driver: IndexStoreMemory,
 		},
@@ -205,8 +206,4 @@ func Init(fp string) (*Config, error) {
 	}
 
 	return c, nil
-}
-
-func IsCloudMode() bool {
-	return C().Sys.Mode == SystemModeCloud
 }

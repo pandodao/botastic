@@ -57,7 +57,7 @@ func New(cfg Config, s *session.Session,
 
 type (
 	Config struct {
-		Mode               config.SystemMode
+		Mode               config.Mode
 		ClientID           string
 		TrustDomains       []string
 		Lemon              config.Lemonsqueezy
@@ -145,7 +145,7 @@ func (s Server) HandleRest() http.Handler {
 		r.Delete("/{appID}", app.DeleteApp(s.appz))
 	})
 
-	if s.cfg.Mode == config.SystemModeCloud {
+	if s.cfg.Mode == config.ModeSaaS {
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/login", auth.Login(s.session, s.userz, s.cfg.ClientID, s.cfg.TrustDomains))
 			r.Get("/twitter/url", auth.GetTwitterURL(s.twitterClient, s.cfg.TwitterCallbackUrl))

@@ -135,13 +135,13 @@ func GetTwitterURL(twitterClient *twitter.Client, callbackURL string) http.Handl
 	}
 }
 
-func HandleAuthentication(s *session.Session, users core.UserStore, mode config.SystemMode) func(http.Handler) http.Handler {
+func HandleAuthentication(s *session.Session, users core.UserStore, mode config.Mode) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
 
 			var userID uint64
-			if mode == config.SystemModeCloud {
+			if mode == config.ModeSaaS {
 				accessToken := getBearerToken(r)
 				if accessToken == "" {
 					next.ServeHTTP(w, r)
@@ -278,10 +278,10 @@ func LoginRequired() func(http.Handler) http.Handler {
 	}
 }
 
-func UserCreditRequired(users core.UserStore, mode config.SystemMode) func(http.Handler) http.Handler {
+func UserCreditRequired(users core.UserStore, mode config.Mode) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			if mode == config.SystemModeLocal {
+			if mode == config.ModeLocal {
 				next.ServeHTTP(w, r)
 				return
 			}

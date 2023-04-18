@@ -71,36 +71,40 @@ func NewCmdHttpd() *cobra.Command {
 				orders            core.OrderStore
 				orderz            core.OrderService
 				ordersyncerWorker *ordersyncer.Worker
+				appPerUserLimit   int
+				botPerUserLimit   int
 			)
 
-			if cfg.Sys.Mode == config.SystemModeCloud {
-				s.WithJWTSecret([]byte(config.C().Sys.Cloud.Auth.JwtSecret))
+			if cfg.Mode == config.ModeSaaS {
+				s.WithJWTSecret([]byte(config.C().SaaS.Auth.JwtSecret))
 				client, err := s.GetClient()
 				if err != nil {
 					return err
 				}
+				appPerUserLimit = cfg.SaaS.AppPerUserLimit
+				botPerUserLimit = cfg.SaaS.BotPerUserLimit
 				mixinClientID = client.ClientID
 				users = user.New(h)
 				mixpayClient = mixpay.New()
-				lemonClient = lemon.New(cfg.Sys.Cloud.Lemon.Key)
-				twitterClient = twitter.New(cfg.Sys.Cloud.Twitter.ApiKey, cfg.Sys.Cloud.Twitter.ApiSecret)
+				lemonClient = lemon.New(cfg.SaaS.Lemon.Key)
+				twitterClient = twitter.New(cfg.SaaS.Twitter.ApiKey, cfg.SaaS.Twitter.ApiSecret)
 				userz := userServ.New(userServ.Config{
-					InitUserCredits: cfg.Sys.Cloud.InitUserCredits,
+					InitUserCredits: cfg.SaaS.InitUserCredits,
 				}, client, twitterClient, users)
 
 				orders = order.New(h)
 				orderz := orderServ.New(orderServ.Config{
-					PayeeId:           cfg.Sys.Cloud.Mixpay.PayeeId,
-					QuoteAssetId:      cfg.Sys.Cloud.Mixpay.QuoteAssetId,
-					SettlementAssetId: cfg.Sys.Cloud.Mixpay.SettlementAssetId,
-					CallbackUrl:       cfg.Sys.Cloud.Mixpay.CallbackUrl,
-					ReturnTo:          cfg.Sys.Cloud.Mixpay.ReturnTo,
-					FailedReturnTo:    cfg.Sys.Cloud.Mixpay.FailedReturnTo,
+					PayeeId:           cfg.SaaS.Mixpay.PayeeId,
+					QuoteAssetId:      cfg.SaaS.Mixpay.QuoteAssetId,
+					SettlementAssetId: cfg.SaaS.Mixpay.SettlementAssetId,
+					CallbackUrl:       cfg.SaaS.Mixpay.CallbackUrl,
+					ReturnTo:          cfg.SaaS.Mixpay.ReturnTo,
+					FailedReturnTo:    cfg.SaaS.Mixpay.FailedReturnTo,
 				}, orders, userz, mixpayClient, lemonClient)
 				ordersyncerWorker = ordersyncer.New(ordersyncer.Config{
-					Interval:       cfg.Sys.Cloud.OrderSyncer.Interval,
-					CheckInterval:  cfg.Sys.Cloud.OrderSyncer.CheckInterval,
-					CancelInterval: cfg.Sys.Cloud.OrderSyncer.CancelInterval,
+					Interval:       cfg.SaaS.OrderSyncer.Interval,
+					CheckInterval:  cfg.SaaS.OrderSyncer.CheckInterval,
+					CancelInterval: cfg.SaaS.OrderSyncer.CancelInterval,
 				}, orders, orderz)
 			} else {
 				users = user.NewLocalModeStore(&core.User{})
@@ -179,14 +183,14 @@ func NewCmdHttpd() *cobra.Command {
 
 				{
 					svr := handler.New(handler.Config{
-						Mode:               cfg.Sys.Mode,
+						Mode:               cfg.Mode,
 						ClientID:           mixinClientID,
-						TrustDomains:       cfg.Sys.Cloud.Auth.TrustDomains,
-						Lemon:              cfg.Sys.Cloud.Lemon,
-						Variants:           cfg.Sys.Cloud.TopupVariants,
-						TwitterCallbackUrl: cfg.Sys.Cloud.Twitter.CallbackUrl,
-						AppPerUserLimit:    cfg.Sys.Cloud.AppPerUserLimit,
-						BotPerUserLimit:    cfg.Sys.Cloud.BotPerUserLimit,
+						TrustDomains:       cfg.SaaS.Auth.TrustDomains,
+						Lemon:              cfg.SaaS.Lemon,
+						Variants:           cfg.SaaS.TopupVariants,
+						TwitterCallbackUrl: cfg.SaaS.Twitter.CallbackUrl,
+						AppPerUserLimit:    appPerUserLimit,
+						BotPerUserLimit:    botPerUserLimit,
 					}, s, twitterClient, apps, indexes, users, convs, models, appz, botz, indexService, userz, convz, orderz, hub)
 
 					// api v1
