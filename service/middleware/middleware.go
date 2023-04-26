@@ -9,62 +9,33 @@ import (
 	"github.com/pandodao/botastic/core"
 )
 
-type Middleware interface {
-	Name() string
-	ValidateOptions(opts map[string]any) (any, error)
-	Process(ctx context.Context, opts any, input string) (string, error)
-}
-
 type generalOptions struct {
 	Required bool          `json:"required"`
 	Timeout  time.Duration `json:"timeout"`
 }
 
-func New(
-	cfg Config,
-	apps core.AppStore,
-	indexz core.IndexService,
-) *service {
-
-	middlewareMap := map[string]Middleware{}
-	for _, m := range []Middleware{
-		&botasticSearch{
-			apps:   apps,
-			indexz: indexz,
-		},
-		&duckDuckGoSearch{},
-		&intentRecognition{},
-		&fetch{},
-		&botastic{},
-	} {
-		middlewareMap[m.Name()] = m
-	}
-
+func New() *service {
 	return &service{
-		cfg:           cfg,
-		apps:          apps,
-		indexz:        indexz,
-		middlewareMap: middlewareMap,
+		middlewareMap: map[string]core.MiddlewareDesc{},
 	}
 }
 
 type (
-	Config struct {
-	}
-
 	service struct {
-		cfg    Config
-		apps   core.AppStore
-		indexz core.IndexService
-
-		middlewareMap map[string]Middleware
+		middlewareMap map[string]core.MiddlewareDesc
 	}
 )
 
-func (s *service) ProcessByConfig(ctx context.Context, mc core.MiddlewareConfig, input string) core.MiddlewareResults {
+func (s *service) Register(ms ...core.MiddlewareDesc) {
+	for _, m := range ms {
+		s.middlewareMap[m.Name()] = m
+	}
+}
+
+func (s *service) ProcessByConfig(ctx context.Context, mc core.MiddlewareConfig, turn *core.ConvTurn) core.MiddlewareResults {
 	var results []*core.MiddlewareProcessResult
 	for _, m := range mc.Items {
-		result := s.Process(ctx, m, input)
+		result := s.Process(ctx, m, turn)
 		results = append(results, result)
 		if result.Required {
 			break
@@ -73,7 +44,7 @@ func (s *service) ProcessByConfig(ctx context.Context, mc core.MiddlewareConfig,
 	return results
 }
 
-func (s *service) Process(ctx context.Context, m *core.Middleware, input string) *core.MiddlewareProcessResult {
+func (s *service) Process(ctx context.Context, m *core.Middleware, turn *core.ConvTurn) *core.MiddlewareProcessResult {
 	gopts, err := parseGeneralOptions(ctx, m.Options)
 	if err != nil {
 		return &core.MiddlewareProcessResult{
@@ -110,7 +81,7 @@ func (s *service) Process(ctx context.Context, m *core.Middleware, input string)
 		defer cancel()
 	}
 
-	result, err := middleware.Process(ctx, opts, input)
+	result, err := middleware.Process(ctx, opts, turn)
 	if err != nil {
 		code := core.MiddlewareProcessCodeInternalError
 		if errors.Is(err, context.DeadlineExceeded) {

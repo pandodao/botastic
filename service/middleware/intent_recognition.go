@@ -14,6 +14,10 @@ type intentRecognitionOptions struct {
 	Intents []string
 }
 
+func InitIntentRecognition() *intentRecognition {
+	return &intentRecognition{}
+}
+
 func (m *intentRecognition) Name() string {
 	return core.MiddlewareIntentRecognition
 }
@@ -39,7 +43,7 @@ func (m *intentRecognition) ValidateOptions(opts map[string]any) (any, error) {
 	return options, nil
 }
 
-func (m *intentRecognition) Process(ctx context.Context, opts any, input string) (string, error) {
+func (m *intentRecognition) Process(ctx context.Context, opts any, turn *core.ConvTurn) (string, error) {
 	options := opts.(*intentRecognitionOptions)
 
 	prompt := `You will analyze the intent of the request.

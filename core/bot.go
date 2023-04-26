@@ -49,9 +49,16 @@ type (
 		Required bool           `json:"required,omitempty"`
 	}
 
+	MiddlewareDesc interface {
+		Name() string
+		ValidateOptions(opts map[string]any) (any, error)
+		Process(ctx context.Context, opts any, turn *ConvTurn) (string, error)
+	}
+
 	MiddlewareService interface {
-		ProcessByConfig(ctx context.Context, m MiddlewareConfig, input string) MiddlewareResults
-		Process(ctx context.Context, m *Middleware, input string) *MiddlewareProcessResult
+		ProcessByConfig(ctx context.Context, m MiddlewareConfig, turn *ConvTurn) MiddlewareResults
+		Process(ctx context.Context, m *Middleware, turn *ConvTurn) *MiddlewareProcessResult
+		Register(ms ...MiddlewareDesc)
 	}
 )
 
@@ -161,7 +168,6 @@ type (
 )
 
 func (t *Bot) GetRequestContent(conv *Conversation, question string, additionData map[string]any) string {
-
 	var buf bytes.Buffer
 	data := map[string]interface{}{
 		"LangHint": conv.LangHint(),
@@ -221,7 +227,7 @@ func (t *Bot) GetChatMessages(conv *Conversation, additionData map[string]any) [
 	}
 
 	history := conv.History
-	if len(history) > conv.Bot.ContextTurnCount {
+	if len(history) > t.ContextTurnCount {
 		history = history[len(history)-conv.Bot.ContextTurnCount:]
 	}
 

@@ -18,6 +18,10 @@ type duckDuckGoSearchOptions struct {
 	Limit int
 }
 
+func InitDuckduckgoSearch() *duckDuckGoSearch {
+	return &duckDuckGoSearch{}
+}
+
 func (m *duckDuckGoSearch) ValidateOptions(opts map[string]any) (any, error) {
 	options := &duckDuckGoSearchOptions{
 		Limit: 3,
@@ -38,9 +42,9 @@ func (m *duckDuckGoSearch) ValidateOptions(opts map[string]any) (any, error) {
 	return options, nil
 }
 
-func (m *duckDuckGoSearch) Process(ctx context.Context, opts any, input string) (string, error) {
+func (m *duckDuckGoSearch) Process(ctx context.Context, opts any, turn *core.ConvTurn) (string, error) {
 	options := opts.(*duckDuckGoSearchOptions)
-	r, err := ddg.WebSearch(ctx, input, options.Limit)
+	r, err := ddg.WebSearch(ctx, turn.Request, options.Limit)
 	if err != nil {
 		return "", err
 	}

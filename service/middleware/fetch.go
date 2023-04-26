@@ -20,6 +20,10 @@ type fetchOptions struct {
 	URL string
 }
 
+func InitFetch() *fetch {
+	return &fetch{}
+}
+
 func (m *fetch) ValidateOptions(opts map[string]any) (any, error) {
 	options := &fetchOptions{}
 
@@ -40,7 +44,7 @@ func (m *fetch) ValidateOptions(opts map[string]any) (any, error) {
 	return options, nil
 }
 
-func (m *fetch) Process(ctx context.Context, opts any, input string) (string, error) {
+func (m *fetch) Process(ctx context.Context, opts any, turn *core.ConvTurn) (string, error) {
 	options := opts.(*fetchOptions)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, options.URL, nil)
 	if err != nil {

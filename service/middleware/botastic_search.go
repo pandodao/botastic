@@ -19,6 +19,13 @@ type botasticSearchOptions struct {
 	AppID string
 }
 
+func InitBotasticSearch(apps core.AppStore, indexz core.IndexService) *botasticSearch {
+	return &botasticSearch{
+		apps:   apps,
+		indexz: indexz,
+	}
+}
+
 func (m *botasticSearch) Name() string {
 	return core.MiddlewareBotasticSearch
 }
@@ -52,7 +59,7 @@ func (m *botasticSearch) ValidateOptions(opts map[string]any) (any, error) {
 	return options, nil
 }
 
-func (m *botasticSearch) Process(ctx context.Context, opts any, input string) (string, error) {
+func (m *botasticSearch) Process(ctx context.Context, opts any, turn *core.ConvTurn) (string, error) {
 	options := opts.(*botasticSearchOptions)
 	app := session.AppFrom(ctx)
 	if options.AppID != "" {
@@ -67,7 +74,7 @@ func (m *botasticSearch) Process(ctx context.Context, opts any, input string) (s
 		ctx = session.WithApp(ctx, app)
 	}
 
-	searchResult, err := m.indexz.SearchIndex(ctx, app.UserID, input, options.Limit)
+	searchResult, err := m.indexz.SearchIndex(ctx, app.UserID, turn.Request, options.Limit)
 	if err != nil {
 		return "", err
 	}

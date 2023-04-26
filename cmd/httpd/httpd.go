@@ -101,13 +101,12 @@ func NewCmdHttpd() *cobra.Command {
 			userz := userServ.New(userServ.Config{
 				InitUserCredits: cfg.Sys.InitUserCredits,
 			}, client, twitterClient, users)
-			indexService := indexServ.NewService(ctx, gptHandler, indexes, userz, models, tiktokenHandler)
+			indexz := indexServ.NewService(ctx, gptHandler, indexes, userz, models, tiktokenHandler)
 			appz := appServ.New(appServ.Config{
 				SecretKey: cfg.Sys.SecretKey,
-			}, apps, indexService)
+			}, apps, indexz)
 
-			middlewarez := middlewareServ.New(middlewareServ.Config{}, apps, indexService)
-			botz := botServ.New(botServ.Config{}, apps, bots, models, middlewarez)
+			botz := botServ.New(botServ.Config{}, apps, bots, models)
 			convz := convServ.New(convServ.Config{}, convs, botz, apps)
 			orderz := orderServ.New(orderServ.Config{
 				PayeeId:           cfg.Mixpay.PayeeId,
@@ -120,10 +119,21 @@ func NewCmdHttpd() *cobra.Command {
 			hub := chanhub.New()
 			// var userz core.UserService
 
+			middlewarez := middlewareServ.New()
+			rotaterWorker := rotater.New(rotater.Config{}, gptHandler, convs, apps, models, convz, botz, middlewarez, userz, hub, tiktokenHandler)
+
+			middlewarez.Register(
+				middlewareServ.InitBotastic(rotaterWorker, bots),
+				middlewareServ.InitBotasticSearch(apps, indexz),
+				middlewareServ.InitDuckduckgoSearch(),
+				middlewareServ.InitFetch(),
+				middlewareServ.InitIntentRecognition(),
+			)
+
 			// httpd's workers
 			workers := []worker.Worker{
 				// rotater
-				rotater.New(rotater.Config{}, gptHandler, convs, apps, models, convz, botz, middlewarez, userz, hub, tiktokenHandler),
+				rotaterWorker,
 
 				ordersyncer.New(ordersyncer.Config{
 					Interval:       cfg.OrderSyncer.Interval,
@@ -169,7 +179,7 @@ func NewCmdHttpd() *cobra.Command {
 						TwitterCallbackUrl: cfg.Twitter.CallbackUrl,
 						AppPerUserLimit:    cfg.Sys.AppPerUserLimit,
 						BotPerUserLimit:    cfg.Sys.BotPerUserLimit,
-					}, s, twitterClient, apps, indexes, users, convs, models, appz, botz, indexService, userz, convz, orderz, hub)
+					}, s, twitterClient, apps, indexes, users, convs, models, appz, botz, indexz, userz, convz, orderz, hub)
 
 					// api v1
 					restHandler := svr.HandleRest()

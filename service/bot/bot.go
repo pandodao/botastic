@@ -15,7 +15,6 @@ func New(
 	apps core.AppStore,
 	bots core.BotStore,
 	models core.ModelStore,
-	middlewarez core.MiddlewareService,
 ) *service {
 	botCache := cache.New(time.Minute*5, time.Minute*5)
 
@@ -26,7 +25,6 @@ func New(
 		apps:            apps,
 		bots:            bots,
 		models:          models,
-		middlewarez:     middlewarez,
 		botCache:        botCache,
 		conversationMap: conversationMap,
 	}
@@ -48,7 +46,7 @@ type (
 )
 
 func (s *service) ReplaceStore(bots core.BotStore) core.BotService {
-	return New(s.cfg, s.apps, bots, s.models, s.middlewarez)
+	return New(s.cfg, s.apps, bots, s.models)
 }
 
 func (s *service) GetBot(ctx context.Context, id uint64) (*core.Bot, error) {

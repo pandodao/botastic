@@ -6,16 +6,24 @@ import (
 
 	"github.com/pandodao/botastic/core"
 	"github.com/pandodao/botastic/session"
-	"github.com/pandodao/botastic/worker/rotater"
+	"github.com/pandodao/botastic/worker"
 )
 
 type botastic struct {
-	rotater *rotater.Worker
+	rotater worker.Rotater
 	bots    core.BotStore
 }
 
 type botasticOptions struct {
-	BotID uint64
+	BotID               uint64
+	InheritConversation bool
+}
+
+func InitBotastic(rotater worker.Rotater, bots core.BotStore) *botastic {
+	return &botastic{
+		rotater: rotater,
+		bots:    bots,
+	}
 }
 
 func (m *botastic) Name() string {
@@ -37,10 +45,18 @@ func (m *botastic) ValidateOptions(opts map[string]any) (any, error) {
 		options.BotID = uint64(v)
 	}
 
+	if val, ok := opts["inherit_conversation"]; ok {
+		b, ok := val.(bool)
+		if !ok {
+			return nil, fmt.Errorf("inherit_conversation should be bool: %v", val)
+		}
+		options.InheritConversation = b
+	}
+
 	return options, nil
 }
 
-func (m *botastic) Process(ctx context.Context, opts any, input string) (string, error) {
+func (m *botastic) Process(ctx context.Context, opts any, turn *core.ConvTurn) (string, error) {
 	options := opts.(*botasticOptions)
 	app := session.AppFrom(ctx)
 
@@ -59,9 +75,13 @@ func (m *botastic) Process(ctx context.Context, opts any, input string) (string,
 		AppID:        app.ID,
 		UserID:       app.UserID,
 		UserIdentity: "",
-		Request:      input,
+		Request:      turn.Request,
 		Status:       core.ConvTurnStatusInit,
 	}
+	if options.InheritConversation {
+		t.ConversationID = turn.ConversationID
+	}
+
 	if err := m.rotater.ProcessConvTurn(ctx, t); err != nil {
 		return "", err
 	}

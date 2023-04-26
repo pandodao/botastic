@@ -172,15 +172,18 @@ func (w *Worker) ProcessConvTurn(ctx context.Context, turn *core.ConvTurn) error
 			return err
 		}
 
-		conv, err := w.convz.GetConversation(ctx, turn.ConversationID)
-		if err != nil {
-			if store.IsNotFoundErr(err) {
-				return core.NewTurnProcessError(core.TurnProcessConversationNotFound, err)
+		conv := &core.Conversation{}
+		if turn.ConversationID != "" {
+			conv, err = w.convz.GetConversation(ctx, turn.ConversationID)
+			if err != nil {
+				if store.IsNotFoundErr(err) {
+					return core.NewTurnProcessError(core.TurnProcessConversationNotFound, err)
+				}
+				return err
 			}
-			return err
 		}
 
-		model, err = w.models.GetModel(ctx, conv.Bot.Model)
+		model, err = w.models.GetModel(ctx, bot.Model)
 		if err != nil {
 			if store.IsNotFoundErr(err) {
 				return core.NewTurnProcessError(core.TurnProcessModelNotFound, err)
@@ -194,7 +197,6 @@ func (w *Worker) ProcessConvTurn(ctx context.Context, turn *core.ConvTurn) error
 		}
 
 		additional := map[string]interface{}{}
-		middlewareResults := core.MiddlewareResults{}
 		if len(middlewareCfg.Items) != 0 {
 			app, err := w.apps.GetApp(ctx, turn.AppID)
 			if err != nil {
@@ -202,7 +204,7 @@ func (w *Worker) ProcessConvTurn(ctx context.Context, turn *core.ConvTurn) error
 			}
 
 			ctx = session.WithApp(ctx, app)
-			middlewareResults = w.middlewarez.ProcessByConfig(ctx, middlewareCfg, turn.Request)
+			middlewareResults = w.middlewarez.ProcessByConfig(ctx, middlewareCfg, turn)
 			lastResult := middlewareResults[len(middlewareResults)-1]
 			if lastResult.Err != nil && lastResult.Required {
 				return core.NewTurnProcessError(core.TurnProcessMiddlewareError, lastResult.Err)
@@ -289,7 +291,7 @@ func (w *Worker) handleCustomProvider(ctx context.Context, turnReq turnRequest) 
 	model := turnReq.Model
 	conv := turnReq.Conv
 	turn := turnReq.Turn
-	bot := conv.Bot
+	bot := turnReq.Bot
 
 	cc := model.CustomConfig
 	if cc.Request.URL == "" {
@@ -380,7 +382,7 @@ func (w *Worker) handleOpenAIProvider(ctx context.Context, req turnRequest) (*re
 	model := req.Model
 	conv := req.Conv
 	turn := req.Turn
-	bot := conv.Bot
+	bot := req.Bot
 
 	var (
 		chatRequest       *gogpt.ChatCompletionRequest
@@ -395,7 +397,7 @@ func (w *Worker) handleOpenAIProvider(ctx context.Context, req turnRequest) (*re
 	if model.IsOpenAIChatModel() {
 		chatRequest = &gogpt.ChatCompletionRequest{
 			Model:       model.ProviderModel,
-			Messages:    req.Conv.Bot.GetChatMessages(req.Conv, req.Additional),
+			Messages:    req.Bot.GetChatMessages(req.Conv, req.Additional),
 			Temperature: temperature,
 		}
 	} else if model.IsOpenAICompletionModel() {
