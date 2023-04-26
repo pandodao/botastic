@@ -7,18 +7,18 @@ import (
 
 type Hub struct {
 	sync.Mutex
-	m map[string][]chan interface{}
+	m map[any][]chan any
 }
 
 func New() *Hub {
 	return &Hub{
-		m: make(map[string][]chan interface{}),
+		m: make(map[any][]chan any),
 	}
 }
 
-func (h *Hub) AddAndWait(ctx context.Context, key string) (interface{}, error) {
+func (h *Hub) AddAndWait(ctx context.Context, key any) (any, error) {
 	h.Lock()
-	ch := make(chan interface{})
+	ch := make(chan any)
 	defer close(ch)
 	h.m[key] = append(h.m[key], ch)
 	id := len(h.m[key]) - 1
@@ -34,7 +34,7 @@ func (h *Hub) AddAndWait(ctx context.Context, key string) (interface{}, error) {
 	}
 }
 
-func (h *Hub) deleteChan(key string, id int) {
+func (h *Hub) deleteChan(key any, id int) {
 	h.Lock()
 	defer h.Unlock()
 
@@ -52,7 +52,7 @@ func (h *Hub) deleteChan(key string, id int) {
 	h.m[key] = v
 }
 
-func (h *Hub) Broadcast(key string, result interface{}) {
+func (h *Hub) Broadcast(key any, result any) {
 	h.Lock()
 	defer h.Unlock()
 

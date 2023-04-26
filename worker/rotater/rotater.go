@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"text/template"
@@ -21,6 +20,7 @@ import (
 	"github.com/pandodao/botastic/internal/gpt"
 	"github.com/pandodao/botastic/internal/tiktoken"
 	"github.com/pandodao/botastic/session"
+	"github.com/pandodao/botastic/store"
 	gogpt "github.com/sashabaranov/go-openai"
 	"github.com/tidwall/gjson"
 )
@@ -46,16 +46,17 @@ type (
 		middlewarez core.MiddlewareService
 		userz       core.UserService
 
-		turnReqChan chan TurnRequest
-		hub         *chanhub.Hub
+		turnChan chan *core.ConvTurn
+		hub      *chanhub.Hub
 
 		processingMap   sync.Map
 		tiktokenHandler *tiktoken.Handler
 	}
 
-	TurnRequest struct {
+	turnRequest struct {
 		Conv       *core.Conversation
 		Turn       *core.ConvTurn
+		Bot        *core.Bot
 		Model      *core.Model
 		Additional map[string]any
 	}
@@ -76,7 +77,7 @@ func New(
 	hub *chanhub.Hub,
 	tiktokenHandler *tiktoken.Handler,
 ) *Worker {
-	turnReqChan := make(chan TurnRequest, MAX_REQUESTS_PER_MINUTE)
+	turnChan := make(chan *core.ConvTurn, MAX_REQUESTS_PER_MINUTE)
 	return &Worker{
 		cfg:             cfg,
 		gptHandler:      gptHandler,
@@ -87,7 +88,7 @@ func New(
 		botz:            botz,
 		middlewarez:     middlewarez,
 		userz:           userz,
-		turnReqChan:     turnReqChan,
+		turnChan:        turnChan,
 		hub:             hub,
 		tiktokenHandler: tiktokenHandler,
 	}
@@ -129,22 +130,62 @@ func (w *Worker) run(ctx context.Context) error {
 	}
 
 	for _, turn := range turns {
+		w.turnChan <- turn
+	}
+	return nil
+}
+
+func (w *Worker) UpdateConvTurnAsError(ctx context.Context, id uint64, mrs core.MiddlewareResults, err error) error {
+	fmt.Printf("err: %v, %d\n", err, id)
+	var tpe *core.TurnProcessError
+	if !errors.As(err, &tpe) {
+		tpe = core.NewTurnProcessError(core.TurnProcessErrorInternal, err)
+	}
+	if err := w.convs.UpdateConvTurn(ctx, id, "", 0, 0, 0, core.ConvTurnStatusError, mrs, tpe); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (w *Worker) ProcessConvTurn(ctx context.Context, turn *core.ConvTurn) error {
+	log := logger.FromContext(ctx)
+
+	fromMiddleware := turn.ID == 0
+	if !fromMiddleware {
+		if _, loaded := w.processingMap.LoadOrStore(turn.ID, struct{}{}); loaded {
+			return nil
+		}
+		defer w.processingMap.Delete(turn.ID)
+	}
+
+	var (
+		middlewareResults core.MiddlewareResults
+		rr                *requestResult
+		model             *core.Model
+	)
+	err := func() error {
 		bot, err := w.botz.GetBot(ctx, turn.BotID)
 		if err != nil {
-			w.UpdateConvTurnAsError(ctx, turn.ID, err.Error())
-			continue
+			if store.IsNotFoundErr(err) {
+				return core.NewTurnProcessError(core.TurnProcessBotNotFound, err)
+			}
+			return err
 		}
 
 		conv, err := w.convz.GetConversation(ctx, turn.ConversationID)
 		if err != nil {
-			w.UpdateConvTurnAsError(ctx, turn.ID, err.Error())
-			continue
+			if store.IsNotFoundErr(err) {
+				return core.NewTurnProcessError(core.TurnProcessConversationNotFound, err)
+			}
+			return err
 		}
 
-		model, err := w.models.GetModel(ctx, conv.Bot.Model)
+		model, err = w.models.GetModel(ctx, conv.Bot.Model)
 		if err != nil {
-			w.UpdateConvTurnAsError(ctx, turn.ID, fmt.Errorf("unsupported model: %s", conv.Bot.Model).Error())
-			continue
+			if store.IsNotFoundErr(err) {
+				return core.NewTurnProcessError(core.TurnProcessModelNotFound, err)
+			}
+			return err
 		}
 
 		middlewareCfg := bot.MiddlewareJson
@@ -157,15 +198,14 @@ func (w *Worker) run(ctx context.Context) error {
 		if len(middlewareCfg.Items) != 0 {
 			app, err := w.apps.GetApp(ctx, turn.AppID)
 			if err != nil {
-				w.UpdateConvTurnAsError(ctx, turn.ID, err.Error())
-				continue
+				return core.NewTurnProcessError(core.TurnProcessMiddlewareError, err)
 			}
+
 			ctx = session.WithApp(ctx, app)
 			middlewareResults = w.middlewarez.ProcessByConfig(ctx, middlewareCfg, turn.Request)
 			lastResult := middlewareResults[len(middlewareResults)-1]
 			if lastResult.Err != nil && lastResult.Required {
-				w.UpdateConvTurnAsError(ctx, turn.ID, err.Error())
-				continue
+				return core.NewTurnProcessError(core.TurnProcessMiddlewareError, lastResult.Err)
 			}
 
 			middlewareOutputs := make([]string, 0)
@@ -177,72 +217,64 @@ func (w *Worker) run(ctx context.Context) error {
 			additional["MiddlewareOutput"] = strings.Join(middlewareOutputs, "\n\n")
 		}
 
-		if turn.Status == core.ConvTurnStatusInit {
-			if err := w.convs.UpdateConvTurn(ctx, turn.ID, "", 0, 0, 0, core.ConvTurnStatusPending, middlewareResults); err != nil {
-				continue
-			}
-		}
-
-		w.turnReqChan <- TurnRequest{
+		turnReq := turnRequest{
 			Conv:       conv,
 			Turn:       turn,
+			Bot:        bot,
 			Model:      model,
 			Additional: additional,
 		}
-	}
-	return nil
-}
+		switch model.Provider {
+		case core.ModelProviderOpenAI:
+			rr, err = w.handleOpenAIProvider(ctx, turnReq)
+		case core.ModelProviderCustom:
+			rr, err = w.handleCustomProvider(ctx, turnReq)
+		default:
+			err = core.NewTurnProcessError(core.TurnProcessModelConfigError, fmt.Errorf("unsupported model provider: %s", model.Provider))
+		}
 
-func (w *Worker) UpdateConvTurnAsError(ctx context.Context, id uint64, errMsg string) error {
-	fmt.Printf("errMsg: %v, %d\n", errMsg, id)
-	if err := w.convs.UpdateConvTurn(ctx, id, "Something wrong happened", 0, 0, 0, core.ConvTurnStatusError, nil); err != nil {
 		return err
+	}()
+
+	turn.Status = core.ConvTurnStatusCompleted
+	turn.MiddlewareResults = middlewareResults
+	turn.Response = rr.respText
+	turn.PromptTokens = int(rr.promptTokenCount)
+	turn.CompletionTokens = int(rr.completionTokenCount)
+	turn.TotalTokens = int(rr.totalTokens)
+
+	if !fromMiddleware {
+		if err != nil {
+			return w.UpdateConvTurnAsError(ctx, turn.ID, middlewareResults, err)
+		}
+
+		if err := w.convs.UpdateConvTurn(ctx, turn.ID, rr.respText, rr.promptTokenCount, rr.completionTokenCount, rr.totalTokens, core.ConvTurnStatusCompleted, middlewareResults, nil); err != nil {
+			return err
+		}
 	}
+
+	if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, *model, rr.promptTokenCount, rr.completionTokenCount); err != nil {
+		log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", model.Name(), rr.totalTokens)
+	}
+
+	if !fromMiddleware {
+		// notify http handler
+		w.hub.Broadcast(turn.ID, struct{}{})
+		log.Printf("subwork processed a turn: %+v\n", turn.ID)
+	}
+
 	return nil
 }
 
 func (w *Worker) subworker(ctx context.Context, id int) {
-	log := logger.FromContext(ctx).WithField("worker", "rotater.subworker")
+	log := logger.FromContext(ctx).WithField("worker", "rotater.subworker").WithField("id", id)
+	ctx = logger.WithContext(ctx, log)
 	for {
 		// Wait for a request to handle.
-		turnReq := <-w.turnReqChan
-		turn := turnReq.Turn
-
-		func() {
-			if _, loaded := w.processingMap.LoadOrStore(turn.ID, struct{}{}); loaded {
-				return
-			}
-			defer w.processingMap.Delete(turn.ID)
-
-			var (
-				rr  *requestResult
-				err error
-			)
-			switch turnReq.Model.Provider {
-			case core.ModelProviderOpenAI:
-				rr, err = w.handleOpenAIProvider(ctx, turnReq)
-			case core.ModelProviderCustom:
-				rr, err = w.handleCustomProvider(ctx, turnReq)
-			}
-
-			if err != nil {
-				w.UpdateConvTurnAsError(ctx, turn.ID, err.Error())
-				return
-			}
-
-			if err := w.convs.UpdateConvTurn(ctx, turn.ID, rr.respText, rr.promptTokenCount, rr.completionTokenCount, rr.totalTokens, core.ConvTurnStatusCompleted, nil); err != nil {
-				return
-			}
-
-			if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, *turnReq.Model, rr.promptTokenCount, rr.completionTokenCount); err != nil {
-				log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", turnReq.Model.Name(), rr.totalTokens)
-			}
-
-			// notify http handler
-			w.hub.Broadcast(strconv.FormatUint(turn.ID, 10), struct{}{})
-
-			log.Printf("subwork-%03d processed a turn: %+v\n", id, turn.ID)
-		}()
+		turnReq := <-w.turnChan
+		if err := w.ProcessConvTurn(ctx, turnReq); err != nil {
+			log.WithError(err).Error("ProcessConvTurn")
+		}
 	}
 }
 
@@ -253,7 +285,7 @@ type requestResult struct {
 	completionTokenCount int64
 }
 
-func (w *Worker) handleCustomProvider(ctx context.Context, turnReq TurnRequest) (*requestResult, error) {
+func (w *Worker) handleCustomProvider(ctx context.Context, turnReq turnRequest) (*requestResult, error) {
 	model := turnReq.Model
 	conv := turnReq.Conv
 	turn := turnReq.Turn
@@ -261,12 +293,12 @@ func (w *Worker) handleCustomProvider(ctx context.Context, turnReq TurnRequest) 
 
 	cc := model.CustomConfig
 	if cc.Request.URL == "" {
-		return nil, fmt.Errorf("custom config request is empty")
+		return nil, core.NewTurnProcessError(core.TurnProcessModelConfigError, fmt.Errorf("custom config request is empty"))
 	}
 
 	req, err := http.NewRequestWithContext(ctx, cc.Request.Method, cc.Request.URL, nil)
 	if err != nil {
-		return nil, err
+		return nil, core.NewTurnProcessError(core.TurnProcessModelConfigError, fmt.Errorf("invalid request url: %w", err))
 	}
 
 	prompt := bot.GetRequestContent(conv, turn.Request, turnReq.Additional)
@@ -294,7 +326,7 @@ func (w *Worker) handleCustomProvider(ctx context.Context, turnReq TurnRequest) 
 	if cc.Request.Method == "POST" {
 		jsonData, err := json.Marshal(cc.Request.Data)
 		if err != nil {
-			return nil, err
+			return nil, core.NewTurnProcessError(core.TurnProcessModelConfigError, fmt.Errorf("invalid request data: %w", err))
 		}
 		req.Body = ioutil.NopCloser(bytes.NewReader(jsonData))
 		req.ContentLength = int64(len(jsonData))
@@ -314,17 +346,17 @@ func (w *Worker) handleCustomProvider(ctx context.Context, turnReq TurnRequest) 
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, core.NewTurnProcessError(core.TurnProcessModelCallError, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, errors.New(fmt.Sprintf("Request failed with status code %d", resp.StatusCode))
+		return nil, core.NewTurnProcessError(core.TurnProcessModelCallError, fmt.Errorf("Request failed with status code %d", resp.StatusCode))
 	}
 
 	respData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, core.NewTurnProcessError(core.TurnProcessModelCallError, fmt.Errorf("read response body error: %w", err))
 	}
 
 	respText := string(respData)
@@ -344,7 +376,7 @@ func (w *Worker) handleCustomProvider(ctx context.Context, turnReq TurnRequest) 
 	return rr, nil
 }
 
-func (w *Worker) handleOpenAIProvider(ctx context.Context, req TurnRequest) (*requestResult, error) {
+func (w *Worker) handleOpenAIProvider(ctx context.Context, req turnRequest) (*requestResult, error) {
 	model := req.Model
 	conv := req.Conv
 	turn := req.Turn
@@ -376,7 +408,7 @@ func (w *Worker) handleOpenAIProvider(ctx context.Context, req TurnRequest) (*re
 			User:        conv.GetKey(),
 		}
 	} else {
-		return nil, core.ErrInvalidModel
+		return nil, core.NewTurnProcessError(core.TurnProcessModelConfigError, fmt.Errorf("model %s is not supported", model.Name()))
 	}
 
 	var usage gogpt.Usage
@@ -384,7 +416,7 @@ func (w *Worker) handleOpenAIProvider(ctx context.Context, req TurnRequest) (*re
 	if completionRequest != nil {
 		gptResp, err := w.gptHandler.CreateCompletion(ctx, *completionRequest)
 		if err != nil {
-			return nil, err
+			return nil, core.NewTurnProcessError(core.TurnProcessModelCallError, err)
 		}
 		prefix := "A:"
 		respText = strings.TrimPrefix(gptResp.Choices[0].Text, prefix)
@@ -393,7 +425,7 @@ func (w *Worker) handleOpenAIProvider(ctx context.Context, req TurnRequest) (*re
 	} else {
 		gptResp, err := w.gptHandler.CreateChatCompletion(ctx, *chatRequest)
 		if err != nil {
-			return nil, err
+			return nil, core.NewTurnProcessError(core.TurnProcessModelCallError, err)
 		}
 		respText = strings.TrimSpace(gptResp.Choices[0].Message.Content)
 		usage = gptResp.Usage

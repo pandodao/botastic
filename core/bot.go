@@ -19,6 +19,7 @@ const (
 	MiddlewareDuckduckgoSearch  = "duckduckgo-search"
 	MiddlewareIntentRecognition = "intent-recognition"
 	MiddlewareFetch             = "fetch"
+	MiddlewareBotastic          = "botastic"
 )
 
 const (

@@ -50,6 +50,51 @@ func (mr MiddlewareResults) Value() (driver.Value, error) {
 	return json.Marshal(mr)
 }
 
+const (
+	TurnProcessErrorInternal int = iota
+	TurnProcessMiddlewareError
+	TurnProcessModelConfigError
+	TurnProcessModelCallError
+	TurnProcessBotNotFound
+	TurnProcessConversationNotFound
+	TurnProcessModelNotFound
+)
+
+type TurnProcessError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+func (e *TurnProcessError) Scan(value interface{}) error {
+	data, ok := value.([]byte)
+	if !ok {
+		return errors.New(fmt.Sprint("type assertion to []byte failed:", value))
+	}
+	if len(data) == 0 || string(data) == "{}" {
+		return nil
+	}
+
+	return json.Unmarshal(data, e)
+}
+
+func (e *TurnProcessError) Value() (driver.Value, error) {
+	if e == nil {
+		return nil, nil
+	}
+	return json.Marshal(e)
+}
+
+func NewTurnProcessError(code int, err error) *TurnProcessError {
+	return &TurnProcessError{
+		Code:    code,
+		Message: err.Error(),
+	}
+}
+
+func (e *TurnProcessError) Error() string {
+	return fmt.Sprintf("code: %d, message: %s", e.Code, e.Message)
+}
+
 type (
 	Conversation struct {
 		ID           string     `json:"id"`
@@ -81,6 +126,7 @@ type (
 		Status            int               `json:"status"`
 		BotOverride       BotOverride       `gorm:"type:jsonb"  json:"bot_override"`
 		MiddlewareResults MiddlewareResults `gorm:"type:jsonb"  json:"middleware_results,omitempty"`
+		Error             *TurnProcessError `gorm:"type:jsonb"  json:"error,omitempty"`
 		CreatedAt         *time.Time        `json:"created_at"`
 		UpdatedAt         *time.Time        `json:"updated_at"`
 	}
@@ -148,11 +194,14 @@ type (
 		// {{if mr != nil}}
 		// 		"middleware_results"=@mr,
 		// {{end}}
+		// {{if tpe != nil}}
+		// 		"error"=@tpe,
+		// {{end}}
 		// 		"updated_at"=NOW()
 		// 	{{end}}
 		// WHERE
 		// 	"id"=@id
-		UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens, completionTokens, totalTokens int64, status int, mr MiddlewareResults) error
+		UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens, completionTokens, totalTokens int64, status int, mr MiddlewareResults, tpe *TurnProcessError) error
 	}
 
 	ConversationService interface {

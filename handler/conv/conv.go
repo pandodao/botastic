@@ -116,7 +116,7 @@ func GetConversationTurn(botz core.BotService, convs core.ConversationStore, hub
 			return
 		}
 
-		_, err = hub.AddAndWait(ctx, turnIDStr)
+		_, err = hub.AddAndWait(ctx, turnId)
 		if err != nil {
 			if err == context.Canceled {
 				render.Error(w, http.StatusBadRequest, err)
@@ -294,8 +294,7 @@ func CreateOnewayConversation(convz core.ConversationService, convs core.Convers
 			return
 		}
 
-		turnIDStr := strconv.FormatUint(turn.ID, 10)
-		_, err = hub.AddAndWait(ctx, turnIDStr)
+		_, err = hub.AddAndWait(ctx, turn.ID)
 		if err != nil {
 			if err == context.Canceled {
 				render.Error(w, http.StatusBadRequest, err)
