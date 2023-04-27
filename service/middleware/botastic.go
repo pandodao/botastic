@@ -89,6 +89,9 @@ func (m *botastic) Process(ctx context.Context, opts any, turn *core.ConvTurn) (
 	if err := m.rotater.ProcessConvTurn(ctx, t); err != nil {
 		return "", err
 	}
+	if t.Error != nil {
+		return "", t.Error
+	}
 
 	return t.Response, nil
 }

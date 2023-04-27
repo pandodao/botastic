@@ -201,7 +201,7 @@ type (
 		// 	{{end}}
 		// WHERE
 		// 	"id"=@id
-		UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens, completionTokens, totalTokens int64, status int, mr MiddlewareResults, tpe *TurnProcessError) error
+		UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens, completionTokens, totalTokens int, status int, mr MiddlewareResults, tpe *TurnProcessError) error
 	}
 
 	ConversationService interface {

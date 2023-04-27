@@ -124,7 +124,7 @@ type IConversationDo interface {
 	GetConvTurns(ctx context.Context, ids []uint64) (result []*core.ConvTurn, err error)
 	GetConvTurn(ctx context.Context, id uint64) (result *core.ConvTurn, err error)
 	GetConvTurnsByStatus(ctx context.Context, excludeIDs []uint64, status []int) (result []*core.ConvTurn, err error)
-	UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens int64, completionTokens int64, totalTokens int64, status int, mr core.MiddlewareResults, tpe *core.TurnProcessError) (err error)
+	UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens int, completionTokens int, totalTokens int, status int, mr core.MiddlewareResults, tpe *core.TurnProcessError) (err error)
 }
 
 // INSERT INTO "conversations"
@@ -318,7 +318,7 @@ func (c conversationDo) GetConvTurnsByStatus(ctx context.Context, excludeIDs []u
 // WHERE
 //
 //	"id"=@id
-func (c conversationDo) UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens int64, completionTokens int64, totalTokens int64, status int, mr core.MiddlewareResults, tpe *core.TurnProcessError) (err error) {
+func (c conversationDo) UpdateConvTurn(ctx context.Context, id uint64, response string, promptTokens int, completionTokens int, totalTokens int, status int, mr core.MiddlewareResults, tpe *core.TurnProcessError) (err error) {
 	var params []interface{}
 
 	var generateSQL strings.Builder

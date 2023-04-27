@@ -135,12 +135,8 @@ func (w *Worker) run(ctx context.Context) error {
 	return nil
 }
 
-func (w *Worker) UpdateConvTurnAsError(ctx context.Context, id uint64, mrs core.MiddlewareResults, err error) error {
-	fmt.Printf("err: %v, %d\n", err, id)
-	var tpe *core.TurnProcessError
-	if !errors.As(err, &tpe) {
-		tpe = core.NewTurnProcessError(core.TurnProcessErrorInternal, err)
-	}
+func (w *Worker) UpdateConvTurnAsError(ctx context.Context, id uint64, mrs core.MiddlewareResults, tpe *core.TurnProcessError) error {
+	fmt.Printf("err: %v, %d\n", tpe, id)
 	if err := w.convs.UpdateConvTurn(ctx, id, "", 0, 0, 0, core.ConvTurnStatusError, mrs, tpe); err != nil {
 		return err
 	}
@@ -240,18 +236,26 @@ func (w *Worker) ProcessConvTurn(ctx context.Context, turn *core.ConvTurn) error
 
 	turn.Status = core.ConvTurnStatusCompleted
 	turn.MiddlewareResults = middlewareResults
-	turn.Response = rr.respText
-	turn.PromptTokens = int(rr.promptTokenCount)
-	turn.CompletionTokens = int(rr.completionTokenCount)
-	turn.TotalTokens = int(rr.totalTokens)
+	if err != nil {
+		var tpe *core.TurnProcessError
+		if !errors.As(err, &tpe) {
+			tpe = core.NewTurnProcessError(core.TurnProcessErrorInternal, err)
+		}
+		turn.Error = tpe
+	} else {
+		turn.Response = rr.respText
+		turn.PromptTokens = int(rr.promptTokenCount)
+		turn.CompletionTokens = int(rr.completionTokenCount)
+		turn.TotalTokens = int(rr.totalTokens)
+	}
 
 	if !fromMiddleware {
-		if err != nil {
-			return w.UpdateConvTurnAsError(ctx, turn.ID, middlewareResults, err)
-		}
-
-		if err := w.convs.UpdateConvTurn(ctx, turn.ID, rr.respText, rr.promptTokenCount, rr.completionTokenCount, rr.totalTokens, core.ConvTurnStatusCompleted, middlewareResults, nil); err != nil {
-			return err
+		if turn.Error != nil {
+			return w.UpdateConvTurnAsError(ctx, turn.ID, middlewareResults, turn.Error)
+		} else {
+			if err := w.convs.UpdateConvTurn(ctx, turn.ID, turn.Response, turn.PromptTokens, turn.CompletionTokens, turn.TotalTokens, core.ConvTurnStatusCompleted, middlewareResults, nil); err != nil {
+				return err
+			}
 		}
 	}
 
