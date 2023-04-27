@@ -251,7 +251,9 @@ func (w *Worker) ProcessConvTurn(ctx context.Context, turn *core.ConvTurn) error
 
 	if !fromMiddleware {
 		if turn.Error != nil {
-			return w.UpdateConvTurnAsError(ctx, turn.ID, middlewareResults, turn.Error)
+			if err := w.UpdateConvTurnAsError(ctx, turn.ID, middlewareResults, turn.Error); err != nil {
+				return err
+			}
 		} else {
 			if err := w.convs.UpdateConvTurn(ctx, turn.ID, turn.Response, turn.PromptTokens, turn.CompletionTokens, turn.TotalTokens, core.ConvTurnStatusCompleted, middlewareResults, nil); err != nil {
 				return err
@@ -259,8 +261,10 @@ func (w *Worker) ProcessConvTurn(ctx context.Context, turn *core.ConvTurn) error
 		}
 	}
 
-	if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, *model, rr.promptTokenCount, rr.completionTokenCount); err != nil {
-		log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", model.Name(), rr.totalTokens)
+	if turn.Error == nil {
+		if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, *model, turn.PromptTokens, turn.CompletionTokens); err != nil {
+			log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", model.Name(), rr.totalTokens)
+		}
 	}
 
 	if !fromMiddleware {

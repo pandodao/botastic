@@ -87,9 +87,9 @@ func (m Model) Name() string {
 	return fmt.Sprintf("%s:%s", m.Provider, m.ProviderModel)
 }
 
-func (m Model) CalculateTokenCost(promptCount, completionCount int64) decimal.Decimal {
-	pc := decimal.NewFromInt(promptCount)
-	cc := decimal.NewFromInt(completionCount)
+func (m Model) CalculateTokenCost(promptCount, completionCount int) decimal.Decimal {
+	pc := decimal.NewFromInt(int64(promptCount))
+	cc := decimal.NewFromInt(int64(completionCount))
 
 	if m.PriceUSD.IsPositive() {
 		return m.PriceUSD.Mul(pc.Add(cc))

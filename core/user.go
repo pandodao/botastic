@@ -97,7 +97,7 @@ type (
 		LoginWithTwitter(ctx context.Context, oauthToken, oauthVerifier, lang string) (*User, error)
 		Topup(ctx context.Context, user *User, amount decimal.Decimal) error
 		ConsumeCredits(ctx context.Context, userID uint64, amount decimal.Decimal) error
-		ConsumeCreditsByModel(ctx context.Context, userID uint64, model Model, promptTokenCount, completionTokenCount int64) error
+		ConsumeCreditsByModel(ctx context.Context, userID uint64, model Model, promptTokenCount, completionTokenCount int) error
 		ReplaceStore(store UserStore) UserService
 	}
 )

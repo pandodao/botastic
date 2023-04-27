@@ -181,7 +181,7 @@ func (s *UserService) Topup(ctx context.Context, user *core.User, amount decimal
 	return nil
 }
 
-func (s *UserService) ConsumeCreditsByModel(ctx context.Context, userID uint64, model core.Model, promptTokenCount, completionTokenCount int64) error {
+func (s *UserService) ConsumeCreditsByModel(ctx context.Context, userID uint64, model core.Model, promptTokenCount, completionTokenCount int) error {
 	log := logger.FromContext(ctx).WithField("service", "user.ConsumeCreditsByModel")
 	cost := model.CalculateTokenCost(promptTokenCount, completionTokenCount)
 	log.Printf("model: %s:%s, cost: $%s, token: %d->%d, credits: $%s\n", model.Provider, model.ProviderModel,
