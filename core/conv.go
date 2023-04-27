@@ -61,8 +61,8 @@ const (
 )
 
 type TurnProcessError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Code    int    `json:"code,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
 func (e *TurnProcessError) Scan(value interface{}) error {
