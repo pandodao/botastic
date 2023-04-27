@@ -37,7 +37,7 @@ func (s *service) ProcessByConfig(ctx context.Context, mc core.MiddlewareConfig,
 	for _, m := range mc.Items {
 		result := s.Process(ctx, m, turn)
 		results = append(results, result)
-		if result.Required {
+		if result.Required && result.Code != 0 {
 			break
 		}
 	}

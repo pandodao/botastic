@@ -46,7 +46,7 @@ type (
 		Code     int            `json:"code"`
 		Result   string         `json:"result,omitempty"`
 		Err      string         `json:"err,omitempty"`
-		Required bool           `json:"required,omitempty"`
+		Required bool           `json:"-"`
 	}
 
 	MiddlewareDesc interface {

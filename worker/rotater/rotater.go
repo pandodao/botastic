@@ -202,8 +202,8 @@ func (w *Worker) ProcessConvTurn(ctx context.Context, turn *core.ConvTurn) error
 			ctx = session.WithApp(ctx, app)
 			middlewareResults = w.middlewarez.ProcessByConfig(ctx, middlewareCfg, turn)
 			lastResult := middlewareResults[len(middlewareResults)-1]
-			if lastResult.Err != "" && lastResult.Required {
-				return core.NewTurnProcessError(core.TurnProcessMiddlewareError, errors.New(lastResult.Err))
+			if lastResult.Code != 0 && lastResult.Required {
+				return core.NewTurnProcessError(core.TurnProcessMiddlewareError, fmt.Errorf("required middleware error, code: %d, err: %s", lastResult.Code, lastResult.Err))
 			}
 
 			middlewareOutputs := make([]string, 0)
@@ -250,7 +250,7 @@ func (w *Worker) ProcessConvTurn(ctx context.Context, turn *core.ConvTurn) error
 	}
 
 	if !fromMiddleware {
-		if turn.Error != nil {
+		if err != nil {
 			if err := w.UpdateConvTurnAsError(ctx, turn.ID, middlewareResults, turn.Error); err != nil {
 				return err
 			}
@@ -261,7 +261,7 @@ func (w *Worker) ProcessConvTurn(ctx context.Context, turn *core.ConvTurn) error
 		}
 	}
 
-	if turn.Error == nil {
+	if err == nil {
 		if err := w.userz.ConsumeCreditsByModel(ctx, turn.UserID, *model, turn.PromptTokens, turn.CompletionTokens); err != nil {
 			log.WithError(err).Warningf("userz.ConsumeCreditsByModel: model=%v, token=%v", model.Name(), rr.totalTokens)
 		}
