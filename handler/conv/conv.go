@@ -39,7 +39,7 @@ type (
 
 		BotOverride core.BotOverride `json:"bot_override"`
 		Content     string           `json:"content"`
-		Timeout     time.Duration    `json:"timeout"`
+		Timeout     string           `json:"timeout"`
 	}
 )
 
@@ -257,8 +257,10 @@ func CreateOnewayConversation(convz core.ConversationService, convs core.Convers
 		}
 
 		timeout := 10 * time.Second
-		if body.Timeout > 0 {
-			timeout = body.Timeout
+		if body.Timeout != "" {
+			if nt, err := time.ParseDuration(body.Timeout); err == nil {
+				timeout = nt
+			}
 		}
 		ctx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
