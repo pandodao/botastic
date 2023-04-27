@@ -48,7 +48,7 @@ func (m *botastic) ValidateOptions(opts map[string]any) (any, error) {
 	if val, ok := opts["inherit"]; ok {
 		b, ok := val.(bool)
 		if !ok {
-			return nil, fmt.Errorf("inherit_conversation should be bool: %v", val)
+			return nil, fmt.Errorf("inherit should be bool: %v", val)
 		}
 		options.Inherit = b
 	}
