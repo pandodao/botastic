@@ -15,8 +15,8 @@ type botastic struct {
 }
 
 type botasticOptions struct {
-	BotID               uint64
-	InheritConversation bool
+	BotID   uint64
+	Inherit bool
 }
 
 func InitBotastic(rotater worker.Rotater, bots core.BotStore) *botastic {
@@ -45,12 +45,12 @@ func (m *botastic) ValidateOptions(opts map[string]any) (any, error) {
 		options.BotID = uint64(v)
 	}
 
-	if val, ok := opts["inherit_conversation"]; ok {
+	if val, ok := opts["inherit"]; ok {
 		b, ok := val.(bool)
 		if !ok {
 			return nil, fmt.Errorf("inherit_conversation should be bool: %v", val)
 		}
-		options.InheritConversation = b
+		options.Inherit = b
 	}
 
 	return options, nil
@@ -59,6 +59,10 @@ func (m *botastic) ValidateOptions(opts map[string]any) (any, error) {
 func (m *botastic) Process(ctx context.Context, opts any, turn *core.ConvTurn) (string, error) {
 	options := opts.(*botasticOptions)
 	app := session.AppFrom(ctx)
+
+	if turn.ID == 0 {
+		return "", fmt.Errorf("nested milldeware not supported")
+	}
 
 	// make sure bot is exist
 	bot, err := m.bots.GetBot(ctx, options.BotID)
@@ -78,7 +82,7 @@ func (m *botastic) Process(ctx context.Context, opts any, turn *core.ConvTurn) (
 		Request:      turn.Request,
 		Status:       core.ConvTurnStatusInit,
 	}
-	if options.InheritConversation {
+	if options.Inherit {
 		t.ConversationID = turn.ConversationID
 	}
 
