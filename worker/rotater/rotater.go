@@ -206,8 +206,8 @@ func (w *Worker) ProcessConvTurn(ctx context.Context, turn *core.ConvTurn) error
 			ctx = session.WithApp(ctx, app)
 			middlewareResults = w.middlewarez.ProcessByConfig(ctx, middlewareCfg, turn)
 			lastResult := middlewareResults[len(middlewareResults)-1]
-			if lastResult.Err != nil && lastResult.Required {
-				return core.NewTurnProcessError(core.TurnProcessMiddlewareError, lastResult.Err)
+			if lastResult.Err != "" && lastResult.Required {
+				return core.NewTurnProcessError(core.TurnProcessMiddlewareError, errors.New(lastResult.Err))
 			}
 
 			middlewareOutputs := make([]string, 0)

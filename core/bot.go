@@ -45,7 +45,7 @@ type (
 		Name     string         `json:"name"`
 		Code     int            `json:"code"`
 		Result   string         `json:"result,omitempty"`
-		Err      error          `json:"err,omitempty"`
+		Err      string         `json:"err,omitempty"`
 		Required bool           `json:"required,omitempty"`
 	}
 

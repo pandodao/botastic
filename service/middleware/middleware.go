@@ -50,7 +50,7 @@ func (s *service) Process(ctx context.Context, m *core.Middleware, turn *core.Co
 		return &core.MiddlewareProcessResult{
 			Name:     m.Name,
 			Code:     core.MiddlewareProcessCodeInvalidOptions,
-			Err:      err,
+			Err:      err.Error(),
 			Required: true,
 		}
 	}
@@ -60,7 +60,7 @@ func (s *service) Process(ctx context.Context, m *core.Middleware, turn *core.Co
 		return &core.MiddlewareProcessResult{
 			Name:     m.Name,
 			Code:     core.MiddlewareProcessCodeUnknown,
-			Err:      errors.New("middleware not found"),
+			Err:      "middleware not found",
 			Required: gopts.Required,
 		}
 	}
@@ -70,7 +70,7 @@ func (s *service) Process(ctx context.Context, m *core.Middleware, turn *core.Co
 		return &core.MiddlewareProcessResult{
 			Name:     m.Name,
 			Code:     core.MiddlewareProcessCodeInvalidOptions,
-			Err:      err,
+			Err:      err.Error(),
 			Required: gopts.Required,
 		}
 	}
@@ -91,7 +91,7 @@ func (s *service) Process(ctx context.Context, m *core.Middleware, turn *core.Co
 		return &core.MiddlewareProcessResult{
 			Name:     m.Name,
 			Code:     code,
-			Err:      err,
+			Err:      err.Error(),
 			Required: gopts.Required,
 		}
 	}
