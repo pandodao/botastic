@@ -17,6 +17,11 @@ func (h *Handler) CreateBot(c *gin.Context) {
 		return
 	}
 
+	if !h.llms.ChatModelExists(req.ChatModel) {
+		h.respErr(c, http.StatusBadRequest, errors.New("chat model does not exist"))
+		return
+	}
+
 	bot := &models.Bot{
 		Name:             req.Name,
 		Prompt:           req.Prompt,
@@ -82,8 +87,14 @@ func (h *Handler) UpdateBot(c *gin.Context) {
 		return
 	}
 
+	if !h.llms.ChatModelExists(req.ChatModel) {
+		h.respErr(c, http.StatusBadRequest, errors.New("chat model does not exist"))
+		return
+	}
+
 	rowsAffected, err := h.sh.UpdateBot(c, uint(botId), map[string]any{
 		"name":               req.Name,
+		"chat_model":         req.ChatModel,
 		"prompt":             req.Prompt,
 		"boundary_prompt":    req.BoundaryPrompt,
 		"context_turn_count": req.ContextTurnCount,

@@ -79,6 +79,7 @@ type CreateTurnResponse Turn
 type Bot struct {
 	ID               uint             `json:"id"`
 	Name             string           `json:"name"`
+	ChatModel        string           `json:"chat_model"`
 	Prompt           string           `json:"prompt"`
 	BoundaryPrompt   string           `json:"boundary_prompt"`
 	ContextTurnCount int              `json:"context_turn_count"`
@@ -99,6 +100,7 @@ type MiddlewareConfig struct {
 
 type CreateBotRequest struct {
 	Name             string           `json:"name" binding:"required"`
+	ChatModel        string           `json:"chat_model" binding:"required"`
 	Prompt           string           `json:"prompt"`
 	BoundaryPrompt   string           `json:"boundary_prompt"`
 	Temperature      float32          `json:"temperature" binding:"required"`

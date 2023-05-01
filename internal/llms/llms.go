@@ -64,6 +64,16 @@ func New(cfg config.LLMsConfig) *Hanlder {
 	return h
 }
 
+func (h *Hanlder) ChatModelExists(name string) bool {
+	_, ok := h.chatMap[name]
+	return ok
+}
+
+func (h *Hanlder) EmbeddingModelExists(name string) bool {
+	_, ok := h.embeddingMap[name]
+	return ok
+}
+
 func (h *Hanlder) ChatModels() []string {
 	return h.chatModles
 }

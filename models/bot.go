@@ -11,6 +11,7 @@ import (
 
 type Bot struct {
 	gorm.Model
+	ChatModel        string `gorm:"type:varchar(128)"`
 	Name             string `gorm:"type:varchar(128)"`
 	Prompt           string `gorm:"type:text"`
 	BoundaryPrompt   string `gorm:"type:text"`
@@ -23,6 +24,7 @@ func (b Bot) API() api.Bot {
 	return api.Bot{
 		ID:               b.ID,
 		Name:             b.Name,
+		ChatModel:        b.ChatModel,
 		Prompt:           b.Prompt,
 		BoundaryPrompt:   b.BoundaryPrompt,
 		ContextTurnCount: b.ContextTurnCount,
