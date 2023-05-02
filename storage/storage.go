@@ -1,10 +1,9 @@
 package storage
 
 import (
+	"github.com/go-gormigrate/gormigrate/v2"
 	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/models"
-
-	"github.com/go-gormigrate/gormigrate/v2"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"

@@ -11,15 +11,6 @@ import (
 	"gorm.io/gorm"
 )
 
-type TurnStatus string
-
-const (
-	TurnStatusInit       TurnStatus = "init"
-	TurnStatusInProgress TurnStatus = "in_progress"
-	TurnStatusSuccess    TurnStatus = "success"
-	TurnStatusFailed     TurnStatus = "failed"
-)
-
 type Turn struct {
 	gorm.Model
 	ConvID            uuid.UUID `gorm:"index"`
@@ -29,7 +20,7 @@ type Turn struct {
 	PromptTokens      int
 	CompletionTokens  int
 	TotalTokens       int
-	Status            TurnStatus        `gorm:"index"`
+	Status            api.TurnStatus    `gorm:"index"`
 	MiddlewareResults MiddlewareResults `gorm:"type:json"`
 	ErrorCode         int
 	ErrorMessage      string `gorm:"type:text"`
@@ -45,7 +36,7 @@ func (t Turn) API() api.Turn {
 		PromptTokens:      t.PromptTokens,
 		CompletionTokens:  t.CompletionTokens,
 		TotalTokens:       t.TotalTokens,
-		Status:            string(t.Status),
+		Status:            t.Status,
 		MiddlewareResults: api.MiddlewareResults(t.MiddlewareResults),
 		ErrorCode:         t.ErrorCode,
 		ErrorMessage:      t.ErrorMessage,

@@ -68,7 +68,7 @@ func (h *Handler) GetConv(c *gin.Context) {
 		return
 	}
 	if conv.ID == uuid.Nil {
-		h.respErr(c, http.StatusNotFound, err)
+		h.respErr(c, http.StatusNotFound, errors.New("conv not found"))
 		return
 	}
 

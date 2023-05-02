@@ -24,6 +24,17 @@ func (h *Handler) CreateTurn(c *gin.Context) {
 		return
 	}
 
+	// make sure no init turn exists in the conversation
+	count, err := h.sh.GetTurnCount(c, convID, api.TurnStatusInit)
+	if err != nil {
+		h.respErr(c, http.StatusInternalServerError, err)
+		return
+	}
+	if count != 0 {
+		h.respErr(c, http.StatusBadRequest, errors.New("conversation already has an init turn"), api.ErrorCodeConversationHasInitTurn)
+		return
+	}
+
 	conv, err := h.sh.GetConv(c, convID)
 	if err != nil {
 		h.respErr(c, http.StatusInternalServerError, err)
@@ -38,7 +49,7 @@ func (h *Handler) CreateTurn(c *gin.Context) {
 		ConvID:  convID,
 		BotID:   conv.BotID,
 		Request: req.Content,
-		Status:  models.TurnStatusInit,
+		Status:  api.TurnStatusInit,
 	}
 
 	if err := h.sh.CreateTurn(c, turn); err != nil {

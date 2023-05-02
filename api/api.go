@@ -62,7 +62,7 @@ type Turn struct {
 	PromptTokens      int               `json:"prompt_tokens"`
 	CompletionTokens  int               `json:"completion_tokens"`
 	TotalTokens       int               `json:"total_tokens"`
-	Status            string            `json:"status"`
+	Status            TurnStatus        `json:"status"`
 	MiddlewareResults MiddlewareResults `json:"middleware_results"`
 	ErrorCode         int               `json:"error_code,omitempty"`
 	ErrorMessage      string            `json:"error_message,omitempty"`

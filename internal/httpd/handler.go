@@ -21,10 +21,10 @@ func NewHandler(sh *storage.Handler, llms *llms.Hanlder) *Handler {
 	}
 }
 
-func (h *Handler) respErr(c *gin.Context, statusCode int, err error, codes ...int) {
+func (h *Handler) respErr(c *gin.Context, statusCode int, err error, codes ...api.ErrorCode) {
 	code := statusCode
 	if len(codes) > 0 {
-		code = codes[0]
+		code = int(codes[0])
 	}
 	c.JSON(code, api.NewErrorResponse(code, err.Error()))
 }
