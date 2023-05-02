@@ -1,6 +1,8 @@
 package httpd
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/pandodao/botastic/config"
 )
@@ -28,6 +30,12 @@ func New(cfg config.HttpdConfig, h *Handler) *Server {
 
 func (s *Server) initRoutes() {
 	h := s.h
+
+	s.engine.LoadHTMLGlob("templates/*.html")
+	s.engine.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", nil)
+	})
+
 	s.engine.GET("/hc", s.h.HealthCheck)
 	v1 := s.engine.Group("/api/v1")
 	{
