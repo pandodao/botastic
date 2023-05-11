@@ -17,7 +17,7 @@ func (h *Handler) CreateBot(c *gin.Context) {
 		return
 	}
 
-	if !h.llms.ChatModelExists(req.ChatModel) {
+	if _, ok := h.llms.GetChatModel(req.ChatModel); !ok {
 		h.respErr(c, http.StatusBadRequest, errors.New("chat model does not exist"))
 		return
 	}
@@ -51,7 +51,7 @@ func (h *Handler) GetBot(c *gin.Context) {
 		h.respErr(c, http.StatusInternalServerError, err)
 		return
 	}
-	if bot.ID == 0 {
+	if bot == nil {
 		h.respErr(c, http.StatusNotFound, err)
 		return
 	}
@@ -87,7 +87,7 @@ func (h *Handler) UpdateBot(c *gin.Context) {
 		return
 	}
 
-	if !h.llms.ChatModelExists(req.ChatModel) {
+	if _, ok := h.llms.GetChatModel(req.ChatModel); !ok {
 		h.respErr(c, http.StatusBadRequest, errors.New("chat model does not exist"))
 		return
 	}

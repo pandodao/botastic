@@ -22,7 +22,7 @@ type Turn struct {
 	TotalTokens       int
 	Status            api.TurnStatus    `gorm:"index"`
 	MiddlewareResults MiddlewareResults `gorm:"type:json"`
-	ErrorCode         int
+	ErrorCode         api.TurnErrorCode
 	ErrorMessage      string `gorm:"type:text"`
 }
 

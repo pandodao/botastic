@@ -6,7 +6,6 @@ import (
 )
 
 type ChatRequest struct {
-	Model          string
 	Temperature    float32
 	Prompt         string
 	BoundaryPrompt string
@@ -27,9 +26,11 @@ type CreateEmbeddingRequest struct{}
 type CreateEmbeddingResponse struct{}
 
 type ChatLLM interface {
+	Name() string
 	Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error)
 }
 
 type EmbeddingLLM interface {
+	Name() string
 	CreateEmbedding(ctx context.Context, req CreateEmbeddingRequest) (*CreateEmbeddingResponse, error)
 }

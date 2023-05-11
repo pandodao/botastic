@@ -64,7 +64,7 @@ type Turn struct {
 	TotalTokens       int               `json:"total_tokens"`
 	Status            TurnStatus        `json:"status"`
 	MiddlewareResults MiddlewareResults `json:"middleware_results"`
-	ErrorCode         int               `json:"error_code,omitempty"`
+	ErrorCode         TurnErrorCode     `json:"error_code,omitempty"`
 	ErrorMessage      string            `json:"error_message,omitempty"`
 	CreatedAt         time.Time         `json:"created_at"`
 	UpdatedAt         time.Time         `json:"updated_at"`

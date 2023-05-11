@@ -8,28 +8,23 @@ import (
 	"github.com/pandodao/botastic/internal/llms/openai"
 )
 
-type chatLLM struct {
-	api.ChatLLM
-	model string
-}
-
 type embeddingLLM struct {
 	api.EmbeddingLLM
 	model string
 }
 
-type Hanlder struct {
-	chatMap      map[string]*chatLLM
-	embeddingMap map[string]*embeddingLLM
+type Handler struct {
+	chatMap      map[string]api.ChatLLM
+	embeddingMap map[string]api.EmbeddingLLM
 
 	chatModles      []string
 	embeddingModels []string
 }
 
-func New(cfg config.LLMsConfig) *Hanlder {
-	h := &Hanlder{
-		chatMap:      make(map[string]*chatLLM),
-		embeddingMap: make(map[string]*embeddingLLM),
+func New(cfg config.LLMsConfig) *Handler {
+	h := &Handler{
+		chatMap:      make(map[string]api.ChatLLM),
+		embeddingMap: make(map[string]api.EmbeddingLLM),
 	}
 	for _, name := range cfg.Enabled {
 		item := cfg.Items[name]
@@ -39,24 +34,19 @@ func New(cfg config.LLMsConfig) *Hanlder {
 			r = openai.Init(item.OpenAI)
 		}
 
-		if v, ok := r.(api.ChatLLM); ok {
-			for _, cm := range item.ChatModels {
-				key := fmt.Sprintf("%s:%s", name, cm)
+		if v, ok := r.(interface{ ChatModels() []api.ChatLLM }); ok {
+			for _, m := range v.ChatModels() {
+				key := fmt.Sprintf("%s:%s", name, m.Name())
 				h.chatModles = append(h.chatModles, key)
-				h.chatMap[key] = &chatLLM{
-					ChatLLM: v,
-					model:   cm,
-				}
+				h.chatMap[key] = m
 			}
 		}
-		if v, ok := r.(api.EmbeddingLLM); ok {
-			for _, em := range item.EmbeddingModels {
-				key := fmt.Sprintf("%s:%s", name, em)
+
+		if v, ok := r.(interface{ EmbeddingModels() []api.EmbeddingLLM }); ok {
+			for _, m := range v.EmbeddingModels() {
+				key := fmt.Sprintf("%s:%s", name, m.Name())
 				h.embeddingModels = append(h.embeddingModels, key)
-				h.embeddingMap[key] = &embeddingLLM{
-					EmbeddingLLM: v,
-					model:        em,
-				}
+				h.embeddingMap[key] = m
 			}
 		}
 	}
@@ -64,20 +54,20 @@ func New(cfg config.LLMsConfig) *Hanlder {
 	return h
 }
 
-func (h *Hanlder) ChatModelExists(name string) bool {
-	_, ok := h.chatMap[name]
-	return ok
+func (h *Handler) GetChatModel(key string) (api.ChatLLM, bool) {
+	v, ok := h.chatMap[key]
+	return v, ok
 }
 
-func (h *Hanlder) EmbeddingModelExists(name string) bool {
-	_, ok := h.embeddingMap[name]
-	return ok
+func (h *Handler) GetEmbeddingModel(key string) (api.EmbeddingLLM, bool) {
+	v, ok := h.embeddingMap[key]
+	return v, ok
 }
 
-func (h *Hanlder) ChatModels() []string {
+func (h *Handler) ChatModels() []string {
 	return h.chatModles
 }
 
-func (h *Hanlder) EmbeddingModels() []string {
+func (h *Handler) EmbeddingModels() []string {
 	return h.embeddingModels
 }

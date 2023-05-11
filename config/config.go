@@ -14,11 +14,16 @@ type Config struct {
 	DB            DBConfig            `yaml:"db"`
 	VectorStorage VectorStorageConfig `yaml:"vector_storage"`
 	LLMs          LLMsConfig          `yaml:"llms"`
+	State         StateConfig         `yaml:"state"`
 }
 
 func (c Config) String() string {
 	data, _ := yaml.Marshal(c)
 	return string(data)
+}
+
+type StateConfig struct {
+	WorkerCount int `yaml:"worker_count"`
 }
 
 type LLMsConfig struct {
@@ -27,14 +32,14 @@ type LLMsConfig struct {
 }
 
 type LLMConfig struct {
-	Provider        LLMProvider   `yaml:"provider"`
-	ChatModels      []string      `yaml:"chat_models"`
-	EmbeddingModels []string      `yaml:"embedding_models"`
-	OpenAI          *OpenAIConfig `yaml:"openai,omitempty"`
+	Provider LLMProvider   `yaml:"provider"`
+	OpenAI   *OpenAIConfig `yaml:"openai,omitempty"`
 }
 
 type OpenAIConfig struct {
 	Key                     string        `yaml:"key"`
+	ChatModels              []string      `yaml:"chat_models"`
+	EmbeddingModels         []string      `yaml:"embedding_models"`
 	ChatRequestTimeout      time.Duration `yaml:"chat_request_timeout"`
 	EmbeddingRequestTimeout time.Duration `yaml:"embedding_request_timeout"`
 }
@@ -98,22 +103,19 @@ func (c Config) validate() error {
 		if !ok {
 			return fmt.Errorf("llms.items.%s is required", name)
 		}
-		if len(v.ChatModels) == 0 && len(v.EmbeddingModels) == 0 {
-			return fmt.Errorf("llms.items.%s.chat_models or llms.items.%s.embedding_models is required", name, name)
-		}
 		switch v.Provider {
 		case LLMProviderOpenAI:
 			if v.OpenAI == nil {
 				return fmt.Errorf("llms.items.%s.openai is required", name)
 			}
-			for _, m := range v.ChatModels {
+			for _, m := range v.OpenAI.ChatModels {
 				switch m {
 				case "gpt-3.5-turbo", "gpt-3.5-turbo-0301", "gpt-4", "gpt-4-0314", "gpt-4-32k", "gpt-4-32k-0314":
 				default:
 					return fmt.Errorf("llms.items.%s.chat_models is invalid: %s", name, m)
 				}
 			}
-			for _, m := range v.EmbeddingModels {
+			for _, m := range v.OpenAI.EmbeddingModels {
 				switch m {
 				case "text-embedding-ada-002":
 				default:
@@ -145,11 +147,11 @@ func ExampleConfig() *Config {
 			Enabled: []string{"openai-1"},
 			Items: map[string]LLMConfig{
 				"openai-1": {
-					Provider:        LLMProviderOpenAI,
-					ChatModels:      []string{"gpt-3.5-turbo", "gpt-4"},
-					EmbeddingModels: []string{"text-embedding-ada-002"},
+					Provider: LLMProviderOpenAI,
 					OpenAI: &OpenAIConfig{
 						Key:                     "YOUR_OPENAI_KEY",
+						ChatModels:              []string{"gpt-3.5-turbo", "gpt-4"},
+						EmbeddingModels:         []string{"text-embedding-ada-002"},
 						ChatRequestTimeout:      8 * time.Second,
 						EmbeddingRequestTimeout: 10 * time.Second,
 					},

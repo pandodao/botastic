@@ -22,7 +22,27 @@ func Init(cfg *config.OpenAIConfig) *Handler {
 	}
 }
 
-func (h *Handler) Chat(ctx context.Context, req api.ChatRequest) (*api.ChatResponse, error) {
+func (h *Handler) ChatModels() []api.ChatLLM {
+	ms := make([]api.ChatLLM, 0, len(h.cfg.ChatModels))
+	for _, cm := range h.cfg.ChatModels {
+		ms = append(ms, &HandlerWithModel{
+			model:   cm,
+			Handler: h,
+		})
+	}
+	return ms
+}
+
+type HandlerWithModel struct {
+	*Handler
+	model string
+}
+
+func (h *HandlerWithModel) Name() string {
+	return h.model
+}
+
+func (h *HandlerWithModel) Chat(ctx context.Context, req api.ChatRequest) (*api.ChatResponse, error) {
 	start := time.Now()
 	if h.cfg.ChatRequestTimeout > 0 {
 		var cancel context.CancelFunc
@@ -31,7 +51,7 @@ func (h *Handler) Chat(ctx context.Context, req api.ChatRequest) (*api.ChatRespo
 	}
 
 	chatReq := openai.ChatCompletionRequest{
-		Model:       req.Model,
+		Model:       h.model,
 		Temperature: req.Temperature,
 	}
 	if req.Prompt != "" {

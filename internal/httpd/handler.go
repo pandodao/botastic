@@ -10,11 +10,11 @@ import (
 )
 
 type Handler struct {
-	llms *llms.Hanlder
+	llms *llms.Handler
 	sh   *storage.Handler
 }
 
-func NewHandler(sh *storage.Handler, llms *llms.Hanlder) *Handler {
+func NewHandler(sh *storage.Handler, llms *llms.Handler) *Handler {
 	return &Handler{
 		llms: llms,
 		sh:   sh,

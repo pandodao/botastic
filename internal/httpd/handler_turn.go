@@ -40,7 +40,7 @@ func (h *Handler) CreateTurn(c *gin.Context) {
 		h.respErr(c, http.StatusInternalServerError, err)
 		return
 	}
-	if conv.ID == uuid.Nil {
+	if conv == nil {
 		h.respErr(c, http.StatusNotFound, errors.New("conv not found"))
 		return
 	}
