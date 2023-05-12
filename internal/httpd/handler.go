@@ -6,18 +6,21 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pandodao/botastic/api"
 	"github.com/pandodao/botastic/internal/llms"
+	"github.com/pandodao/botastic/pkg/chanhub"
 	"github.com/pandodao/botastic/storage"
 )
 
 type Handler struct {
 	llms *llms.Handler
 	sh   *storage.Handler
+	hub  *chanhub.Hub
 }
 
-func NewHandler(sh *storage.Handler, llms *llms.Handler) *Handler {
+func NewHandler(sh *storage.Handler, llms *llms.Handler, hub *chanhub.Hub) *Handler {
 	return &Handler{
 		llms: llms,
 		sh:   sh,
+		hub:  hub,
 	}
 }
 

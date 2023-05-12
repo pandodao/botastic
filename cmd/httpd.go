@@ -4,6 +4,9 @@ import (
 	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/internal/httpd"
 	"github.com/pandodao/botastic/internal/llms"
+	"github.com/pandodao/botastic/internal/starter"
+	"github.com/pandodao/botastic/pkg/chanhub"
+	"github.com/pandodao/botastic/state"
 	"github.com/pandodao/botastic/storage"
 	"github.com/spf13/cobra"
 )
@@ -26,9 +29,11 @@ var httpdCmd = &cobra.Command{
 		}
 
 		lh := llms.New(cfg.LLMs)
+		hub := chanhub.New()
 
-		s := httpd.New(cfg.Httpd, httpd.NewHandler(sh, lh))
-		return s.Start()
+		stateHandler := state.New(cfg.State, sh, lh, hub)
+		httpdHandler := httpd.New(cfg.Httpd, httpd.NewHandler(sh, lh, hub))
+		return starter.Multi(stateHandler, httpdHandler).Start(cmd.Context())
 	},
 }
 

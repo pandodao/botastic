@@ -45,6 +45,10 @@ func (t Turn) API() api.Turn {
 	}
 }
 
+func (t Turn) IsProcessed() bool {
+	return t.Status == api.TurnStatusSuccess || t.Status == api.TurnStatusFailed
+}
+
 type MiddlewareResults api.MiddlewareResults
 
 func (mr *MiddlewareResults) Scan(value interface{}) error {

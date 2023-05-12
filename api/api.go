@@ -33,7 +33,8 @@ type Conv struct {
 }
 
 type CreateConvRequest struct {
-	BotID uint `json:"bot_id"`
+	BotID        uint   `json:"bot_id"`
+	UserIdentity string `json:"user_identity"`
 }
 
 type CreateConvResponse Conv
@@ -75,6 +76,21 @@ type CreateTurnRequest struct {
 }
 
 type CreateTurnResponse Turn
+
+type CreateTurnOnewayRequest struct {
+	ConversationID uuid.UUID `json:"conv_id"`
+	CreateConvRequest
+	CreateTurnRequest
+}
+
+type CreateTurnOnewayResponse Turn
+
+type GetTurnRequest struct {
+	BlockUntilProcessed bool          `form:"block_until_processed"`
+	Timeout             time.Duration `form:"timeout"`
+}
+
+type GetTurnResponse Turn
 
 type Bot struct {
 	ID               uint             `json:"id"`

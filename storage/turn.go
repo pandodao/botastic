@@ -2,10 +2,12 @@ package storage
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/pandodao/botastic/api"
 	"github.com/pandodao/botastic/models"
+	"gorm.io/gorm"
 )
 
 func (h *Handler) CreateTurn(ctx context.Context, turn *models.Turn) error {
@@ -19,7 +21,16 @@ func (h *Handler) GetTurnCount(ctx context.Context, convId uuid.UUID, status api
 
 func (h *Handler) GetTurns(ctx context.Context, convId uuid.UUID, status api.TurnStatus, limit int) ([]*models.Turn, error) {
 	var turns []*models.Turn
-	if err := h.db.WithContext(ctx).Where("conv_id = ? AND status = ?", convId, status).Limit(limit).Order("created_at DESC").Find(&turns).Error; err != nil {
+	if err := h.db.WithContext(ctx).Where("conv_id = ? AND status = ?", convId, status).Limit(limit).Order("created_at").Find(&turns).Error; err != nil {
+		return nil, err
+	}
+
+	return turns, nil
+}
+
+func (h *Handler) GetTurnsByStatus(ctx context.Context, status []api.TurnStatus) ([]*models.Turn, error) {
+	var turns []*models.Turn
+	if err := h.db.WithContext(ctx).Where("status IN (?)", status).Order("created_at").Find(&turns).Error; err != nil {
 		return nil, err
 	}
 
@@ -44,4 +55,20 @@ func (h *Handler) UpdateTurnToFailed(ctx context.Context, id uint, err *api.Turn
 		"error_message":      err.Error(),
 		"middleware_results": mr,
 	}).Error
+}
+
+func (h *Handler) UpdateTurnToProcessing(ctx context.Context, id uint) error {
+	return h.db.WithContext(ctx).Model(&models.Turn{}).Where("id = ?", id).Update("status", api.TurnStatusProcessing).Error
+}
+
+func (h *Handler) GetTurn(ctx context.Context, id uint) (*models.Turn, error) {
+	var turn models.Turn
+	if err := h.db.WithContext(ctx).Where("id = ?", id).First(&turn).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &turn, nil
 }

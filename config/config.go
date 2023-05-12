@@ -23,7 +23,8 @@ func (c Config) String() string {
 }
 
 type StateConfig struct {
-	WorkerCount int `yaml:"worker_count"`
+	WorkerCount           int           `yaml:"worker_count"`
+	ProcessingTurnTimeout time.Duration `yaml:"processing_turn_timeout"`
 }
 
 type LLMsConfig struct {

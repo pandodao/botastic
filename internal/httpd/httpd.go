@@ -1,6 +1,7 @@
 package httpd
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -48,8 +49,12 @@ func (s *Server) initRoutes() {
 			convs.PUT("/:conv_id", h.GetConv)
 			convs.DELETE("/:conv_id", h.DeleteConv)
 			convs.POST("/:conv_id", h.CreateTurn)
-			// conversations.POST("/oneway", conv.CreateOnewayConversation(s.convz, s.convs, s.hub))
-			// conversations.GET("/{conversationID}/{turnID}", conv.GetConversationTurn(s.botz, s.convs, s.hub))
+		}
+
+		turns := v1.Group("/turns")
+		{
+			turns.POST("/", h.CreateTurnOneway)
+			turns.GET("/:turn_id", h.GetTurn)
 		}
 
 		bots := v1.Group("/bots")
@@ -63,6 +68,6 @@ func (s *Server) initRoutes() {
 	}
 }
 
-func (s *Server) Start() error {
+func (s *Server) Start(ctx context.Context) error {
 	return s.engine.Run(s.cfg.Addr)
 }

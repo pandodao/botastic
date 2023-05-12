@@ -5,12 +5,15 @@ import (
 	"errors"
 	"log"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pandodao/botastic/api"
+	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/internal/llms"
 	llmapi "github.com/pandodao/botastic/internal/llms/api"
 	"github.com/pandodao/botastic/models"
+	"github.com/pandodao/botastic/pkg/chanhub"
 	"github.com/pandodao/botastic/storage"
 )
 
@@ -34,30 +37,80 @@ func (c *conversation) historyText() []string {
 }
 
 type Handler struct {
+	cfg       config.StateConfig
 	turnsChan chan *models.Turn
 	sh        *storage.Handler
 	llms      *llms.Handler
+	hub       *chanhub.Hub
 
 	conversationsLock sync.Mutex
 	conversations     map[uuid.UUID]*conversation
 }
 
-func New(sh *storage.Handler) *Handler {
+func New(cfg config.StateConfig, sh *storage.Handler, llms *llms.Handler, hub *chanhub.Hub) *Handler {
 	return &Handler{
-		sh:        sh,
-		turnsChan: make(chan *models.Turn),
+		cfg:           cfg,
+		sh:            sh,
+		llms:          llms,
+		turnsChan:     make(chan *models.Turn),
+		conversations: make(map[uuid.UUID]*conversation),
+		hub:           hub,
 	}
 }
 
-func (h *Handler) Start() error {
+func (h *Handler) Start(ctx context.Context) error {
+	turns, err := h.sh.GetTurnsByStatus(ctx, []api.TurnStatus{api.TurnStatusInit, api.TurnStatusProcessing})
+	if err != nil {
+		return err
+	}
+
+	initTurns := []*models.Turn{}
+	for _, turn := range turns {
+		if turn.Status == api.TurnStatusInit {
+			initTurns = append(initTurns, turn)
+		} else {
+			if err := h.sh.UpdateTurnToFailed(ctx, turn.ID, api.NewTurnError(api.TurnErrorCodeInternalServer, "turn processing terminated unexpectedly"), nil); err != nil {
+				return err
+			}
+		}
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(h.cfg.WorkerCount)
+
+	for i := 0; i < h.cfg.WorkerCount; i++ {
+		go func() {
+			defer wg.Done()
+			h.handleTurnsWorker(ctx)
+		}()
+	}
+
+	for _, turn := range initTurns {
+		h.turnsChan <- turn
+	}
+
+	wg.Wait()
 	return nil
 }
 
+func (h *Handler) GetTurnsChan() chan<- *models.Turn {
+	return h.turnsChan
+}
+
 func (h *Handler) handleTurnsWorker(ctx context.Context) {
-	turn := <-h.turnsChan
+	var turn *models.Turn
+	select {
+	case <-ctx.Done():
+		return
+	case turn = <-h.turnsChan:
+	}
 
 	var c *conversation
 	result, err := func() (*llmapi.ChatResponse, error) {
+		if err := h.sh.UpdateTurnToProcessing(ctx, turn.ID); err != nil {
+			return nil, err
+		}
+
 		var err error
 		c, err = h.getOrloadConversation(ctx, turn.ConvID)
 		if err != nil {
@@ -94,7 +147,7 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 		return result, nil
 	}()
 
-	var updateErr error
+	var updateFunc func() error
 	if err != nil {
 		var target *api.TurnError
 		if !errors.As(err, &target) {
@@ -102,7 +155,9 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 		}
 
 		turn.Status = api.TurnStatusFailed
-		updateErr = h.sh.UpdateTurnToFailed(ctx, turn.ID, target, models.MiddlewareResults{})
+		updateFunc = func() error {
+			return h.sh.UpdateTurnToFailed(ctx, turn.ID, target, models.MiddlewareResults{})
+		}
 	} else {
 		turn.Response = result.Response
 		turn.Status = api.TurnStatusSuccess
@@ -110,17 +165,26 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 		turn.CompletionTokens = result.CompletionTokens
 		turn.TotalTokens = result.TotalTokens
 		turn.MiddlewareResults = models.MiddlewareResults{}
-		updateErr = h.sh.UpdateTurnToSuccess(ctx, turn.ID, turn.Response, turn.PromptTokens, turn.CompletionTokens, turn.TotalTokens, turn.MiddlewareResults)
+		updateFunc = func() error {
+			return h.sh.UpdateTurnToSuccess(ctx, turn.ID, turn.Response, turn.PromptTokens, turn.CompletionTokens, turn.TotalTokens, turn.MiddlewareResults)
+		}
 	}
 
-	if updateErr != nil {
-		// panic if we can't update the turn
-		log.Panicf("failed to update turn: %v, process err: %v", updateErr, err)
+	for {
+		updateErr := updateFunc()
+		if err == nil {
+			break
+		}
+
+		log.Printf("failed to update turn: %v, process err: %v\n", updateErr, err)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(1 * time.Second):
+		}
 	}
 
-	if turn.Status == api.TurnStatusSuccess {
-		conv.Lock()
-	}
+	h.hub.Broadcast(turn.ID, struct{}{})
 }
 
 func (h *Handler) getOrloadConversation(ctx context.Context, convID uuid.UUID) (*conversation, error) {
@@ -132,23 +196,27 @@ func (h *Handler) getOrloadConversation(ctx context.Context, convID uuid.UUID) (
 		return nil, api.NewTurnError(api.TurnErrorCodeConvNotFound)
 	}
 
-	h.conversationsLock.Lock()
-	c, ok := h.conversations[convID]
-	h.conversationsLock.Unlock()
-
-	if !ok {
-		turns, err := h.sh.GetTurns(ctx, convID, api.TurnStatusSuccess, 100)
-		if err != nil {
-			return nil, err
-		}
-
-		c = &conversation{
-			history: turns,
-		}
-
+	c, err := func() (*conversation, error) {
 		h.conversationsLock.Lock()
-		h.conversations[convID] = c
-		h.conversationsLock.Unlock()
+		defer h.conversationsLock.Unlock()
+
+		c, ok := h.conversations[convID]
+		if !ok {
+			turns, err := h.sh.GetTurns(ctx, convID, api.TurnStatusSuccess, 100)
+			if err != nil {
+				return nil, err
+			}
+
+			c = &conversation{
+				history: turns,
+			}
+
+			h.conversations[convID] = c
+		}
+		return c, nil
+	}()
+	if err != nil {
+		return nil, err
 	}
 
 	c.Lock()

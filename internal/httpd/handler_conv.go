@@ -18,7 +18,8 @@ func (h *Handler) CreateConv(c *gin.Context) {
 	}
 
 	conv := &models.Conv{
-		BotID: req.BotID,
+		BotID:        req.BotID,
+		UserIdentity: req.UserIdentity,
 	}
 	if err := h.sh.CreateConv(c, conv); err != nil {
 		h.respErr(c, http.StatusInternalServerError, err)

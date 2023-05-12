@@ -9,11 +9,12 @@ import (
 )
 
 type Conv struct {
-	ID        uuid.UUID `gorm:"type:char(36);primaryKey"`
-	BotID     uint      `gorm:"index"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt `gorm:"index"`
+	ID           uuid.UUID `gorm:"type:char(36);primaryKey"`
+	BotID        uint      `gorm:"index"`
+	UserIdentity string    `gorm:"type:varchar(255)"`
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	DeletedAt    gorm.DeletedAt `gorm:"index"`
 }
 
 func (c Conv) API() api.Conv {
