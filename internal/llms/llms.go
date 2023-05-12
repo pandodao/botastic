@@ -30,7 +30,7 @@ func New(cfg config.LLMsConfig) *Handler {
 		item := cfg.Items[name]
 		var r any
 		switch item.Provider {
-		case "openai":
+		case config.LLMProviderOpenAI:
 			r = openai.Init(item.OpenAI)
 		}
 

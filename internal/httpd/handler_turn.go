@@ -26,40 +26,54 @@ func (h *Handler) CreateTurn(c *gin.Context) {
 		return
 	}
 
-	// make sure no init turn exists in the conversation
-	count, err := h.sh.GetTurnCount(c, convID, api.TurnStatusInit)
-	if err != nil {
-		h.respErr(c, http.StatusInternalServerError, err)
-		return
-	}
-	if count != 0 {
-		h.respErr(c, http.StatusBadRequest, errors.New("conversation already has an init turn"), api.ErrorCodeConversationHasInitTurn)
-		return
-	}
-
-	conv, err := h.sh.GetConv(c, convID)
-	if err != nil {
-		h.respErr(c, http.StatusInternalServerError, err)
-		return
-	}
-	if conv == nil {
-		h.respErr(c, http.StatusNotFound, errors.New("conv not found"))
-		return
-	}
-
 	turn := &models.Turn{
 		ConvID:  convID,
-		BotID:   conv.BotID,
 		Request: req.Content,
 		Status:  api.TurnStatusInit,
 	}
 
-	if err := h.sh.CreateTurn(c, turn); err != nil {
-		h.respErr(c, http.StatusInternalServerError, err)
+	if !h.createTurn(c, turn, false) {
 		return
 	}
 
 	h.respData(c, api.CreateTurnResponse(turn.API()))
+}
+
+func (h *Handler) createTurn(c *gin.Context, turn *models.Turn, newConv bool) bool {
+	if !newConv {
+		// make sure no init turn exists in the conversation
+		count, err := h.sh.GetTurnCount(c, turn.ConvID, api.TurnStatusInit)
+		if err != nil {
+			h.respErr(c, http.StatusInternalServerError, err)
+			return false
+		}
+		if count != 0 {
+			h.respErr(c, http.StatusBadRequest, errors.New("conversation already has an init turn"), api.ErrorCodeConversationHasInitTurn)
+			return false
+		}
+
+		conv, err := h.sh.GetConv(c, turn.ConvID)
+		if err != nil {
+			h.respErr(c, http.StatusInternalServerError, err)
+			return false
+		}
+		if conv == nil {
+			h.respErr(c, http.StatusNotFound, errors.New("conv not found"))
+			return false
+		}
+		turn.BotID = conv.BotID
+	}
+
+	if err := h.sh.CreateTurn(c, turn); err != nil {
+		h.respErr(c, http.StatusInternalServerError, err)
+		return false
+	}
+
+	go func() {
+		h.turnTransmitter.GetTurnsChan() <- turn
+	}()
+
+	return true
 }
 
 func (h *Handler) CreateTurnOneway(c *gin.Context) {
@@ -69,48 +83,27 @@ func (h *Handler) CreateTurnOneway(c *gin.Context) {
 		return
 	}
 
-	var (
-		conv       *models.Conv
-		err        error
-		newCreated bool
-	)
+	var conv *models.Conv
 	if req.ConversationID == uuid.Nil {
-		newCreated = true
 		conv = &models.Conv{
-			BotID:        req.CreateConvRequest.BotID,
-			UserIdentity: req.CreateConvRequest.UserIdentity,
+			BotID:        req.BotID,
+			UserIdentity: req.UserIdentity,
 		}
-		err = h.sh.CreateConv(c, conv)
-	} else {
-		conv, err = h.sh.GetConv(c, req.ConversationID)
-	}
-	if err != nil {
-		h.respErr(c, http.StatusInternalServerError, err)
-		return
-	}
-
-	if !newCreated {
-		// make sure no init turn exists in the conversation
-		count, err := h.sh.GetTurnCount(c, conv.ID, api.TurnStatusInit)
-		if err != nil {
-			h.respErr(c, http.StatusInternalServerError, err)
-			return
-		}
-		if count != 0 {
-			h.respErr(c, http.StatusBadRequest, errors.New("conversation already has an init turn"), api.ErrorCodeConversationHasInitTurn)
+		if !h.createConv(c, conv) {
 			return
 		}
 	}
 
 	turn := &models.Turn{
 		ConvID:  conv.ID,
-		BotID:   conv.BotID,
 		Request: req.Content,
 		Status:  api.TurnStatusInit,
 	}
+	if conv != nil {
+		turn.BotID = conv.BotID
+	}
 
-	if err := h.sh.CreateTurn(c, turn); err != nil {
-		h.respErr(c, http.StatusInternalServerError, err)
+	if !h.createTurn(c, turn, conv != nil) {
 		return
 	}
 

@@ -46,7 +46,7 @@ func (s *Server) initRoutes() {
 		{
 			convs.POST("/", h.CreateConv)
 			convs.GET("/:conv_id", h.GetConv)
-			convs.PUT("/:conv_id", h.GetConv)
+			convs.PUT("/:conv_id", h.UpdateConv)
 			convs.DELETE("/:conv_id", h.DeleteConv)
 			convs.POST("/:conv_id", h.CreateTurn)
 		}

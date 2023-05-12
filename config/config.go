@@ -23,8 +23,7 @@ func (c Config) String() string {
 }
 
 type StateConfig struct {
-	WorkerCount           int           `yaml:"worker_count"`
-	ProcessingTurnTimeout time.Duration `yaml:"processing_turn_timeout"`
+	WorkerCount int `yaml:"worker_count"`
 }
 
 type LLMsConfig struct {
@@ -144,6 +143,9 @@ func ExampleConfig() *Config {
 		VectorStorage: VectorStorageConfig{
 			Driver: VectorStorageMemory,
 		},
+		State: StateConfig{
+			WorkerCount: 10,
+		},
 		LLMs: LLMsConfig{
 			Enabled: []string{"openai-1"},
 			Items: map[string]LLMConfig{
@@ -174,6 +176,9 @@ func DefaultConfig() *Config {
 		},
 		VectorStorage: VectorStorageConfig{
 			Driver: VectorStorageMemory,
+		},
+		State: StateConfig{
+			WorkerCount: 10,
 		},
 	}
 }

@@ -33,7 +33,7 @@ type Conv struct {
 }
 
 type CreateConvRequest struct {
-	BotID        uint   `json:"bot_id"`
+	BotID        uint   `json:"bot_id" binding:"required"`
 	UserIdentity string `json:"user_identity"`
 }
 
@@ -79,7 +79,8 @@ type CreateTurnResponse Turn
 
 type CreateTurnOnewayRequest struct {
 	ConversationID uuid.UUID `json:"conv_id"`
-	CreateConvRequest
+	BotID          uint      `json:"bot_id"`
+	UserIdentity   string    `json:"user_identity"`
 	CreateTurnRequest
 }
 
@@ -111,7 +112,7 @@ type Middleware struct {
 }
 
 type MiddlewareConfig struct {
-	Items []*Middleware `json:"items"`
+	Items []*Middleware `json:"items,omitempty"`
 }
 
 type CreateBotRequest struct {

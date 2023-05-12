@@ -105,20 +105,21 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 	case turn = <-h.turnsChan:
 	}
 
-	var c *conversation
+	log.Printf("state: turn(%d) incoming\n", turn.ID)
 	result, err := func() (*llmapi.ChatResponse, error) {
 		if err := h.sh.UpdateTurnToProcessing(ctx, turn.ID); err != nil {
 			return nil, err
 		}
+		log.Printf("state: turn(%d) update to processing\n", turn.ID)
 
 		var err error
-		c, err = h.getOrloadConversation(ctx, turn.ConvID)
+		c, err := h.getOrloadConversation(ctx, turn.ConvID)
 		if err != nil {
 			return nil, err
 		}
 
 		c.Lock()
-		defer c.Lock()
+		defer c.Unlock()
 
 		bot, err := h.sh.GetBot(ctx, turn.BotID)
 		if err != nil {
@@ -133,6 +134,7 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 			return nil, api.NewTurnError(api.TurnErrorCodeChatModelNotFound)
 		}
 
+		log.Printf("state: turn(%d) chat model(%s) ready to call\n", turn.ID, bot.ChatModel)
 		result, err := cm.Chat(ctx, llmapi.ChatRequest{
 			Temperature:    bot.Temperature,
 			Prompt:         bot.Prompt,
@@ -141,9 +143,11 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 			Request:        turn.Request,
 		})
 		if err != nil {
+			log.Printf("state: turn(%d) chat model(%s) call failed, err: %v\n", turn.ID, bot.ChatModel, err)
 			return nil, api.NewTurnError(api.TurnErrorCodeChatModelCallError, err.Error())
 		}
 
+		log.Printf("state: turn(%d) chat model(%s) call successful. token: %d, duration: %s\n", turn.ID, bot.ChatModel, result.TotalTokens, result.Duration)
 		return result, nil
 	}()
 
@@ -172,11 +176,11 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 
 	for {
 		updateErr := updateFunc()
-		if err == nil {
+		if updateErr == nil {
 			break
 		}
 
-		log.Printf("failed to update turn: %v, process err: %v\n", updateErr, err)
+		log.Printf("state: turn(%d) update failed, err: %v\n", turn.ID, updateErr)
 		select {
 		case <-ctx.Done():
 			return
@@ -184,6 +188,7 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 		}
 	}
 
+	log.Printf("state: turn(%d) update to %d\n", turn.ID, turn.Status)
 	h.hub.Broadcast(turn.ID, struct{}{})
 }
 

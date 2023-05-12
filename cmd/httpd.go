@@ -32,7 +32,7 @@ var httpdCmd = &cobra.Command{
 		hub := chanhub.New()
 
 		stateHandler := state.New(cfg.State, sh, lh, hub)
-		httpdHandler := httpd.New(cfg.Httpd, httpd.NewHandler(sh, lh, hub))
+		httpdHandler := httpd.New(cfg.Httpd, httpd.NewHandler(sh, lh, hub, stateHandler))
 		return starter.Multi(stateHandler, httpdHandler).Start(cmd.Context())
 	},
 }

@@ -21,12 +21,35 @@ func (h *Handler) CreateConv(c *gin.Context) {
 		BotID:        req.BotID,
 		UserIdentity: req.UserIdentity,
 	}
-	if err := h.sh.CreateConv(c, conv); err != nil {
-		h.respErr(c, http.StatusInternalServerError, err)
+	if !h.createConv(c, conv) {
 		return
 	}
 
 	h.respData(c, api.CreateConvResponse(conv.API()))
+}
+
+func (h *Handler) createConv(c *gin.Context, conv *models.Conv) bool {
+	if conv.BotID == 0 {
+		h.respErr(c, http.StatusBadRequest, errors.New("bot_id is required"))
+		return false
+	}
+
+	bot, err := h.sh.GetBot(c, conv.BotID)
+	if err != nil {
+		h.respErr(c, http.StatusInternalServerError, err)
+		return false
+	}
+	if bot == nil {
+		h.respErr(c, http.StatusNotFound, errors.New("bot not found"))
+		return false
+	}
+
+	if err := h.sh.CreateConv(c, conv); err != nil {
+		h.respErr(c, http.StatusInternalServerError, err)
+		return false
+	}
+
+	return true
 }
 
 func (h *Handler) UpdateConv(c *gin.Context) {

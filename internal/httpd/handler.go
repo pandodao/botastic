@@ -6,21 +6,28 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pandodao/botastic/api"
 	"github.com/pandodao/botastic/internal/llms"
+	"github.com/pandodao/botastic/models"
 	"github.com/pandodao/botastic/pkg/chanhub"
 	"github.com/pandodao/botastic/storage"
 )
 
-type Handler struct {
-	llms *llms.Handler
-	sh   *storage.Handler
-	hub  *chanhub.Hub
+type TurnTransmitter interface {
+	GetTurnsChan() chan<- *models.Turn
 }
 
-func NewHandler(sh *storage.Handler, llms *llms.Handler, hub *chanhub.Hub) *Handler {
+type Handler struct {
+	llms            *llms.Handler
+	sh              *storage.Handler
+	hub             *chanhub.Hub
+	turnTransmitter TurnTransmitter
+}
+
+func NewHandler(sh *storage.Handler, llms *llms.Handler, hub *chanhub.Hub, turnTransmitter TurnTransmitter) *Handler {
 	return &Handler{
-		llms: llms,
-		sh:   sh,
-		hub:  hub,
+		llms:            llms,
+		sh:              sh,
+		hub:             hub,
+		turnTransmitter: turnTransmitter,
 	}
 }
 

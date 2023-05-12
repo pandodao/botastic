@@ -12,7 +12,7 @@ import (
 type Bot struct {
 	gorm.Model
 	ChatModel        string `gorm:"type:varchar(128)"`
-	Name             string `gorm:"type:varchar(128)"`
+	Name             string `gorm:"type:varchar(128);unique"`
 	Prompt           string `gorm:"type:text"`
 	BoundaryPrompt   string `gorm:"type:text"`
 	ContextTurnCount int

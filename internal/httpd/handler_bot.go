@@ -25,6 +25,7 @@ func (h *Handler) CreateBot(c *gin.Context) {
 	bot := &models.Bot{
 		Name:             req.Name,
 		Prompt:           req.Prompt,
+		ChatModel:        req.ChatModel,
 		BoundaryPrompt:   req.BoundaryPrompt,
 		ContextTurnCount: req.ContextTurnCount,
 		Temperature:      req.Temperature,
