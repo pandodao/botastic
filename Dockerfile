@@ -1,7 +1,11 @@
-FROM alpine as build
-RUN apk --no-cache add ca-certificates
+FROM golang:1.20-alpine3.17 AS builder
+WORKDIR /app
+COPY . .
+RUN apk add --no-cache git make build-base
+RUN CGO_ENABLED=1 go build -trimpath -o botastic
 
-FROM scratch
-COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY botastic /usr/bin/
-ENTRYPOINT ["/usr/bin/botastic"]
+FROM alpine:3.17
+WORKDIR /app
+COPY --from=builder /app/botastic .
+RUN chmod +x /app/botastic
+ENTRYPOINT ["/app/botastic"]

@@ -11,21 +11,16 @@ builds:
     goarch:
       - amd64
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.ShortCommit}}
 dockers:
   - id: botastic
     goos: linux
     goarch: amd64
-    dockerfile: Dockerfile
+    dockerfile: .goreleaser.Dockerfile
     image_templates:
-      - "ghcr.io/pandodao/{{ .ProjectName }}/botastic:latest"
-      - "ghcr.io/pandodao/{{ .ProjectName }}/botastic:{{ .Major }}"
-      - "ghcr.io/pandodao/{{ .ProjectName }}/botastic:{{ .Major }}.{{ .Minor }}"
-      - "ghcr.io/pandodao/{{ .ProjectName }}/botastic:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
-blobs:
-  - provider: s3
-    region: us-east-2
-    bucket: goreleaser-builds
-    folder: "botastic"
+      - "ghcr.io/pandodao/botastic:latest"
+      - "ghcr.io/pandodao/botastic:{{ .Major }}"
+      - "ghcr.io/pandodao/botastic:{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/pandodao/botastic:{{ .Major }}.{{ .Minor }}.{{ .Patch }}"
