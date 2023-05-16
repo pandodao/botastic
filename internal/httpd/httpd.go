@@ -3,26 +3,29 @@ package httpd
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/pandodao/botastic/config"
+	"go.uber.org/zap"
 )
 
 type Server struct {
 	cfg    config.HttpdConfig
 	engine *gin.Engine
 	h      *Handler
+	logger *zap.Logger
 }
 
-func New(cfg config.HttpdConfig, h *Handler) *Server {
+func New(cfg config.HttpdConfig, h *Handler, logger *zap.Logger) *Server {
 	if !cfg.Debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
-	engine := gin.Default()
 	s := &Server{
 		cfg:    cfg,
-		engine: engine,
+		engine: gin.New(),
 		h:      h,
+		logger: logger.Named("httpd"),
 	}
 
 	s.initRoutes()
@@ -32,6 +35,7 @@ func New(cfg config.HttpdConfig, h *Handler) *Server {
 func (s *Server) initRoutes() {
 	h := s.h
 
+	s.engine.Use(loggerMiddleware(s.logger), gin.Recovery())
 	s.engine.LoadHTMLGlob("templates/*.html")
 	s.engine.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", nil)
@@ -69,5 +73,37 @@ func (s *Server) initRoutes() {
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	return s.engine.Run(s.cfg.Addr)
+	server := &http.Server{
+		Addr:    s.cfg.Addr,
+		Handler: s.engine,
+	}
+
+	go func() {
+		s.logger.Info("httpd server started", zap.String("addr", s.cfg.Addr))
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			s.logger.Fatal("failed to listen and serve", zap.Error(err))
+		}
+	}()
+	<-ctx.Done()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return server.Shutdown(ctx)
+}
+
+func loggerMiddleware(logger *zap.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+		end := time.Now()
+		latency := end.Sub(start)
+
+		logger.Info("HTTP request",
+			zap.Int("status", c.Writer.Status()),
+			zap.String("method", c.Request.Method),
+			zap.String("path", c.Request.URL.Path),
+			zap.String("ip", c.ClientIP()),
+			zap.Duration("latency", latency),
+		)
+	}
 }

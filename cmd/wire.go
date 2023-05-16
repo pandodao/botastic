@@ -49,7 +49,7 @@ func provideLogger(cfg config.LogConfig) (*zap.Logger, error) {
 	if err != nil {
 		return nil, err
 	}
-	zapCfg := zap.NewDevelopmentConfig()
+	zapCfg := zap.NewProductionConfig()
 	zapCfg.Level = zap.NewAtomicLevelAt(level)
 	return zapCfg.Build()
 }

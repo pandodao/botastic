@@ -9,6 +9,7 @@ import (
 	"github.com/pandodao/botastic/models"
 	"github.com/pandodao/botastic/pkg/chanhub"
 	"github.com/pandodao/botastic/storage"
+	"go.uber.org/zap"
 )
 
 type TurnTransmitter interface {
@@ -16,14 +17,16 @@ type TurnTransmitter interface {
 }
 
 type Handler struct {
+	logger          *zap.Logger
 	llms            *llms.Handler
 	sh              *storage.Handler
 	hub             *chanhub.Hub
 	turnTransmitter TurnTransmitter
 }
 
-func NewHandler(sh *storage.Handler, llms *llms.Handler, hub *chanhub.Hub, turnTransmitter TurnTransmitter) *Handler {
+func NewHandler(sh *storage.Handler, llms *llms.Handler, hub *chanhub.Hub, turnTransmitter TurnTransmitter, logger *zap.Logger) *Handler {
 	return &Handler{
+		logger:          logger.Named("httpd/handler"),
 		llms:            llms,
 		sh:              sh,
 		hub:             hub,

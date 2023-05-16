@@ -41,8 +41,8 @@ func provideHttpdStarter(cfgFile2 string) (starter.Starter, error) {
 		return nil, err
 	}
 	stateHandler := state.New(stateConfig, logger, handler, llmsHandler, hub)
-	httpdHandler := httpd.NewHandler(handler, llmsHandler, hub, stateHandler)
-	server := httpd.New(httpdConfig, httpdHandler)
+	httpdHandler := httpd.NewHandler(handler, llmsHandler, hub, stateHandler, logger)
+	server := httpd.New(httpdConfig, httpdHandler, logger)
 	v := provideStarters(server, stateHandler)
 	starterStarter := starter.Multi(v...)
 	return starterStarter, nil
@@ -59,7 +59,7 @@ func provideLogger(cfg config.LogConfig) (*zap.Logger, error) {
 	if err != nil {
 		return nil, err
 	}
-	zapCfg := zap.NewDevelopmentConfig()
+	zapCfg := zap.NewProductionConfig()
 	zapCfg.Level = zap.NewAtomicLevelAt(level)
 	return zapCfg.Build()
 }
