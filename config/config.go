@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -89,6 +88,7 @@ func (c Config) validate() error {
 		return fmt.Errorf("vector_storage.driver is invalid: %s", c.VectorStorage.Driver)
 	}
 
+	// db
 	switch c.DB.Driver {
 	case DBSqlite, DBMysql, DBPostgres:
 	default:
@@ -98,6 +98,7 @@ func (c Config) validate() error {
 		return fmt.Errorf("db.dsn is required")
 	}
 
+	// llms
 	for _, name := range c.LLMs.Enabled {
 		v, ok := c.LLMs.Items[name]
 		if !ok {
@@ -132,6 +133,9 @@ func (c Config) validate() error {
 
 func ExampleConfig() *Config {
 	return &Config{
+		Log: LogConfig{
+			Level: "debug",
+		},
 		Httpd: HttpdConfig{
 			Debug: true,
 			Addr:  ":8080",
@@ -166,6 +170,9 @@ func ExampleConfig() *Config {
 
 func DefaultConfig() *Config {
 	return &Config{
+		Log: LogConfig{
+			Level: "info",
+		},
 		Httpd: HttpdConfig{
 			Debug: true,
 			Addr:  ":8080",
@@ -181,15 +188,6 @@ func DefaultConfig() *Config {
 			WorkerCount: 10,
 		},
 	}
-}
-
-func MustInit(fp string) *Config {
-	cfg, err := Init(fp)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return cfg
 }
 
 func Init(fp string) (*Config, error) {
