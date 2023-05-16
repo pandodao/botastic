@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -58,7 +59,7 @@ func (h *Handler) createTurn(c *gin.Context, turn *models.Turn, newConv bool) bo
 			return false
 		}
 		if conv == nil {
-			h.respErr(c, http.StatusNotFound, errors.New("conv not found"))
+			h.respErr(c, http.StatusNotFound, errors.New("conversation not found"))
 			return false
 		}
 		turn.BotID = conv.BotID
@@ -92,6 +93,17 @@ func (h *Handler) CreateTurnOneway(c *gin.Context) {
 		if !h.createConv(c, conv) {
 			return
 		}
+	} else {
+		var err error
+		conv, err = h.sh.GetConv(c, req.ConversationID)
+		if err != nil {
+			h.respErr(c, http.StatusInternalServerError, err)
+			return
+		}
+		if conv == nil {
+			h.respErr(c, http.StatusNotFound, errors.New("conversation not found"))
+			return
+		}
 	}
 
 	turn := &models.Turn{
@@ -107,7 +119,7 @@ func (h *Handler) CreateTurnOneway(c *gin.Context) {
 		return
 	}
 
-	h.respData(c, api.CreateTurnResponse(turn.API()))
+	h.getTurn(c, turn, req.GetTurnRequest)
 }
 
 func (h *Handler) GetTurn(c *gin.Context) {
@@ -133,24 +145,31 @@ func (h *Handler) GetTurn(c *gin.Context) {
 		h.respErr(c, http.StatusNotFound, errors.New("turn not found"))
 		return
 	}
+
+	h.getTurn(c, turn, req)
+	return
+}
+
+func (h *Handler) getTurn(c *gin.Context, turn *models.Turn, req api.GetTurnRequest) {
 	if turn.IsProcessed() || !req.BlockUntilProcessed {
 		h.respData(c, api.GetTurnResponse(turn.API()))
 		return
 	}
 
 	ctx := c.Request.Context()
-	if req.Timeout > 0 {
+	if req.TimeoutSeconds > 0 {
 		var cancel func()
-		ctx, cancel = context.WithTimeout(ctx, req.Timeout)
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(req.TimeoutSeconds)*time.Second)
 		defer cancel()
 	}
 
-	if _, err := h.hub.AddAndWait(ctx, turnID); err != nil {
+	if _, err := h.hub.AddAndWait(ctx, turn.ID); err != nil {
 		h.respErr(c, http.StatusRequestTimeout, err)
 		return
 	}
 
-	turn, err = h.sh.GetTurn(c, uint(turnID))
+	var err error
+	turn, err = h.sh.GetTurn(c, turn.ID)
 	if err != nil {
 		h.respErr(c, http.StatusInternalServerError, err)
 		return

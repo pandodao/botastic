@@ -47,17 +47,6 @@ func (h *Handler) Start(ctx context.Context) error {
 		return err
 	}
 
-	initTurns := []*models.Turn{}
-	for _, turn := range turns {
-		if turn.Status == api.TurnStatusInit {
-			initTurns = append(initTurns, turn)
-		} else {
-			if err := h.sh.UpdateTurnToFailed(ctx, turn.ID, api.NewTurnError(api.TurnErrorCodeInternalServer, "turn processing terminated unexpectedly"), nil); err != nil {
-				return err
-			}
-		}
-	}
-
 	wg := sync.WaitGroup{}
 	wg.Add(h.cfg.WorkerCount)
 
@@ -68,7 +57,7 @@ func (h *Handler) Start(ctx context.Context) error {
 		}()
 	}
 
-	for _, turn := range initTurns {
+	for _, turn := range turns {
 		h.turnsChan <- turn
 	}
 
@@ -109,12 +98,12 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 			return nil, err
 		}
 		if bot == nil {
-			return nil, api.NewTurnError(api.TurnErrorCodeBotNotFound)
+			return nil, models.NewTurnError(api.TurnErrorCodeBotNotFound)
 		}
 
 		cm, ok := h.llms.GetChatModel(bot.ChatModel)
 		if !ok {
-			return nil, api.NewTurnError(api.TurnErrorCodeChatModelNotFound)
+			return nil, models.NewTurnError(api.TurnErrorCodeChatModelNotFound)
 		}
 
 		h.logger.Debug("chat model found", zap.String("chat_model", bot.ChatModel), zap.Uint("turn_id", turn.ID))
@@ -127,7 +116,7 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 		})
 		if err != nil {
 			h.logger.Error("chat model error", zap.Error(err), zap.Uint("turn_id", turn.ID))
-			return nil, api.NewTurnError(api.TurnErrorCodeChatModelCallError, err.Error())
+			return nil, models.NewTurnError(api.TurnErrorCodeChatModelCallError, err.Error())
 		}
 
 		h.logger.Info("chat model response",
@@ -140,9 +129,9 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 
 	var updateFunc func() error
 	if err != nil {
-		var target *api.TurnError
+		var target *models.TurnError
 		if !errors.As(err, &target) {
-			target = api.NewTurnError(api.TurnErrorCodeInternalServer, err.Error())
+			target = models.NewTurnError(api.TurnErrorCodeInternalServer, err.Error())
 		}
 
 		turn.Status = api.TurnStatusFailed
@@ -185,7 +174,7 @@ func (h *Handler) getOrloadConversation(ctx context.Context, convID uuid.UUID) (
 		return nil, err
 	}
 	if conv == nil {
-		return nil, api.NewTurnError(api.TurnErrorCodeConvNotFound)
+		return nil, models.NewTurnError(api.TurnErrorCodeConvNotFound)
 	}
 
 	c, err := func() (*conversation, error) {

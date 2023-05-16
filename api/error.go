@@ -18,25 +18,6 @@ const (
 )
 
 type TurnError struct {
-	Code TurnErrorCode
-	Msg  string
-}
-
-func (e *TurnError) Error() string {
-	if e.Msg != "" {
-		return e.Msg
-	}
-
-	return e.Code.String()
-}
-
-func NewTurnError(code TurnErrorCode, msg ...string) *TurnError {
-	e := &TurnError{
-		Code: code,
-	}
-	if len(msg) > 0 {
-		e.Msg = msg[0]
-	}
-
-	return e
+	Code TurnErrorCode `json:"code"`
+	Msg  string        `json:"msg"`
 }

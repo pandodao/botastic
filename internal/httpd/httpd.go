@@ -53,6 +53,7 @@ func (s *Server) initRoutes() {
 			convs.PUT("/:conv_id", h.UpdateConv)
 			convs.DELETE("/:conv_id", h.DeleteConv)
 			convs.POST("/:conv_id", h.CreateTurn)
+			convs.POST("/oneway", h.CreateTurnOneway) // legacy, use POST /turns instead
 		}
 
 		turns := v1.Group("/turns")

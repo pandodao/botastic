@@ -73,7 +73,7 @@ func (h *Handler) UpdateConv(c *gin.Context) {
 		return
 	}
 	if rowsAffected == 0 {
-		h.respErr(c, http.StatusNotFound, errors.New("conv not found"))
+		h.respErr(c, http.StatusNotFound, errors.New("conversation not found"))
 	}
 
 	c.Status(http.StatusNoContent)
@@ -92,7 +92,7 @@ func (h *Handler) GetConv(c *gin.Context) {
 		return
 	}
 	if conv == nil {
-		h.respErr(c, http.StatusNotFound, errors.New("conv not found"))
+		h.respErr(c, http.StatusNotFound, errors.New("conversation not found"))
 		return
 	}
 

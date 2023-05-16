@@ -13,7 +13,6 @@ import (
 type Handler struct {
 	cfg config.DBConfig
 	db  *gorm.DB
-	m   *gormigrate.Gormigrate
 }
 
 func Init(cfg config.DBConfig) (*Handler, error) {
@@ -38,21 +37,15 @@ func Init(cfg config.DBConfig) (*Handler, error) {
 
 	m := gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{})
 	m.InitSchema(func(tx *gorm.DB) error {
-		err := tx.AutoMigrate(&models.Conv{}, &models.Turn{}, &models.Bot{})
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return tx.AutoMigrate(&models.Conv{}, &models.Turn{}, &models.Bot{})
 	})
+
+	if err := m.Migrate(); err != nil {
+		return nil, err
+	}
 
 	return &Handler{
 		cfg: cfg,
 		db:  db,
-		m:   m,
 	}, nil
-}
-
-func (h *Handler) Migrate() error {
-	return h.m.Migrate()
 }

@@ -52,11 +52,10 @@ func (h *Handler) UpdateTurnToSuccess(ctx context.Context, id uint, response str
 	}).Error
 }
 
-func (h *Handler) UpdateTurnToFailed(ctx context.Context, id uint, err *api.TurnError, mr models.MiddlewareResults) error {
+func (h *Handler) UpdateTurnToFailed(ctx context.Context, id uint, err *models.TurnError, mr models.MiddlewareResults) error {
 	return h.db.WithContext(ctx).Model(&models.Turn{}).Where("id = ?", id).Updates(map[string]any{
 		"status":             int(api.TurnStatusFailed),
-		"error_code":         err.Code,
-		"error_message":      err.Error(),
+		"error":              err,
 		"middleware_results": mr,
 	}).Error
 }

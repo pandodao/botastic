@@ -59,7 +59,7 @@ type MiddlewareResults []*MiddlewareResult
 
 type Turn struct {
 	ID                uint              `json:"id"`
-	ConvID            uuid.UUID         `json:"conv_id"`
+	ConversationID    uuid.UUID         `json:"conversation_id"`
 	BotID             uint              `json:"bot_id"`
 	Request           string            `json:"request"`
 	Response          string            `json:"response"`
@@ -68,8 +68,7 @@ type Turn struct {
 	TotalTokens       int               `json:"total_tokens"`
 	Status            TurnStatus        `json:"status"`
 	MiddlewareResults MiddlewareResults `json:"middleware_results"`
-	ErrorCode         TurnErrorCode     `json:"error_code,omitempty"`
-	ErrorMessage      string            `json:"error_message,omitempty"`
+	Error             *TurnError        `json:"error,omitempty"`
 	CreatedAt         time.Time         `json:"created_at"`
 	UpdatedAt         time.Time         `json:"updated_at"`
 }
@@ -81,17 +80,18 @@ type CreateTurnRequest struct {
 type CreateTurnResponse Turn
 
 type CreateTurnOnewayRequest struct {
-	ConversationID uuid.UUID `json:"conv_id"`
+	ConversationID uuid.UUID `json:"conversation_id"`
 	BotID          uint      `json:"bot_id"`
 	UserIdentity   string    `json:"user_identity"`
 	CreateTurnRequest
+	GetTurnRequest
 }
 
 type CreateTurnOnewayResponse Turn
 
 type GetTurnRequest struct {
-	BlockUntilProcessed bool          `form:"block_until_processed"`
-	Timeout             time.Duration `form:"timeout"`
+	BlockUntilProcessed bool `form:"block_until_processed" json:"block_until_processed"`
+	TimeoutSeconds      int  `form:"timeout_seconds" json:"timeout_seconds"`
 }
 
 type GetTurnResponse Turn
