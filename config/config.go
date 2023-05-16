@@ -5,10 +5,12 @@ import (
 	"io/ioutil"
 	"time"
 
+	"go.uber.org/zap/zapcore"
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
+	Log           LogConfig           `yaml:"log"`
 	Httpd         HttpdConfig         `yaml:"httpd"`
 	DB            DBConfig            `yaml:"db"`
 	VectorStorage VectorStorageConfig `yaml:"vector_storage"`
@@ -21,6 +23,18 @@ func (c Config) String() string {
 	return string(data)
 }
 
+type LogConfig struct {
+	Level string `yaml:"level"`
+}
+
+func (c LogConfig) Validate() error {
+	_, err := zapcore.ParseLevel(c.Level)
+	if err != nil {
+		return fmt.Errorf("invalid log.level: %w", err)
+	}
+	return nil
+}
+
 type StateConfig struct {
 	WorkerCount int `yaml:"worker_count"`
 }
@@ -30,77 +44,9 @@ type LLMsConfig struct {
 	Items   map[string]LLMConfig `yaml:"items"`
 }
 
-type LLMConfig struct {
-	Provider LLMProvider   `yaml:"provider"`
-	OpenAI   *OpenAIConfig `yaml:"openai,omitempty"`
-}
-
-type OpenAIConfig struct {
-	Key                     string        `yaml:"key"`
-	ChatModels              []string      `yaml:"chat_models"`
-	EmbeddingModels         []string      `yaml:"embedding_models"`
-	ChatRequestTimeout      time.Duration `yaml:"chat_request_timeout"`
-	EmbeddingRequestTimeout time.Duration `yaml:"embedding_request_timeout"`
-}
-
-type HttpdConfig struct {
-	Debug bool   `yaml:"debug"`
-	Addr  string `yaml:"addr"`
-}
-
-type VectorStorageConfig struct {
-	Driver VectorStorageDriver        `yaml:"driver"`
-	Milvus *VectorStorageMilvusConfig `yaml:"milvus,omitempty"`
-	Redis  *VectorStorageRedisConfig  `yaml:"redis,omitempty"`
-}
-
-type VectorStorageMilvusConfig struct {
-	Collection          string `yaml:"collection"`
-	CollectionShardsNum int32  `yaml:"collection_shards_num"`
-	Address             string `yaml:"address"`
-}
-
-type VectorStorageRedisConfig struct {
-	Address   string `yaml:"address"`
-	Password  string `yaml:"password"`
-	DB        int    `yaml:"db"`
-	KeyPrefix string `yaml:"key_prefix"`
-}
-
-type DBConfig struct {
-	Driver DBDriver `yaml:"driver"`
-	DSN    string   `yaml:"dsn"`
-	Debug  bool     `yaml:"debug"`
-}
-
-func (c Config) validate() error {
-	switch c.VectorStorage.Driver {
-	case VectorStorageMemory:
-	case VectorStorageMilvus:
-		if c.VectorStorage.Milvus == nil {
-			return fmt.Errorf("vector_storage.milvus is required")
-		}
-	case VectorStorageRedis:
-		if c.VectorStorage.Redis == nil {
-			return fmt.Errorf("vector_storage.redis is required")
-		}
-	default:
-		return fmt.Errorf("vector_storage.driver is invalid: %s", c.VectorStorage.Driver)
-	}
-
-	// db
-	switch c.DB.Driver {
-	case DBSqlite, DBMysql, DBPostgres:
-	default:
-		return fmt.Errorf("db.driver is invalid: %s", c.DB.Driver)
-	}
-	if c.DB.DSN == "" {
-		return fmt.Errorf("db.dsn is required")
-	}
-
-	// llms
-	for _, name := range c.LLMs.Enabled {
-		v, ok := c.LLMs.Items[name]
+func (c LLMsConfig) Validate() error {
+	for _, name := range c.Enabled {
+		v, ok := c.Items[name]
 		if !ok {
 			return fmt.Errorf("llms.items.%s is required", name)
 		}
@@ -128,6 +74,91 @@ func (c Config) validate() error {
 			return fmt.Errorf("llms.items.%s.provider is invalid: %s", name, v.Provider)
 		}
 	}
+	return nil
+}
+
+type LLMConfig struct {
+	Provider LLMProvider   `yaml:"provider"`
+	OpenAI   *OpenAIConfig `yaml:"openai,omitempty"`
+}
+
+type OpenAIConfig struct {
+	Key                     string        `yaml:"key"`
+	ChatModels              []string      `yaml:"chat_models"`
+	EmbeddingModels         []string      `yaml:"embedding_models"`
+	ChatRequestTimeout      time.Duration `yaml:"chat_request_timeout"`
+	EmbeddingRequestTimeout time.Duration `yaml:"embedding_request_timeout"`
+}
+
+type HttpdConfig struct {
+	Debug bool   `yaml:"debug"`
+	Addr  string `yaml:"addr"`
+}
+
+type VectorStorageConfig struct {
+	Driver VectorStorageDriver        `yaml:"driver"`
+	Milvus *VectorStorageMilvusConfig `yaml:"milvus,omitempty"`
+	Redis  *VectorStorageRedisConfig  `yaml:"redis,omitempty"`
+}
+
+func (c VectorStorageConfig) Validate() error {
+	switch c.Driver {
+	case VectorStorageMemory:
+	case VectorStorageMilvus:
+		if c.Milvus == nil {
+			return fmt.Errorf("vector_storage.milvus is required")
+		}
+	case VectorStorageRedis:
+		if c.Redis == nil {
+			return fmt.Errorf("vector_storage.redis is required")
+		}
+	default:
+		return fmt.Errorf("vector_storage.driver is invalid: %s", c.Driver)
+	}
+	return nil
+}
+
+type VectorStorageMilvusConfig struct {
+	Collection          string `yaml:"collection"`
+	CollectionShardsNum int32  `yaml:"collection_shards_num"`
+	Address             string `yaml:"address"`
+}
+
+type VectorStorageRedisConfig struct {
+	Address   string `yaml:"address"`
+	Password  string `yaml:"password"`
+	DB        int    `yaml:"db"`
+	KeyPrefix string `yaml:"key_prefix"`
+}
+
+type DBConfig struct {
+	Driver DBDriver `yaml:"driver"`
+	DSN    string   `yaml:"dsn"`
+	Debug  bool     `yaml:"debug"`
+}
+
+func (c DBConfig) Validate() error {
+	switch c.Driver {
+	case DBSqlite, DBMysql, DBPostgres:
+	default:
+		return fmt.Errorf("db.driver is invalid: %s", c.Driver)
+	}
+	if c.DSN == "" {
+		return fmt.Errorf("db.dsn is required")
+	}
+
+	return nil
+}
+
+func (c Config) validate() error {
+	for _, v := range []any{c.Log, c.Httpd, c.DB, c.VectorStorage, c.LLMs, c.State} {
+		if vi, ok := v.(interface{ Validate() error }); ok {
+			if err := vi.Validate(); err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 

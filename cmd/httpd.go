@@ -9,7 +9,7 @@ var httpdCmd = &cobra.Command{
 	Use:   "httpd",
 	Short: "Start the HTTP server",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		httpdStarter, err := provideHttpdStarter()
+		httpdStarter, err := provideHttpdStarter(cfgFile)
 		if err != nil {
 			return err
 		}

@@ -14,13 +14,14 @@ import (
 	"github.com/pandodao/botastic/pkg/chanhub"
 	"github.com/pandodao/botastic/state"
 	"github.com/pandodao/botastic/storage"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // Injectors from wire.go:
 
-func provideHttpdStarter() (starter.Starter, error) {
-	string2 := _wireStringValue
-	configConfig, err := config.Init(string2)
+func provideHttpdStarter(cfgFile2 string) (starter.Starter, error) {
+	configConfig, err := config.Init(cfgFile2)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +35,12 @@ func provideHttpdStarter() (starter.Starter, error) {
 	llmsHandler := llms.New(llMsConfig)
 	hub := chanhub.New()
 	stateConfig := configConfig.State
-	stateHandler := state.New(stateConfig, handler, llmsHandler, hub)
+	logConfig := configConfig.Log
+	logger, err := provideLogger(logConfig)
+	if err != nil {
+		return nil, err
+	}
+	stateHandler := state.New(stateConfig, logger, handler, llmsHandler, hub)
 	httpdHandler := httpd.NewHandler(handler, llmsHandler, hub, stateHandler)
 	server := httpd.New(httpdConfig, httpdHandler)
 	v := provideStarters(server, stateHandler)
@@ -42,12 +48,18 @@ func provideHttpdStarter() (starter.Starter, error) {
 	return starterStarter, nil
 }
 
-var (
-	_wireStringValue = cfgFile
-)
-
 // wire.go:
 
 func provideStarters(s1 *httpd.Server, s2 *state.Handler) []starter.Starter {
 	return []starter.Starter{s1, s2}
+}
+
+func provideLogger(cfg config.LogConfig) (*zap.Logger, error) {
+	level, err := zapcore.ParseLevel(cfg.Level)
+	if err != nil {
+		return nil, err
+	}
+	zapCfg := zap.NewDevelopmentConfig()
+	zapCfg.Level = zap.NewAtomicLevelAt(level)
+	return zapCfg.Build()
 }

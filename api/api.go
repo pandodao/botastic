@@ -6,6 +6,9 @@ import (
 	"github.com/google/uuid"
 )
 
+//go:generate go run golang.org/x/tools/cmd/stringer -type=TurnErrorCode -linecomment
+//go:generate go run golang.org/x/tools/cmd/stringer -type=TurnStatus -linecomment
+
 type Response struct {
 	Code    int    `json:"code,omitempty"`
 	Message string `json:"message,omitempty"`

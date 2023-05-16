@@ -1,7 +1,5 @@
 package api
 
-//go:generate go run golang.org/x/tools/cmd/stringer -type=TurnErrorCode -linecomment
-
 type ErrorCode int
 
 const (

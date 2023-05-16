@@ -3,7 +3,6 @@ package state
 import (
 	"context"
 	"errors"
-	"log"
 	"sync"
 	"time"
 
@@ -15,28 +14,11 @@ import (
 	"github.com/pandodao/botastic/models"
 	"github.com/pandodao/botastic/pkg/chanhub"
 	"github.com/pandodao/botastic/storage"
+	"go.uber.org/zap"
 )
 
-type conversation struct {
-	sync.Mutex
-	conv    *models.Conv
-	history []*models.Turn
-}
-
-func (c *conversation) historyText() []string {
-	if len(c.history) == 0 {
-		return []string{}
-	}
-
-	text := make([]string, 0, len(c.history)*2)
-	for _, t := range c.history {
-		text = append(text, t.Request)
-		text = append(text, t.Response)
-	}
-	return text
-}
-
 type Handler struct {
+	logger    *zap.Logger
 	cfg       config.StateConfig
 	turnsChan chan *models.Turn
 	sh        *storage.Handler
@@ -47,8 +29,9 @@ type Handler struct {
 	conversations     map[uuid.UUID]*conversation
 }
 
-func New(cfg config.StateConfig, sh *storage.Handler, llms *llms.Handler, hub *chanhub.Hub) *Handler {
+func New(cfg config.StateConfig, logger *zap.Logger, sh *storage.Handler, llms *llms.Handler, hub *chanhub.Hub) *Handler {
 	return &Handler{
+		logger:        logger.Named("state"),
 		cfg:           cfg,
 		sh:            sh,
 		llms:          llms,
@@ -105,12 +88,12 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 	case turn = <-h.turnsChan:
 	}
 
-	log.Printf("state: turn(%d) incoming\n", turn.ID)
+	h.logger.Info("handling turn", zap.Uint("turn_id", turn.ID))
 	result, err := func() (*llmapi.ChatResponse, error) {
 		if err := h.sh.UpdateTurnToProcessing(ctx, turn.ID); err != nil {
 			return nil, err
 		}
-		log.Printf("state: turn(%d) update to processing\n", turn.ID)
+		h.logger.Debug("turn updated to processing", zap.Uint("turn_id", turn.ID))
 
 		var err error
 		c, err := h.getOrloadConversation(ctx, turn.ConvID)
@@ -134,7 +117,7 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 			return nil, api.NewTurnError(api.TurnErrorCodeChatModelNotFound)
 		}
 
-		log.Printf("state: turn(%d) chat model(%s) ready to call\n", turn.ID, bot.ChatModel)
+		h.logger.Debug("chat model found", zap.String("chat_model", bot.ChatModel), zap.Uint("turn_id", turn.ID))
 		result, err := cm.Chat(ctx, llmapi.ChatRequest{
 			Temperature:    bot.Temperature,
 			Prompt:         bot.Prompt,
@@ -143,11 +126,15 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 			Request:        turn.Request,
 		})
 		if err != nil {
-			log.Printf("state: turn(%d) chat model(%s) call failed, err: %v\n", turn.ID, bot.ChatModel, err)
+			h.logger.Error("chat model error", zap.Error(err), zap.Uint("turn_id", turn.ID))
 			return nil, api.NewTurnError(api.TurnErrorCodeChatModelCallError, err.Error())
 		}
 
-		log.Printf("state: turn(%d) chat model(%s) call successful. token: %d, duration: %s\n", turn.ID, bot.ChatModel, result.TotalTokens, result.Duration)
+		h.logger.Info("chat model response",
+			zap.Uint("turn_id", turn.ID),
+			zap.String("chat_model", bot.ChatModel),
+			zap.Int("total_tokens", result.TotalTokens),
+		)
 		return result, nil
 	}()
 
@@ -180,15 +167,15 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 			break
 		}
 
-		log.Printf("state: turn(%d) update failed, err: %v\n", turn.ID, updateErr)
+		h.logger.Error("failed to update turn", zap.Error(updateErr), zap.Uint("turn_id", turn.ID))
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(1 * time.Second):
+		case <-time.After(3 * time.Second):
 		}
 	}
 
-	log.Printf("state: turn(%d) update to %d\n", turn.ID, turn.Status)
+	h.logger.Info("turn processed", zap.Uint("turn_id", turn.ID), zap.String("status", turn.Status.String()))
 	h.hub.Broadcast(turn.ID, struct{}{})
 }
 
@@ -229,4 +216,23 @@ func (h *Handler) getOrloadConversation(ctx context.Context, convID uuid.UUID) (
 	c.conv = conv
 
 	return c, nil
+}
+
+type conversation struct {
+	sync.Mutex
+	conv    *models.Conv
+	history []*models.Turn
+}
+
+func (c *conversation) historyText() []string {
+	if len(c.history) == 0 {
+		return []string{}
+	}
+
+	text := make([]string, 0, len(c.history)*2)
+	for _, t := range c.history {
+		text = append(text, t.Request)
+		text = append(text, t.Response)
+	}
+	return text
 }
