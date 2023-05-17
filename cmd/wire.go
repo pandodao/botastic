@@ -31,6 +31,7 @@ func provideHttpdStarter(cfgFile string) (starter.Starter, error) {
 			provideMiddlewares,
 			middleware.New,
 			wire.Bind(new(httpd.MiddlewareHandler), new(*middleware.Handler)),
+			wire.Bind(new(state.MiddlewareHandler), new(*middleware.Handler)),
 		),
 		wire.NewSet(
 			httpd.New,

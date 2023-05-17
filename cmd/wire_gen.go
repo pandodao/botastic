@@ -41,10 +41,10 @@ func provideHttpdStarter(cfgFile2 string) (starter.Starter, error) {
 	if err != nil {
 		return nil, err
 	}
-	stateHandler := state.New(stateConfig, logger, handler, llmsHandler, hub)
 	fetch := middleware.NewFetch()
 	v := provideMiddlewares(fetch)
 	middlewareHandler := middleware.New(v...)
+	stateHandler := state.New(stateConfig, logger, handler, llmsHandler, hub, middlewareHandler)
 	httpdHandler := httpd.NewHandler(handler, llmsHandler, hub, stateHandler, logger, middlewareHandler)
 	server := httpd.New(httpdConfig, httpdHandler, logger)
 	v2 := provideStarters(server, stateHandler)

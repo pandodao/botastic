@@ -1,8 +1,10 @@
 package state
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"strconv"
 	"sync"
 	"time"
 
@@ -17,27 +19,36 @@ import (
 	"go.uber.org/zap"
 )
 
-type Handler struct {
-	logger    *zap.Logger
-	cfg       config.StateConfig
-	turnsChan chan *models.Turn
-	sh        *storage.Handler
-	llms      *llms.Handler
-	hub       *chanhub.Hub
+type MiddlewareHandler interface {
+	Process(ctx context.Context, mc api.MiddlewareConfig, turn *models.Turn) ([]*api.MiddlewareResult, bool)
+}
 
+type Handler struct {
+	logger            *zap.Logger
+	cfg               config.StateConfig
+	turnsChan         chan *models.Turn
+	sh                *storage.Handler
+	llms              *llms.Handler
+	hub               *chanhub.Hub
+	middlewareHandler MiddlewareHandler
+
+	tc                *templateCache
 	conversationsLock sync.Mutex
 	conversations     map[uuid.UUID]*conversation
 }
 
-func New(cfg config.StateConfig, logger *zap.Logger, sh *storage.Handler, llms *llms.Handler, hub *chanhub.Hub) *Handler {
+func New(cfg config.StateConfig, logger *zap.Logger, sh *storage.Handler,
+	llms *llms.Handler, hub *chanhub.Hub, middlewareHandler MiddlewareHandler) *Handler {
 	return &Handler{
-		logger:        logger.Named("state"),
-		cfg:           cfg,
-		sh:            sh,
-		llms:          llms,
-		turnsChan:     make(chan *models.Turn),
-		conversations: make(map[uuid.UUID]*conversation),
-		hub:           hub,
+		logger:            logger.Named("state"),
+		cfg:               cfg,
+		sh:                sh,
+		llms:              llms,
+		turnsChan:         make(chan *models.Turn),
+		conversations:     make(map[uuid.UUID]*conversation),
+		hub:               hub,
+		middlewareHandler: middlewareHandler,
+		tc:                newTemplateCache(),
 	}
 }
 
@@ -78,6 +89,7 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 	}
 
 	h.logger.Info("handling turn", zap.Uint("turn_id", turn.ID))
+	var middlewareResults []*api.MiddlewareResult
 	result, err := func() (*llmapi.ChatResponse, error) {
 		if err := h.sh.UpdateTurnToProcessing(ctx, turn.ID); err != nil {
 			return nil, err
@@ -99,6 +111,23 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 		}
 		if bot == nil {
 			return nil, models.NewTurnError(api.TurnErrorCodeBotNotFound)
+		}
+
+		if bot.Middlewares != nil {
+			var ok bool
+			middlewareResults, ok = h.middlewareHandler.Process(ctx, api.MiddlewareConfig(*bot.Middlewares), turn)
+			if !ok {
+				return nil, models.NewTurnError(api.TurnErrorCodeMiddlewareError)
+			}
+
+			data := map[string]any{}
+			for _, r := range middlewareResults {
+				data[r.RenderName] = r.Result
+			}
+
+			if err := h.renderBotPrompts(bot, data); err != nil {
+				return nil, models.NewTurnError(api.TurnErrorCodeRenderPromptError)
+			}
 		}
 
 		cm, ok := h.llms.GetChatModel(bot.ChatModel)
@@ -136,7 +165,7 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 
 		turn.Status = api.TurnStatusFailed
 		updateFunc = func() error {
-			return h.sh.UpdateTurnToFailed(ctx, turn.ID, target, models.MiddlewareResults{})
+			return h.sh.UpdateTurnToFailed(ctx, turn.ID, target, middlewareResults)
 		}
 	} else {
 		turn.Response = result.Response
@@ -144,7 +173,7 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 		turn.PromptTokens = result.PromptTokens
 		turn.CompletionTokens = result.CompletionTokens
 		turn.TotalTokens = result.TotalTokens
-		turn.MiddlewareResults = models.MiddlewareResults{}
+		turn.MiddlewareResults = middlewareResults
 		updateFunc = func() error {
 			return h.sh.UpdateTurnToSuccess(ctx, turn.ID, turn.Response, turn.PromptTokens, turn.CompletionTokens, turn.TotalTokens, turn.MiddlewareResults)
 		}
@@ -205,6 +234,35 @@ func (h *Handler) getOrloadConversation(ctx context.Context, convID uuid.UUID) (
 	c.conv = conv
 
 	return c, nil
+}
+
+func (h *Handler) renderBotPrompts(b *models.Bot, data map[string]any) error {
+	f := func(k, v string) (string, error) {
+		t, err := h.tc.getTemplate(k, v)
+		if err != nil {
+			return "", err
+		}
+		var buf bytes.Buffer
+		if err := t.Execute(&buf, data); err != nil {
+			return "", err
+		}
+
+		return buf.String(), nil
+	}
+
+	id := strconv.Itoa(int(b.ID))
+	newPrompt, err := f(id+"_prompt", b.Prompt)
+	if err != nil {
+		return err
+	}
+
+	newBoundaryPrompt, err := f(id+"_boundary_prompt", b.BoundaryPrompt)
+	if err != nil {
+		return err
+	}
+
+	b.Prompt, b.BoundaryPrompt = newPrompt, newBoundaryPrompt
+	return nil
 }
 
 type conversation struct {

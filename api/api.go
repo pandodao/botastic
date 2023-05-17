@@ -6,9 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-//go:generate go run golang.org/x/tools/cmd/stringer -type=TurnErrorCode -linecomment -trimprefix=TurnErrorCode
-//go:generate go run golang.org/x/tools/cmd/stringer -type=TurnStatus -linecomment --trimprefix TurnStatus
-
 type Response struct {
 	Code    int    `json:"code,omitempty"`
 	Message string `json:"message,omitempty"`
@@ -47,30 +44,32 @@ type UpdateConvRequest CreateConvRequest
 type GetConvResponse Conv
 
 type MiddlewareResult struct {
-	Opts     map[string]any `json:"opts,omitempty"`
-	Name     string         `json:"name"`
-	Code     int            `json:"code"`
-	Result   string         `json:"result,omitempty"`
-	Err      string         `json:"err,omitempty"`
-	Required bool           `json:"-"`
+	Middleware
+	RenderName string              `json:"render_name,omitempty"`
+	Result     string              `json:"result,omitempty"`
+	Code       MiddlewareErrorCode `json:"code"`
+	Err        string              `json:"err,omitempty"`
 }
 
-type MiddlewareResults []*MiddlewareResult
+type TurnError struct {
+	Code TurnErrorCode `json:"code"`
+	Msg  string        `json:"msg"`
+}
 
 type Turn struct {
-	ID                uint              `json:"id"`
-	ConversationID    uuid.UUID         `json:"conversation_id"`
-	BotID             uint              `json:"bot_id"`
-	Request           string            `json:"request"`
-	Response          string            `json:"response"`
-	PromptTokens      int               `json:"prompt_tokens"`
-	CompletionTokens  int               `json:"completion_tokens"`
-	TotalTokens       int               `json:"total_tokens"`
-	Status            TurnStatus        `json:"status"`
-	MiddlewareResults MiddlewareResults `json:"middleware_results"`
-	Error             *TurnError        `json:"error,omitempty"`
-	CreatedAt         time.Time         `json:"created_at"`
-	UpdatedAt         time.Time         `json:"updated_at"`
+	ID                uint                `json:"id"`
+	ConversationID    uuid.UUID           `json:"conversation_id"`
+	BotID             uint                `json:"bot_id"`
+	Request           string              `json:"request"`
+	Response          string              `json:"response"`
+	PromptTokens      int                 `json:"prompt_tokens"`
+	CompletionTokens  int                 `json:"completion_tokens"`
+	TotalTokens       int                 `json:"total_tokens"`
+	Status            TurnStatus          `json:"status"`
+	MiddlewareResults []*MiddlewareResult `json:"middleware_results,omitempty"`
+	Error             *TurnError          `json:"error,omitempty"`
+	CreatedAt         time.Time           `json:"created_at"`
+	UpdatedAt         time.Time           `json:"updated_at"`
 }
 
 type CreateTurnRequest struct {

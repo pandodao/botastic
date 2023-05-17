@@ -36,7 +36,7 @@ func (t Turn) API() api.Turn {
 		CompletionTokens:  t.CompletionTokens,
 		TotalTokens:       t.TotalTokens,
 		Status:            t.Status,
-		MiddlewareResults: api.MiddlewareResults(t.MiddlewareResults),
+		MiddlewareResults: []*api.MiddlewareResult(t.MiddlewareResults),
 		CreatedAt:         t.CreatedAt,
 		UpdatedAt:         t.UpdatedAt,
 	}
@@ -51,7 +51,7 @@ func (t Turn) IsProcessed() bool {
 	return t.Status == api.TurnStatusSuccess || t.Status == api.TurnStatusFailed
 }
 
-type MiddlewareResults api.MiddlewareResults
+type MiddlewareResults []*api.MiddlewareResult
 
 func (mr *MiddlewareResults) Scan(value interface{}) error {
 	data, ok := value.([]byte)

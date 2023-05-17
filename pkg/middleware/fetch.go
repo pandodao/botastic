@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/pandodao/botastic/api"
 	"github.com/pandodao/botastic/models"
@@ -39,8 +40,12 @@ func (m *Fetch) Parse(opts map[string]string) (map[string]*api.MiddlewareDescOpt
 	result := map[string]*api.MiddlewareDescOption{}
 	desc := m.Desc()
 	for _, opt := range m.Desc().Options {
+		opts[opt.Name] = strings.TrimSpace(opts[opt.Name])
 		if opt.Required && opts[opt.Name] == "" {
 			return nil, fmt.Errorf("missing required option: %s, middleware: %s", opt.Name, desc.Name)
+		}
+		if opts[opt.Name] == "" {
+			opts[opt.Name] = opt.DefaultValue
 		}
 
 		if opt.ParseValueFunc != nil {
