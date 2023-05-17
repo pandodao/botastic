@@ -97,21 +97,21 @@ type GetTurnRequest struct {
 type GetTurnResponse Turn
 
 type Bot struct {
-	ID               uint             `json:"id"`
-	Name             string           `json:"name"`
-	ChatModel        string           `json:"chat_model"`
-	Prompt           string           `json:"prompt"`
-	BoundaryPrompt   string           `json:"boundary_prompt"`
-	ContextTurnCount int              `json:"context_turn_count"`
-	Temperature      float32          `json:"temperature"`
-	Middleware       MiddlewareConfig `json:"middleware"`
-	CreatedAt        time.Time        `json:"created_at"`
-	UpdatedAt        time.Time        `json:"updated_at"`
+	ID               uint              `json:"id"`
+	Name             string            `json:"name"`
+	ChatModel        string            `json:"chat_model"`
+	Prompt           string            `json:"prompt"`
+	BoundaryPrompt   string            `json:"boundary_prompt"`
+	ContextTurnCount int               `json:"context_turn_count"`
+	Temperature      float32           `json:"temperature"`
+	Middlewares      *MiddlewareConfig `json:"middlewares,omitempty"`
+	CreatedAt        time.Time         `json:"created_at"`
+	UpdatedAt        time.Time         `json:"updated_at"`
 }
 
 type Middleware struct {
-	Name    string         `json:"name"`
-	Options map[string]any `json:"options,omitempty"`
+	Name    string            `json:"name"`
+	Options map[string]string `json:"options,omitempty"`
 }
 
 type MiddlewareConfig struct {
@@ -119,13 +119,13 @@ type MiddlewareConfig struct {
 }
 
 type CreateBotRequest struct {
-	Name             string           `json:"name" binding:"required"`
-	ChatModel        string           `json:"chat_model" binding:"required"`
-	Prompt           string           `json:"prompt"`
-	BoundaryPrompt   string           `json:"boundary_prompt"`
-	Temperature      float32          `json:"temperature" binding:"required"`
-	ContextTurnCount int              `json:"context_turn_count" binding:"required"`
-	Middlewares      MiddlewareConfig `json:"middlewares"`
+	Name             string            `json:"name" binding:"required"`
+	ChatModel        string            `json:"chat_model" binding:"required"`
+	Prompt           string            `json:"prompt"`
+	BoundaryPrompt   string            `json:"boundary_prompt"`
+	Temperature      float32           `json:"temperature" binding:"required"`
+	ContextTurnCount int               `json:"context_turn_count" binding:"required"`
+	Middlewares      *MiddlewareConfig `json:"middlewares"`
 }
 
 type CreateBotResponse Bot
@@ -139,4 +139,25 @@ type UpdateBotRequest CreateBotRequest
 type ListModelsResponse struct {
 	ChatModels      []string `json:"chat_models"`
 	EmbeddingModels []string `json:"embedding_models"`
+}
+
+type MiddlewareDescOption struct {
+	Name         string `json:"name"`
+	Desc         string `json:"desc"`
+	DefaultValue string `json:"default_value,omitempty"`
+	Required     bool   `json:"required,omitempty"`
+
+	Value          any                       `json:"-"`
+	ParseValueFunc func(string) (any, error) `json:"-"`
+}
+
+type MiddlewareDesc struct {
+	Name    string                  `json:"name"`
+	Desc    string                  `json:"desc"`
+	Options []*MiddlewareDescOption `json:"options"`
+}
+
+type ListMiddlewaresResponse struct {
+	GeneralOptions []*MiddlewareDescOption `json:"general_options"`
+	Middlewares    []*MiddlewareDesc       `json:"middlewares"`
 }

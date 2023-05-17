@@ -21,6 +21,12 @@ func (h *Handler) CreateBot(c *gin.Context) {
 		h.respErr(c, http.StatusBadRequest, errors.New("chat model does not exist"))
 		return
 	}
+	if req.Middlewares != nil {
+		if err := h.middlewareHandler.ValidateConfig(req.Middlewares); err != nil {
+			h.respErr(c, http.StatusBadRequest, err)
+			return
+		}
+	}
 
 	bot := &models.Bot{
 		Name:             req.Name,
@@ -29,8 +35,12 @@ func (h *Handler) CreateBot(c *gin.Context) {
 		BoundaryPrompt:   req.BoundaryPrompt,
 		ContextTurnCount: req.ContextTurnCount,
 		Temperature:      req.Temperature,
-		Middleware:       models.MiddlewareConfig(req.Middlewares),
 	}
+	if req.Middlewares != nil {
+		v := models.MiddlewareConfig(*req.Middlewares)
+		bot.Middlewares = &v
+	}
+
 	if err := h.sh.CreateBot(c, bot); err != nil {
 		h.respErr(c, http.StatusInternalServerError, err)
 		return
@@ -92,16 +102,27 @@ func (h *Handler) UpdateBot(c *gin.Context) {
 		h.respErr(c, http.StatusBadRequest, errors.New("chat model does not exist"))
 		return
 	}
+	if req.Middlewares != nil {
+		if err := h.middlewareHandler.ValidateConfig(req.Middlewares); err != nil {
+			h.respErr(c, http.StatusBadRequest, err)
+			return
+		}
+	}
 
-	rowsAffected, err := h.sh.UpdateBot(c, uint(botId), map[string]any{
+	m := map[string]any{
 		"name":               req.Name,
 		"chat_model":         req.ChatModel,
 		"prompt":             req.Prompt,
 		"boundary_prompt":    req.BoundaryPrompt,
 		"context_turn_count": req.ContextTurnCount,
 		"temperature":        req.Temperature,
-		"middleware":         models.MiddlewareConfig(req.Middlewares),
-	})
+	}
+	if req.Middlewares != nil {
+		v := models.MiddlewareConfig(*req.Middlewares)
+		m["middlewares"] = &v
+	}
+
+	rowsAffected, err := h.sh.UpdateBot(c, uint(botId), m)
 	if err != nil {
 		h.respErr(c, http.StatusInternalServerError, err)
 		return

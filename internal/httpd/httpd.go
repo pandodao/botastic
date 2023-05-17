@@ -45,6 +45,7 @@ func (s *Server) initRoutes() {
 	v1 := s.engine.Group("/api/v1")
 	{
 		v1.GET("/models", h.ListModels)
+		v1.GET("/middlewares", h.ListMiddlewares)
 
 		convs := v1.Group("/conversations")
 		{

@@ -17,11 +17,11 @@ type Bot struct {
 	BoundaryPrompt   string `gorm:"type:text"`
 	ContextTurnCount int
 	Temperature      float32
-	Middleware       MiddlewareConfig `gorm:"type:json"`
+	Middlewares      *MiddlewareConfig `gorm:"type:json"`
 }
 
 func (b Bot) API() api.Bot {
-	return api.Bot{
+	r := api.Bot{
 		ID:               b.ID,
 		Name:             b.Name,
 		ChatModel:        b.ChatModel,
@@ -29,10 +29,15 @@ func (b Bot) API() api.Bot {
 		BoundaryPrompt:   b.BoundaryPrompt,
 		ContextTurnCount: b.ContextTurnCount,
 		Temperature:      b.Temperature,
-		Middleware:       api.MiddlewareConfig(b.Middleware),
 		CreatedAt:        b.CreatedAt,
 		UpdatedAt:        b.UpdatedAt,
 	}
+	if b.Middlewares != nil {
+		v := api.MiddlewareConfig(*b.Middlewares)
+		r.Middlewares = &v
+	}
+
+	return r
 }
 
 type MiddlewareConfig api.MiddlewareConfig

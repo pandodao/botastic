@@ -9,6 +9,7 @@ import (
 	"github.com/pandodao/botastic/internal/llms"
 	"github.com/pandodao/botastic/internal/starter"
 	"github.com/pandodao/botastic/pkg/chanhub"
+	"github.com/pandodao/botastic/pkg/middleware"
 	"github.com/pandodao/botastic/state"
 	"github.com/pandodao/botastic/storage"
 	"go.uber.org/zap"
@@ -25,6 +26,12 @@ func provideHttpdStarter(cfgFile string) (starter.Starter, error) {
 		wire.NewSet(storage.Init),
 		wire.NewSet(llms.New),
 		wire.NewSet(chanhub.New),
+		wire.NewSet(
+			middleware.NewFetch,
+			provideMiddlewares,
+			middleware.New,
+			wire.Bind(new(httpd.MiddlewareHandler), new(*middleware.Handler)),
+		),
 		wire.NewSet(
 			httpd.New,
 			httpd.NewHandler,
@@ -52,4 +59,8 @@ func provideLogger(cfg config.LogConfig) (*zap.Logger, error) {
 	zapCfg := zap.NewProductionConfig()
 	zapCfg.Level = zap.NewAtomicLevelAt(level)
 	return zapCfg.Build()
+}
+
+func provideMiddlewares(m1 *middleware.Fetch) []middleware.Middleware {
+	return []middleware.Middleware{m1}
 }

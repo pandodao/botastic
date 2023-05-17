@@ -12,6 +12,7 @@ import (
 	"github.com/pandodao/botastic/internal/llms"
 	"github.com/pandodao/botastic/internal/starter"
 	"github.com/pandodao/botastic/pkg/chanhub"
+	"github.com/pandodao/botastic/pkg/middleware"
 	"github.com/pandodao/botastic/state"
 	"github.com/pandodao/botastic/storage"
 	"go.uber.org/zap"
@@ -41,10 +42,13 @@ func provideHttpdStarter(cfgFile2 string) (starter.Starter, error) {
 		return nil, err
 	}
 	stateHandler := state.New(stateConfig, logger, handler, llmsHandler, hub)
-	httpdHandler := httpd.NewHandler(handler, llmsHandler, hub, stateHandler, logger)
+	fetch := middleware.NewFetch()
+	v := provideMiddlewares(fetch)
+	middlewareHandler := middleware.New(v...)
+	httpdHandler := httpd.NewHandler(handler, llmsHandler, hub, stateHandler, logger, middlewareHandler)
 	server := httpd.New(httpdConfig, httpdHandler, logger)
-	v := provideStarters(server, stateHandler)
-	starterStarter := starter.Multi(v...)
+	v2 := provideStarters(server, stateHandler)
+	starterStarter := starter.Multi(v2...)
 	return starterStarter, nil
 }
 
@@ -62,4 +66,8 @@ func provideLogger(cfg config.LogConfig) (*zap.Logger, error) {
 	zapCfg := zap.NewProductionConfig()
 	zapCfg.Level = zap.NewAtomicLevelAt(level)
 	return zapCfg.Build()
+}
+
+func provideMiddlewares(m1 *middleware.Fetch) []middleware.Middleware {
+	return []middleware.Middleware{m1}
 }

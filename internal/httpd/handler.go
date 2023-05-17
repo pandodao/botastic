@@ -16,21 +16,30 @@ type TurnTransmitter interface {
 	GetTurnsChan() chan<- *models.Turn
 }
 
-type Handler struct {
-	logger          *zap.Logger
-	llms            *llms.Handler
-	sh              *storage.Handler
-	hub             *chanhub.Hub
-	turnTransmitter TurnTransmitter
+type MiddlewareHandler interface {
+	Middlewares() []*api.MiddlewareDesc
+	GeneralOptions() []*api.MiddlewareDescOption
+	ValidateConfig(*api.MiddlewareConfig) error
 }
 
-func NewHandler(sh *storage.Handler, llms *llms.Handler, hub *chanhub.Hub, turnTransmitter TurnTransmitter, logger *zap.Logger) *Handler {
+type Handler struct {
+	logger            *zap.Logger
+	llms              *llms.Handler
+	sh                *storage.Handler
+	hub               *chanhub.Hub
+	turnTransmitter   TurnTransmitter
+	middlewareHandler MiddlewareHandler
+}
+
+func NewHandler(sh *storage.Handler, llms *llms.Handler, hub *chanhub.Hub, turnTransmitter TurnTransmitter,
+	logger *zap.Logger, middlewareHandler MiddlewareHandler) *Handler {
 	return &Handler{
-		logger:          logger.Named("httpd/handler"),
-		llms:            llms,
-		sh:              sh,
-		hub:             hub,
-		turnTransmitter: turnTransmitter,
+		logger:            logger.Named("httpd/handler"),
+		llms:              llms,
+		sh:                sh,
+		hub:               hub,
+		turnTransmitter:   turnTransmitter,
+		middlewareHandler: middlewareHandler,
 	}
 }
 
@@ -54,5 +63,12 @@ func (h *Handler) ListModels(c *gin.Context) {
 	h.respData(c, api.ListModelsResponse{
 		ChatModels:      h.llms.ChatModels(),
 		EmbeddingModels: h.llms.EmbeddingModels(),
+	})
+}
+
+func (h *Handler) ListMiddlewares(c *gin.Context) {
+	h.respData(c, api.ListMiddlewaresResponse{
+		Middlewares:    h.middlewareHandler.Middlewares(),
+		GeneralOptions: h.middlewareHandler.GeneralOptions(),
 	})
 }
