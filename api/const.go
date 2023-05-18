@@ -21,14 +21,15 @@ const (
 type TurnErrorCode int
 
 const (
-	_                               TurnErrorCode = iota
-	TurnErrorCodeInternalServer                   // Internal Server Error
-	TurnErrorCodeConvNotFound                     // Conversation Not Found
-	TurnErrorCodeBotNotFound                      // Bot Not Found
-	TurnErrorCodeMiddlewareError                  // Middleware Error
-	TurnErrorCodeRenderPromptError                // Render Prompt Error
-	TurnErrorCodeChatModelNotFound                // Chat Model Not Found
-	TurnErrorCodeChatModelCallError               // Chat Model Call Error
+	_                                 TurnErrorCode = iota
+	TurnErrorCodeInternalServer                     // Internal Server Error
+	TurnErrorCodeConvNotFound                       // Conversation Not Found
+	TurnErrorCodeBotNotFound                        // Bot Not Found
+	TurnErrorCodeMiddlewareError                    // Middleware Error
+	TurnErrorCodeRenderPromptError                  // Render Prompt Error
+	TurnErrorCodeChatModelNotFound                  // Chat Model Not Found
+	TurnErrorCodeChatModelCallTimeout               // Chat Model Call Timeout
+	TurnErrorCodeChatModelCallError                 // Chat Model Call Error
 )
 
 type MiddlewareErrorCode int

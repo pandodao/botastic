@@ -42,7 +42,8 @@ func provideHttpdStarter(cfgFile2 string) (starter.Starter, error) {
 		return nil, err
 	}
 	fetch := middleware.NewFetch()
-	v := provideMiddlewares(fetch)
+	ddgSearch := middleware.NewDDGSearch()
+	v := provideMiddlewares(fetch, ddgSearch)
 	middlewareHandler := middleware.New(v...)
 	stateHandler := state.New(stateConfig, logger, handler, llmsHandler, hub, middlewareHandler)
 	httpdHandler := httpd.NewHandler(handler, llmsHandler, hub, stateHandler, logger, middlewareHandler)
@@ -68,6 +69,6 @@ func provideLogger(cfg config.LogConfig) (*zap.Logger, error) {
 	return zapCfg.Build()
 }
 
-func provideMiddlewares(m1 *middleware.Fetch) []middleware.Middleware {
-	return []middleware.Middleware{m1}
+func provideMiddlewares(m1 *middleware.Fetch, m2 *middleware.DDGSearch) []middleware.Middleware {
+	return []middleware.Middleware{m1, m2}
 }

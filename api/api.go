@@ -103,13 +103,15 @@ type Bot struct {
 	BoundaryPrompt   string            `json:"boundary_prompt"`
 	ContextTurnCount int               `json:"context_turn_count"`
 	Temperature      float32           `json:"temperature"`
+	TimeoutSeconds   int               `json:"timeout_seconds"`
 	Middlewares      *MiddlewareConfig `json:"middlewares,omitempty"`
 	CreatedAt        time.Time         `json:"created_at"`
 	UpdatedAt        time.Time         `json:"updated_at"`
 }
 
 type Middleware struct {
-	Name    string            `json:"name"`
+	ID      string            `json:"id" binding:"required"`
+	Name    string            `json:"name" binding:"required"`
 	Options map[string]string `json:"options,omitempty"`
 }
 

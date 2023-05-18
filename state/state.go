@@ -126,7 +126,7 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 			}
 
 			if err := h.renderBotPrompts(bot, data); err != nil {
-				return nil, models.NewTurnError(api.TurnErrorCodeRenderPromptError)
+				return nil, models.NewTurnError(api.TurnErrorCodeRenderPromptError, err.Error())
 			}
 		}
 
@@ -135,7 +135,12 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 			return nil, models.NewTurnError(api.TurnErrorCodeChatModelNotFound)
 		}
 
-		h.logger.Debug("chat model found", zap.String("chat_model", bot.ChatModel), zap.Uint("turn_id", turn.ID))
+		h.logger.Debug("chat model found", zap.String("chat_model", bot.ChatModel), zap.Uint("turn_id", turn.ID), zap.String("conv_id", turn.ConvID.String()))
+		if bot.TimeoutSeconds > 0 {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, time.Duration(bot.TimeoutSeconds)*time.Second)
+			defer cancel()
+		}
 		result, err := cm.Chat(ctx, llmapi.ChatRequest{
 			Temperature:    bot.Temperature,
 			Prompt:         bot.Prompt,
@@ -145,7 +150,11 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 		})
 		if err != nil {
 			h.logger.Error("chat model error", zap.Error(err), zap.Uint("turn_id", turn.ID))
-			return nil, models.NewTurnError(api.TurnErrorCodeChatModelCallError, err.Error())
+			code := api.TurnErrorCodeChatModelCallError
+			if errors.Is(err, context.DeadlineExceeded) {
+				code = api.TurnErrorCodeChatModelCallTimeout
+			}
+			return nil, models.NewTurnError(code, err.Error())
 		}
 
 		h.logger.Info("chat model response",
@@ -238,6 +247,9 @@ func (h *Handler) getOrloadConversation(ctx context.Context, convID uuid.UUID) (
 
 func (h *Handler) renderBotPrompts(b *models.Bot, data map[string]any) error {
 	f := func(k, v string) (string, error) {
+		if v == "" {
+			return "", nil
+		}
 		t, err := h.tc.getTemplate(k, v)
 		if err != nil {
 			return "", err

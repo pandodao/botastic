@@ -13,14 +13,12 @@ import (
 )
 
 const (
-	generalOptionID               = "id"
 	generalOptionTimeoutSeconds   = "timeout_seconds"
 	generalOptionTerminateIfError = "terminate_if_error"
 )
 
 type Middleware interface {
 	Desc() *api.MiddlewareDesc
-	Parse(map[string]string) (map[string]*api.MiddlewareDescOption, error)
 	Process(context.Context, map[string]*api.MiddlewareDescOption, *models.Turn) (string, error)
 }
 
@@ -59,11 +57,6 @@ func (h *Handler) GeneralOptions() []*api.MiddlewareDescOption {
 			ParseValueFunc: func(v string) (any, error) {
 				return strconv.ParseBool(v)
 			},
-		},
-		{
-			Name:     generalOptionID,
-			Desc:     "the id of the middleware, used to identify the middleware",
-			Required: true,
 		},
 		{
 			Name:         generalOptionTimeoutSeconds,
@@ -116,8 +109,7 @@ func (h *Handler) Process(ctx context.Context, mc api.MiddlewareConfig, turn *mo
 			}
 		} else {
 			r.Result = result
-			id := generalOptions[generalOptionID].Value.(string)
-			r.RenderName = "MIDDLEWARE_RESULT_" + strings.ToUpper(id)
+			r.RenderName = "MIDDLEWARE_RESULT_" + item.ID
 		}
 	}
 	return rs, true
@@ -126,16 +118,18 @@ func (h *Handler) Process(ctx context.Context, mc api.MiddlewareConfig, turn *mo
 func (h *Handler) ValidateConfig(mc *api.MiddlewareConfig) error {
 	idMap := map[string]bool{}
 	for _, item := range mc.Items {
-		generalOptions, _, err := h.validateMiddleware(item)
-		if err != nil {
+		if item.Options == nil {
+			item.Options = map[string]string{}
+		}
+
+		if _, _, err := h.validateMiddleware(item); err != nil {
 			return err
 		}
 
-		id := generalOptions["id"].Value.(string)
-		if idMap[id] {
-			return fmt.Errorf("duplicate middleware id: %s", id)
+		if idMap[item.ID] {
+			return fmt.Errorf("duplicate middleware id: %s", item.ID)
 		}
-		idMap[id] = true
+		idMap[item.ID] = true
 	}
 
 	return nil
@@ -147,22 +141,22 @@ func (h *Handler) validateMiddleware(item *api.Middleware) (map[string]*api.Midd
 		return nil, nil, fmt.Errorf("unknown middleware: %s", item.Name)
 	}
 
-	generalOptions, err := h.parseGeneralOptions(item.Name, item.Options)
+	generalOptions, err := parseOptions(item.Name, h.GeneralOptions(), item.Options)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse general options, middleware: %s, err: %w", item.Name, err)
 	}
 
-	options, err := m.Parse(item.Options)
+	middlewareOptions, err := parseOptions(item.Name, m.Desc().Options, item.Options)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse options, middleware: %s, err: %w", item.Name, err)
 	}
 
-	return generalOptions, options, nil
+	return generalOptions, middlewareOptions, nil
 }
 
-func (h *Handler) parseGeneralOptions(name string, opts map[string]string) (map[string]*api.MiddlewareDescOption, error) {
+func parseOptions(name string, descOptions []*api.MiddlewareDescOption, opts map[string]string) (map[string]*api.MiddlewareDescOption, error) {
 	result := map[string]*api.MiddlewareDescOption{}
-	for _, opt := range h.GeneralOptions() {
+	for _, opt := range descOptions {
 		opts[opt.Name] = strings.TrimSpace(opts[opt.Name])
 		if opt.Required && opts[opt.Name] == "" {
 			return nil, fmt.Errorf("missing required option: %s, middleware: %s", opt.Name, name)

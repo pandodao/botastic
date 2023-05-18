@@ -28,6 +28,7 @@ func provideHttpdStarter(cfgFile string) (starter.Starter, error) {
 		wire.NewSet(chanhub.New),
 		wire.NewSet(
 			middleware.NewFetch,
+			middleware.NewDDGSearch,
 			provideMiddlewares,
 			middleware.New,
 			wire.Bind(new(httpd.MiddlewareHandler), new(*middleware.Handler)),
@@ -62,6 +63,6 @@ func provideLogger(cfg config.LogConfig) (*zap.Logger, error) {
 	return zapCfg.Build()
 }
 
-func provideMiddlewares(m1 *middleware.Fetch) []middleware.Middleware {
-	return []middleware.Middleware{m1}
+func provideMiddlewares(m1 *middleware.Fetch, m2 *middleware.DDGSearch) []middleware.Middleware {
+	return []middleware.Middleware{m1, m2}
 }

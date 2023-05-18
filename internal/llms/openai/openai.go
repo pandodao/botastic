@@ -44,12 +44,6 @@ func (h *HandlerWithModel) Name() string {
 
 func (h *HandlerWithModel) Chat(ctx context.Context, req api.ChatRequest) (*api.ChatResponse, error) {
 	start := time.Now()
-	if h.cfg.ChatRequestTimeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, h.cfg.ChatRequestTimeout)
-		defer cancel()
-	}
-
 	chatReq := openai.ChatCompletionRequest{
 		Model:       h.model,
 		Temperature: req.Temperature,

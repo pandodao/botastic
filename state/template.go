@@ -29,7 +29,7 @@ func (c *templateCache) getTemplate(key string, v string) (*template.Template, e
 	delete(c.m, c.km[key])
 	delete(c.km, key)
 
-	r, err := template.New("").Parse(v)
+	r, err := template.New(key).Parse(v)
 	if err != nil {
 		return nil, err
 	}

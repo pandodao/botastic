@@ -14,12 +14,13 @@ func _() {
 	_ = x[TurnErrorCodeMiddlewareError-4]
 	_ = x[TurnErrorCodeRenderPromptError-5]
 	_ = x[TurnErrorCodeChatModelNotFound-6]
-	_ = x[TurnErrorCodeChatModelCallError-7]
+	_ = x[TurnErrorCodeChatModelCallTimeout-7]
+	_ = x[TurnErrorCodeChatModelCallError-8]
 }
 
-const _TurnErrorCode_name = "Internal Server ErrorConversation Not FoundBot Not FoundMiddleware ErrorRender Prompt ErrorChat Model Not FoundChat Model Call Error"
+const _TurnErrorCode_name = "Internal Server ErrorConversation Not FoundBot Not FoundMiddleware ErrorRender Prompt ErrorChat Model Not FoundChat Model Call TimeoutChat Model Call Error"
 
-var _TurnErrorCode_index = [...]uint8{0, 21, 43, 56, 72, 91, 111, 132}
+var _TurnErrorCode_index = [...]uint8{0, 21, 43, 56, 72, 91, 111, 134, 155}
 
 func (i TurnErrorCode) String() string {
 	i -= 1

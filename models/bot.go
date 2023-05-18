@@ -17,6 +17,7 @@ type Bot struct {
 	BoundaryPrompt   string `gorm:"type:text"`
 	ContextTurnCount int
 	Temperature      float32
+	TimeoutSeconds   int
 	Middlewares      *MiddlewareConfig `gorm:"type:json"`
 }
 
@@ -29,6 +30,7 @@ func (b Bot) API() api.Bot {
 		BoundaryPrompt:   b.BoundaryPrompt,
 		ContextTurnCount: b.ContextTurnCount,
 		Temperature:      b.Temperature,
+		TimeoutSeconds:   b.TimeoutSeconds,
 		CreatedAt:        b.CreatedAt,
 		UpdatedAt:        b.UpdatedAt,
 	}

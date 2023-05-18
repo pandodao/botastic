@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
-	"time"
 
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/yaml.v3"
@@ -83,11 +82,9 @@ type LLMConfig struct {
 }
 
 type OpenAIConfig struct {
-	Key                     string        `yaml:"key"`
-	ChatModels              []string      `yaml:"chat_models"`
-	EmbeddingModels         []string      `yaml:"embedding_models"`
-	ChatRequestTimeout      time.Duration `yaml:"chat_request_timeout"`
-	EmbeddingRequestTimeout time.Duration `yaml:"embedding_request_timeout"`
+	Key             string   `yaml:"key"`
+	ChatModels      []string `yaml:"chat_models"`
+	EmbeddingModels []string `yaml:"embedding_models"`
 }
 
 type HttpdConfig struct {
@@ -187,11 +184,9 @@ func ExampleConfig() *Config {
 				"openai-1": {
 					Provider: LLMProviderOpenAI,
 					OpenAI: &OpenAIConfig{
-						Key:                     "YOUR_OPENAI_KEY",
-						ChatModels:              []string{"gpt-3.5-turbo", "gpt-4"},
-						EmbeddingModels:         []string{"text-embedding-ada-002"},
-						ChatRequestTimeout:      8 * time.Second,
-						EmbeddingRequestTimeout: 10 * time.Second,
+						Key:             "YOUR_OPENAI_KEY",
+						ChatModels:      []string{"gpt-3.5-turbo", "gpt-4"},
+						EmbeddingModels: []string{"text-embedding-ada-002"},
 					},
 				},
 			},
