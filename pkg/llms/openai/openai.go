@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/pandodao/botastic/config"
-	"github.com/pandodao/botastic/internal/llms/api"
+	"github.com/pandodao/botastic/pkg/llms/api"
 	"github.com/sashabaranov/go-openai"
 	gogpt "github.com/sashabaranov/go-openai"
 )

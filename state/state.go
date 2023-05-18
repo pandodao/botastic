@@ -11,10 +11,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/pandodao/botastic/api"
 	"github.com/pandodao/botastic/config"
-	"github.com/pandodao/botastic/internal/llms"
-	llmapi "github.com/pandodao/botastic/internal/llms/api"
 	"github.com/pandodao/botastic/models"
 	"github.com/pandodao/botastic/pkg/chanhub"
+	"github.com/pandodao/botastic/pkg/llms"
+	llmapi "github.com/pandodao/botastic/pkg/llms/api"
 	"github.com/pandodao/botastic/storage"
 	"go.uber.org/zap"
 )

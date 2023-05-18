@@ -9,9 +9,9 @@ package cmd
 import (
 	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/internal/httpd"
-	"github.com/pandodao/botastic/internal/llms"
 	"github.com/pandodao/botastic/internal/starter"
 	"github.com/pandodao/botastic/pkg/chanhub"
+	"github.com/pandodao/botastic/pkg/llms"
 	"github.com/pandodao/botastic/pkg/middleware"
 	"github.com/pandodao/botastic/state"
 	"github.com/pandodao/botastic/storage"

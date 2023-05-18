@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/pandodao/botastic/config"
-	"github.com/pandodao/botastic/internal/llms/api"
-	"github.com/pandodao/botastic/internal/llms/openai"
+	"github.com/pandodao/botastic/pkg/llms/api"
+	"github.com/pandodao/botastic/pkg/llms/openai"
 )
 
 type embeddingLLM struct {

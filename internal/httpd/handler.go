@@ -5,9 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/pandodao/botastic/api"
-	"github.com/pandodao/botastic/internal/llms"
 	"github.com/pandodao/botastic/models"
 	"github.com/pandodao/botastic/pkg/chanhub"
+	"github.com/pandodao/botastic/pkg/llms"
 	"github.com/pandodao/botastic/storage"
 	"go.uber.org/zap"
 )
