@@ -3,6 +3,7 @@ package state
 import (
 	"sync"
 	"text/template"
+	"time"
 )
 
 type templateCache struct {
@@ -29,12 +30,17 @@ func (c *templateCache) getTemplate(key string, v string) (*template.Template, e
 	delete(c.m, c.km[key])
 	delete(c.km, key)
 
-	r, err := template.New(key).Parse(v)
+	t := template.New(key)
+	t.Funcs(template.FuncMap{
+		"now": time.Now,
+	})
+
+	t, err := t.Parse(v)
 	if err != nil {
 		return nil, err
 	}
 
 	c.km[key] = v
-	c.m[v] = r
-	return r, nil
+	c.m[v] = t
+	return t, nil
 }

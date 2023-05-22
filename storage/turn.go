@@ -21,7 +21,7 @@ func (h *Handler) GetTurnCount(ctx context.Context, convId uuid.UUID, status api
 
 func (h *Handler) GetTurns(ctx context.Context, convId uuid.UUID, status api.TurnStatus, limit int) ([]*models.Turn, error) {
 	var turns []*models.Turn
-	if err := h.db.WithContext(ctx).Where("conv_id = ? AND status = ?", convId, int(status)).Limit(limit).Order("created_at").Find(&turns).Error; err != nil {
+	if err := h.db.WithContext(ctx).Where("conv_id = ? AND status = ?", convId, int(status)).Limit(limit).Order("created_at DESC").Find(&turns).Error; err != nil {
 		return nil, err
 	}
 

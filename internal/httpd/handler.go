@@ -56,7 +56,7 @@ func (h *Handler) respData(c *gin.Context, data interface{}) {
 }
 
 func (h *Handler) HealthCheck(c *gin.Context) {
-	c.String(200, "OK")
+	c.Status(http.StatusNoContent)
 }
 
 func (h *Handler) ListModels(c *gin.Context) {

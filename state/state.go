@@ -89,7 +89,10 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 	}
 
 	h.logger.Info("handling turn", zap.Uint("turn_id", turn.ID))
-	var middlewareResults []*api.MiddlewareResult
+	var (
+		middlewareResults []*api.MiddlewareResult
+		c                 *conversation
+	)
 	result, err := func() (*llmapi.ChatResponse, error) {
 		if err := h.sh.UpdateTurnToProcessing(ctx, turn.ID); err != nil {
 			return nil, err
@@ -97,7 +100,7 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 		h.logger.Debug("turn updated to processing", zap.Uint("turn_id", turn.ID))
 
 		var err error
-		c, err := h.getOrloadConversation(ctx, turn.ConvID)
+		c, err = h.getOrloadConversation(ctx, turn.ConvID)
 		if err != nil {
 			return nil, err
 		}
@@ -202,6 +205,10 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 		}
 	}
 
+	if turn.Status == api.TurnStatusSuccess {
+		c.appendTurn(turn)
+	}
+
 	h.logger.Info("turn processed", zap.Uint("turn_id", turn.ID), zap.String("status", turn.Status.String()))
 	h.hub.Broadcast(turn.ID, struct{}{})
 }
@@ -227,7 +234,10 @@ func (h *Handler) getOrloadConversation(ctx context.Context, convID uuid.UUID) (
 			}
 
 			c = &conversation{
-				history: turns,
+				history: make([]*models.Turn, 0, len(turns)),
+			}
+			for i := len(turns) - 1; i >= 0; i-- {
+				c.history = append(c.history, turns[i])
 			}
 
 			h.conversations[convID] = c
@@ -294,4 +304,11 @@ func (c *conversation) historyText() []string {
 		text = append(text, t.Response)
 	}
 	return text
+}
+
+func (c *conversation) appendTurn(turn *models.Turn) {
+	c.Lock()
+	defer c.Unlock()
+
+	c.history = append(c.history, turn)
 }
