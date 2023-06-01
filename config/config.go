@@ -93,18 +93,13 @@ type HttpdConfig struct {
 }
 
 type VectorStorageConfig struct {
-	Driver VectorStorageDriver        `yaml:"driver"`
-	Milvus *VectorStorageMilvusConfig `yaml:"milvus,omitempty"`
-	Redis  *VectorStorageRedisConfig  `yaml:"redis,omitempty"`
+	Driver VectorStorageDriver       `yaml:"driver"`
+	Redis  *VectorStorageRedisConfig `yaml:"redis,omitempty"`
 }
 
 func (c VectorStorageConfig) Validate() error {
 	switch c.Driver {
-	case VectorStorageMemory:
-	case VectorStorageMilvus:
-		if c.Milvus == nil {
-			return fmt.Errorf("vector_storage.milvus is required")
-		}
+	case VectorStorageDB:
 	case VectorStorageRedis:
 		if c.Redis == nil {
 			return fmt.Errorf("vector_storage.redis is required")
@@ -173,7 +168,7 @@ func ExampleConfig() *Config {
 			DSN:    "file::memory:?cache=shared",
 		},
 		VectorStorage: VectorStorageConfig{
-			Driver: VectorStorageMemory,
+			Driver: VectorStorageDB,
 		},
 		State: StateConfig{
 			WorkerCount: 10,
@@ -208,7 +203,7 @@ func DefaultConfig() *Config {
 			DSN:    "file::memory:?cache=shared",
 		},
 		VectorStorage: VectorStorageConfig{
-			Driver: VectorStorageMemory,
+			Driver: VectorStorageDB,
 		},
 		State: StateConfig{
 			WorkerCount: 10,

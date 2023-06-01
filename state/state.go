@@ -163,7 +163,7 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 		h.logger.Info("chat model response",
 			zap.Uint("turn_id", turn.ID),
 			zap.String("chat_model", bot.ChatModel),
-			zap.Int("total_tokens", result.TotalTokens),
+			zap.Int("total_tokens", result.Usage.TotalTokens),
 		)
 		return result, nil
 	}()
@@ -182,9 +182,9 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 	} else {
 		turn.Response = result.Response
 		turn.Status = api.TurnStatusSuccess
-		turn.PromptTokens = result.PromptTokens
-		turn.CompletionTokens = result.CompletionTokens
-		turn.TotalTokens = result.TotalTokens
+		turn.PromptTokens = result.Usage.PromptTokens
+		turn.CompletionTokens = result.Usage.CompletionTokens
+		turn.TotalTokens = result.Usage.TotalTokens
 		turn.MiddlewareResults = middlewareResults
 		updateFunc = func() error {
 			return h.sh.UpdateTurnToSuccess(ctx, turn.ID, turn.Response, turn.PromptTokens, turn.CompletionTokens, turn.TotalTokens, turn.MiddlewareResults)

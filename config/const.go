@@ -3,9 +3,8 @@ package config
 type VectorStorageDriver string
 
 const (
-	VectorStorageMemory VectorStorageDriver = "memory"
-	VectorStorageMilvus VectorStorageDriver = "milvus"
-	VectorStorageRedis  VectorStorageDriver = "redis"
+	VectorStorageDB    VectorStorageDriver = "db"
+	VectorStorageRedis VectorStorageDriver = "redis"
 )
 
 type DBDriver string

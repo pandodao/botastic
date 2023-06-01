@@ -2,10 +2,11 @@ package openai
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/pkg/llms/api"
+	"github.com/pkoukk/tiktoken-go"
 	"github.com/sashabaranov/go-openai"
 	gogpt "github.com/sashabaranov/go-openai"
 )
@@ -36,6 +37,8 @@ func (h *Handler) ChatModels() []api.ChatLLM {
 type HandlerWithModel struct {
 	*Handler
 	model string
+
+	embeddingModel openai.EmbeddingModel
 }
 
 func (h *HandlerWithModel) Name() string {
@@ -43,38 +46,10 @@ func (h *HandlerWithModel) Name() string {
 }
 
 func (h *HandlerWithModel) Chat(ctx context.Context, req api.ChatRequest) (*api.ChatResponse, error) {
-	start := time.Now()
 	chatReq := openai.ChatCompletionRequest{
 		Model:       h.model,
 		Temperature: req.Temperature,
-	}
-	if req.Prompt != "" {
-		chatReq.Messages = append(chatReq.Messages, gogpt.ChatCompletionMessage{
-			Role:    "system",
-			Content: req.Prompt,
-		})
-	}
-	for i := 0; i < len(req.History); i += 2 {
-		role := "user"
-		if i%2 == 1 {
-			role = "assistant"
-		}
-		chatReq.Messages = append(chatReq.Messages, gogpt.ChatCompletionMessage{
-			Role:    role,
-			Content: req.History[i],
-		})
-	}
-
-	chatReq.Messages = append(chatReq.Messages, gogpt.ChatCompletionMessage{
-		Role:    "user",
-		Content: req.Request,
-	})
-
-	if req.BoundaryPrompt != "" {
-		chatReq.Messages = append(chatReq.Messages, gogpt.ChatCompletionMessage{
-			Role:    "system",
-			Content: req.BoundaryPrompt,
-		})
+		Messages:    getMessagesFromRequest(req),
 	}
 
 	resp, err := h.client.CreateChatCompletion(ctx, chatReq)
@@ -82,14 +57,120 @@ func (h *HandlerWithModel) Chat(ctx context.Context, req api.ChatRequest) (*api.
 		return nil, err
 	}
 	return &api.ChatResponse{
-		Duration:         time.Since(start),
-		Response:         resp.Choices[0].Message.Content,
-		PromptTokens:     resp.Usage.PromptTokens,
-		CompletionTokens: resp.Usage.CompletionTokens,
-		TotalTokens:      resp.Usage.TotalTokens,
+		Response: resp.Choices[0].Message.Content,
+		Usage: api.Usage{
+			PromptTokens:     resp.Usage.PromptTokens,
+			CompletionTokens: resp.Usage.CompletionTokens,
+			TotalTokens:      resp.Usage.TotalTokens,
+		},
 	}, nil
 }
 
-func (h *Handler) CreateEmbedding(ctx context.Context, req api.CreateEmbeddingRequest) (*api.CreateEmbeddingResponse, error) {
-	return nil, nil
+func (h *HandlerWithModel) CalChatRequestTokens(ctx context.Context, req api.ChatRequest) (int, error) {
+	tkm, err := tiktoken.EncodingForModel(h.model)
+	if err != nil {
+		return 0, err
+	}
+
+	var tokensPerMessage int
+	var tokensPerName int
+	switch h.model {
+	case "gpt-3.5-turbo-0301", "gpt-3.5-turbo":
+		tokensPerMessage = 4
+		tokensPerName = -1
+	case "gpt-4-0314", "gpt-4":
+		tokensPerMessage = 3
+		tokensPerName = 1
+	default:
+		tokensPerMessage = 3
+		tokensPerName = 1
+	}
+
+	numTokens := 0
+	for _, message := range getMessagesFromRequest(req) {
+		numTokens += tokensPerMessage
+		numTokens += len(tkm.Encode(message.Content, nil, nil))
+		numTokens += len(tkm.Encode(message.Role, nil, nil))
+		numTokens += len(tkm.Encode(message.Name, nil, nil))
+		if message.Name != "" {
+			numTokens += tokensPerName
+		}
+	}
+
+	return numTokens + 3, nil
+}
+
+func (h *HandlerWithModel) CreateEmbedding(ctx context.Context, req api.CreateEmbeddingRequest) (*api.CreateEmbeddingResponse, error) {
+	resp, err := h.client.CreateEmbeddings(ctx, openai.EmbeddingRequest{
+		Input: req.Input,
+		Model: h.embeddingModel,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	embeddings := make([]api.Embedding, 0, len(resp.Data))
+	for i, d := range resp.Data {
+		embeddings[i] = api.Embedding{
+			Embedding: d.Embedding,
+			Index:     d.Index,
+		}
+	}
+
+	return &api.CreateEmbeddingResponse{
+		Data: embeddings,
+		Usage: api.Usage{
+			PromptTokens:     resp.Usage.PromptTokens,
+			CompletionTokens: resp.Usage.CompletionTokens,
+			TotalTokens:      resp.Usage.TotalTokens,
+		},
+	}, nil
+}
+
+func (h *HandlerWithModel) CalEmbeddingRequestTokens(req api.CreateEmbeddingRequest) (int, error) {
+	tkm, err := tiktoken.EncodingForModel(h.model)
+	if err != nil {
+		return 0, fmt.Errorf("model %s not supported", h.model)
+	}
+
+	numTokens := 0
+	for _, text := range req.Input {
+		numTokens += len(tkm.Encode(text, nil, nil))
+	}
+
+	return numTokens, nil
+}
+
+func getMessagesFromRequest(req api.ChatRequest) []openai.ChatCompletionMessage {
+	messages := make([]openai.ChatCompletionMessage, 0, len(req.History)+2)
+	if req.Prompt != "" {
+		messages = append(messages, gogpt.ChatCompletionMessage{
+			Role:    openai.ChatMessageRoleSystem,
+			Content: req.Prompt,
+		})
+	}
+	for i := 0; i < len(req.History); i += 2 {
+		role := openai.ChatMessageRoleUser
+		if i%2 == 1 {
+			role = openai.ChatMessageRoleAssistant
+		}
+		messages = append(messages, gogpt.ChatCompletionMessage{
+			Role:    role,
+			Content: req.History[i],
+		})
+	}
+
+	messages = append(messages, gogpt.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleUser,
+		Content: req.Request,
+	})
+
+	if req.BoundaryPrompt != "" {
+		messages = append(messages, gogpt.ChatCompletionMessage{
+			Role:    openai.ChatMessageRoleSystem,
+			Content: req.BoundaryPrompt,
+		})
+	}
+
+	return messages
 }

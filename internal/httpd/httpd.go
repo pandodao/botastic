@@ -72,6 +72,12 @@ func (s *Server) initRoutes() {
 			bots.PUT("/:bot_id", h.UpdateBot)
 			bots.DELETE("/:bot_id", h.DeleteBot)
 		}
+
+		indexes := v1.Group("/indexes")
+		{
+			indexes.POST("/", h.UpsertIndexes)
+			indexes.GET("/search", h.SearchIndexes)
+		}
 	}
 }
 

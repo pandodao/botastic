@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/pandodao/botastic/api"
+	"github.com/pandodao/botastic/internal/vector"
 	"github.com/pandodao/botastic/models"
 	"github.com/pandodao/botastic/pkg/chanhub"
 	"github.com/pandodao/botastic/pkg/llms"
@@ -29,6 +30,7 @@ type Handler struct {
 	hub               *chanhub.Hub
 	turnTransmitter   TurnTransmitter
 	middlewareHandler MiddlewareHandler
+	vectorStorage     vector.Storage
 }
 
 func NewHandler(sh *storage.Handler, llms *llms.Handler, hub *chanhub.Hub, turnTransmitter TurnTransmitter,

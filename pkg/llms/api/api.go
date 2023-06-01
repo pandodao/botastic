@@ -2,8 +2,13 @@ package api
 
 import (
 	"context"
-	"time"
 )
+
+type Usage struct {
+	PromptTokens     int
+	CompletionTokens int
+	TotalTokens      int
+}
 
 type ChatRequest struct {
 	Temperature    float32
@@ -14,23 +19,33 @@ type ChatRequest struct {
 }
 
 type ChatResponse struct {
-	Duration         time.Duration
-	Response         string
-	PromptTokens     int
-	CompletionTokens int
-	TotalTokens      int
+	Response string
+	Usage    Usage
 }
 
-type CreateEmbeddingRequest struct{}
+type CreateEmbeddingRequest struct {
+	Input []string
+}
 
-type CreateEmbeddingResponse struct{}
+type Embedding struct {
+	Embedding []float32
+	Index     int
+}
+
+type CreateEmbeddingResponse struct {
+	Data  []Embedding
+	Usage Usage
+}
 
 type ChatLLM interface {
 	Name() string
 	Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error)
+	CalChatRequestTokens(ctx context.Context, req ChatRequest) (int, error)
 }
 
 type EmbeddingLLM interface {
 	Name() string
 	CreateEmbedding(ctx context.Context, req CreateEmbeddingRequest) (*CreateEmbeddingResponse, error)
+	CalEmbeddingRequestTokens(req CreateEmbeddingRequest) (int, error)
+	MaxRequestTokens() int // 0 means unlimited
 }

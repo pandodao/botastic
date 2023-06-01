@@ -162,3 +162,40 @@ type ListMiddlewaresResponse struct {
 	GeneralOptions []*MiddlewareDescOption `json:"general_options"`
 	Middlewares    []*MiddlewareDesc       `json:"middlewares"`
 }
+
+type UpsertIndexesRequest struct {
+	GroupKey       string `json:"group_key" binding:"required"`
+	EmbeddingModel string `json:"embedding_model" binding:"required"`
+	ForceRebuild   bool   `json:"force_rebuild"`
+	Items          []struct {
+		ID         uint           `json:"id"`
+		Category   string         `json:"category"`
+		Data       string         `json:"data" binding:"required"`
+		Properties map[string]any `json:"properties"`
+	} `json:"items" binding:"required"`
+}
+
+type UpsertIndexesResponse struct {
+	Items []*Index `json:"items"`
+}
+
+type Index struct {
+	ID         uint           `json:"id"`
+	GroupKey   string         `json:"group_key"`
+	Data       string         `json:"data"`
+	Properties map[string]any `json:"properties"`
+	Score      float64        `json:"score,omitempty"`
+	CreatedAt  time.Time      `json:"created_at"`
+	UpdatedAt  time.Time      `json:"updated_at"`
+}
+
+type SearchIndexesRequest struct {
+	GroupKey       string `form:"group_key" binding:"required"`
+	EmbeddingModel string `form:"embedding_model" binding:"required"`
+	Keyword        string `form:"keyword" binding:"required"`
+	Limit          int    `form:"limit"`
+}
+
+type SearchIndexesResponse struct {
+	Items []*Index `json:"items"`
+}

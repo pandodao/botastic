@@ -37,7 +37,7 @@ func Init(cfg config.DBConfig) (*Handler, error) {
 
 	m := gormigrate.New(db, gormigrate.DefaultOptions, []*gormigrate.Migration{})
 	m.InitSchema(func(tx *gorm.DB) error {
-		return tx.AutoMigrate(&models.Conv{}, &models.Turn{}, &models.Bot{})
+		return tx.AutoMigrate(&models.Conv{}, &models.Turn{}, &models.Bot{}, &models.Index{})
 	})
 
 	if err := m.Migrate(); err != nil {
