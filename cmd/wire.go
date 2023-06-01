@@ -3,10 +3,12 @@
 package cmd
 
 import (
+	"context"
 	"github.com/google/wire"
 	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/internal/httpd"
 	"github.com/pandodao/botastic/internal/starter"
+	"github.com/pandodao/botastic/internal/vector"
 	"github.com/pandodao/botastic/pkg/chanhub"
 	"github.com/pandodao/botastic/pkg/llms"
 	"github.com/pandodao/botastic/pkg/middleware"
@@ -16,16 +18,17 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-func provideHttpdStarter(cfgFile string) (starter.Starter, error) {
+func provideHttpdStarter(ctx context.Context, cfgFile string) (starter.Starter, error) {
 	panic(wire.Build(
 		provideLogger,
 		wire.NewSet(
 			config.Init,
-			wire.FieldsOf(new(*config.Config), "Log", "Httpd", "DB", "LLMs", "State"),
+			wire.FieldsOf(new(*config.Config), "Log", "Httpd", "DB", "LLMs", "State", "VectorStorage"),
 		),
 		wire.NewSet(storage.Init),
 		wire.NewSet(llms.New),
 		wire.NewSet(chanhub.New),
+		wire.NewSet(vector.Init),
 		wire.NewSet(
 			middleware.NewFetch,
 			middleware.NewDDGSearch,

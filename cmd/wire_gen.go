@@ -7,9 +7,11 @@
 package cmd
 
 import (
+	"context"
 	"github.com/pandodao/botastic/config"
 	"github.com/pandodao/botastic/internal/httpd"
 	"github.com/pandodao/botastic/internal/starter"
+	"github.com/pandodao/botastic/internal/vector"
 	"github.com/pandodao/botastic/pkg/chanhub"
 	"github.com/pandodao/botastic/pkg/llms"
 	"github.com/pandodao/botastic/pkg/middleware"
@@ -21,7 +23,7 @@ import (
 
 // Injectors from wire.go:
 
-func provideHttpdStarter(cfgFile2 string) (starter.Starter, error) {
+func provideHttpdStarter(ctx context.Context, cfgFile2 string) (starter.Starter, error) {
 	configConfig, err := config.Init(cfgFile2)
 	if err != nil {
 		return nil, err
@@ -46,7 +48,12 @@ func provideHttpdStarter(cfgFile2 string) (starter.Starter, error) {
 	v := provideMiddlewares(fetch, ddgSearch)
 	middlewareHandler := middleware.New(v...)
 	stateHandler := state.New(stateConfig, logger, handler, llmsHandler, hub, middlewareHandler)
-	httpdHandler := httpd.NewHandler(handler, llmsHandler, hub, stateHandler, logger, middlewareHandler)
+	vectorStorageConfig := configConfig.VectorStorage
+	vectorStorage, err := vector.Init(ctx, vectorStorageConfig)
+	if err != nil {
+		return nil, err
+	}
+	httpdHandler := httpd.NewHandler(handler, llmsHandler, hub, stateHandler, logger, middlewareHandler, vectorStorage)
 	server := httpd.New(httpdConfig, httpdHandler, logger)
 	v2 := provideStarters(server, stateHandler)
 	starterStarter := starter.Multi(v2...)
