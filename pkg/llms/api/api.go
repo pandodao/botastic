@@ -41,6 +41,7 @@ type ChatLLM interface {
 	Name() string
 	Chat(ctx context.Context, req ChatRequest) (*ChatResponse, error)
 	CalChatRequestTokens(ctx context.Context, req ChatRequest) (int, error)
+	MaxRequestTokens() int // 0 means unlimited
 }
 
 type EmbeddingLLM interface {

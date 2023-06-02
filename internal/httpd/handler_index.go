@@ -67,35 +67,37 @@ func (h *Handler) UpsertIndexes(c *gin.Context) {
 		}
 	}
 
-	embeddingRequest := llmsapi.CreateEmbeddingRequest{
-		Input: embeddingInput,
-	}
-	tokens, err := m.CalEmbeddingRequestTokens(embeddingRequest)
-	if err != nil {
-		h.respErr(c, http.StatusInternalServerError, fmt.Errorf("failed to calculate embedding tokens: %w", err))
-		return
-	}
-	if m.MaxRequestTokens() > 0 && tokens > m.MaxRequestTokens() {
-		h.respErr(c, http.StatusBadRequest, fmt.Errorf("too many tokens: %d, max: %d", tokens, m.MaxRequestTokens()))
-		return
-	}
-
-	embeddingResponse, err := m.CreateEmbedding(c, embeddingRequest)
-	if err != nil {
-		h.respErr(c, http.StatusInternalServerError, fmt.Errorf("failed to create embedding: %w", err))
-		return
-	}
-
 	var vs []*vector.Vector
-	for _, item := range embeddingResponse.Data {
-		index := embeddingIndexes[item.Index]
-		if h.vectorStorage == nil {
-			index.Vector = item.Embedding
-		} else {
-			vs = append(vs, &vector.Vector{
-				IndexID: index.ID,
-				Data:    item.Embedding,
-			})
+	if len(embeddingInput) > 0 {
+		embeddingRequest := llmsapi.CreateEmbeddingRequest{
+			Input: embeddingInput,
+		}
+		tokens, err := m.CalEmbeddingRequestTokens(embeddingRequest)
+		if err != nil {
+			h.respErr(c, http.StatusInternalServerError, fmt.Errorf("failed to calculate embedding tokens: %w", err))
+			return
+		}
+		if m.MaxRequestTokens() > 0 && tokens > m.MaxRequestTokens() {
+			h.respErr(c, http.StatusBadRequest, fmt.Errorf("too many tokens: %d, max: %d", tokens, m.MaxRequestTokens()))
+			return
+		}
+
+		embeddingResponse, err := m.CreateEmbedding(c, embeddingRequest)
+		if err != nil {
+			h.respErr(c, http.StatusInternalServerError, fmt.Errorf("failed to create embedding: %w", err))
+			return
+		}
+
+		for _, item := range embeddingResponse.Data {
+			index := embeddingIndexes[item.Index]
+			if h.vectorStorage == nil {
+				index.Vector = item.Embedding
+			} else {
+				vs = append(vs, &vector.Vector{
+					IndexID: index.ID,
+					Data:    item.Embedding,
+				})
+			}
 		}
 	}
 

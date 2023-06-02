@@ -169,7 +169,6 @@ type UpsertIndexesRequest struct {
 	ForceRebuild   bool   `json:"force_rebuild"`
 	Items          []struct {
 		ID         uint           `json:"id"`
-		Category   string         `json:"category"`
 		Data       string         `json:"data" binding:"required"`
 		Properties map[string]any `json:"properties"`
 	} `json:"items" binding:"required"`

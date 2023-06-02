@@ -8,7 +8,6 @@ import (
 	"github.com/pandodao/botastic/pkg/llms/api"
 	"github.com/pkoukk/tiktoken-go"
 	"github.com/sashabaranov/go-openai"
-	gogpt "github.com/sashabaranov/go-openai"
 )
 
 type Handler struct {
@@ -31,6 +30,24 @@ func (h *Handler) ChatModels() []api.ChatLLM {
 			Handler: h,
 		})
 	}
+	return ms
+}
+
+func (h *Handler) EmbeddingModels() []api.EmbeddingLLM {
+	ms := make([]api.EmbeddingLLM, 0, len(h.cfg.EmbeddingModels))
+	for _, em := range h.cfg.EmbeddingModels {
+		var embeddingModel openai.EmbeddingModel
+		_ = embeddingModel.UnmarshalText([]byte(em))
+		if embeddingModel == openai.Unknown {
+			continue
+		}
+		ms = append(ms, &HandlerWithModel{
+			model:          em,
+			embeddingModel: embeddingModel,
+			Handler:        h,
+		})
+	}
+
 	return ms
 }
 
@@ -109,7 +126,7 @@ func (h *HandlerWithModel) CreateEmbedding(ctx context.Context, req api.CreateEm
 		return nil, err
 	}
 
-	embeddings := make([]api.Embedding, 0, len(resp.Data))
+	embeddings := make([]api.Embedding, len(resp.Data))
 	for i, d := range resp.Data {
 		embeddings[i] = api.Embedding{
 			Embedding: d.Embedding,
@@ -125,6 +142,23 @@ func (h *HandlerWithModel) CreateEmbedding(ctx context.Context, req api.CreateEm
 			TotalTokens:      resp.Usage.TotalTokens,
 		},
 	}, nil
+}
+
+func (h *HandlerWithModel) MaxRequestTokens() int {
+	switch h.model {
+	// chat models
+	case "gpt-3.5-turbo-0301", "gpt-3.5-turbo":
+		return 4096
+	case "gpt-4-0314", "gpt-4":
+		return 8192
+	case "gpt-4-32k-0314", "gpt-4-32k":
+		return 32768
+
+	// embedding models
+	case "text-embedding-ada-002":
+		return 8191
+	}
+	return 0
 }
 
 func (h *HandlerWithModel) CalEmbeddingRequestTokens(req api.CreateEmbeddingRequest) (int, error) {
@@ -144,7 +178,7 @@ func (h *HandlerWithModel) CalEmbeddingRequestTokens(req api.CreateEmbeddingRequ
 func getMessagesFromRequest(req api.ChatRequest) []openai.ChatCompletionMessage {
 	messages := make([]openai.ChatCompletionMessage, 0, len(req.History)+2)
 	if req.Prompt != "" {
-		messages = append(messages, gogpt.ChatCompletionMessage{
+		messages = append(messages, openai.ChatCompletionMessage{
 			Role:    openai.ChatMessageRoleSystem,
 			Content: req.Prompt,
 		})
@@ -154,19 +188,19 @@ func getMessagesFromRequest(req api.ChatRequest) []openai.ChatCompletionMessage 
 		if i%2 == 1 {
 			role = openai.ChatMessageRoleAssistant
 		}
-		messages = append(messages, gogpt.ChatCompletionMessage{
+		messages = append(messages, openai.ChatCompletionMessage{
 			Role:    role,
 			Content: req.History[i],
 		})
 	}
 
-	messages = append(messages, gogpt.ChatCompletionMessage{
+	messages = append(messages, openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleUser,
 		Content: req.Request,
 	})
 
 	if req.BoundaryPrompt != "" {
-		messages = append(messages, gogpt.ChatCompletionMessage{
+		messages = append(messages, openai.ChatCompletionMessage{
 			Role:    openai.ChatMessageRoleSystem,
 			Content: req.BoundaryPrompt,
 		})

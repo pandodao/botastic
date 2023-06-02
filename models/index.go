@@ -20,6 +20,10 @@ type Index struct {
 	UpdatedAt  time.Time
 }
 
+func (i Index) TableName() string {
+	return "indexes"
+}
+
 func (i Index) API() *api.Index {
 	return &api.Index{
 		ID:         i.ID,
