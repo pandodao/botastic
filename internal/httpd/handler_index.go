@@ -12,6 +12,7 @@ import (
 	"github.com/pandodao/botastic/internal/vector"
 	"github.com/pandodao/botastic/models"
 	llmsapi "github.com/pandodao/botastic/pkg/llms/api"
+	"go.uber.org/zap"
 )
 
 func (h *Handler) UpsertIndexes(c *gin.Context) {
@@ -30,6 +31,7 @@ func (h *Handler) UpsertIndexes(c *gin.Context) {
 	indexes := make([]*models.Index, 0, len(req.Items))
 	embeddingInput := make([]string, 0, len(req.Items))
 	embeddingIndexes := make([]*models.Index, 0, len(req.Items))
+	rollbackIndexes := make([]*models.Index, 0, len(req.Items))
 
 	for _, item := range req.Items {
 		var index *models.Index
@@ -55,6 +57,8 @@ func (h *Handler) UpsertIndexes(c *gin.Context) {
 				Properties: models.IndexProperties(item.Properties),
 			}
 		} else {
+			rollbackIndex := *index
+			rollbackIndexes = append(rollbackIndexes, &rollbackIndex)
 			if index.Data != item.Data || (h.vectorStorage == nil && len(index.Vector) == 0) {
 				createEmbedding = true
 			}
@@ -101,14 +105,26 @@ func (h *Handler) UpsertIndexes(c *gin.Context) {
 		}
 	}
 
-	if err := h.sh.UpsertIndexes(c, indexes, func() error {
-		if h.vectorStorage != nil && len(vs) > 0 {
-			return h.vectorStorage.Upsert(c, req.GroupKey, vs)
-		}
-		return nil
-	}); err != nil {
+	newIndexesIDs, err := h.sh.UpsertIndexes(c, indexes)
+	if err != nil {
 		h.respErr(c, http.StatusInternalServerError, fmt.Errorf("failed to upsert indexes: %w", err))
 		return
+	}
+
+	if h.vectorStorage != nil && len(vs) > 0 {
+		if err := h.vectorStorage.Upsert(c, req.GroupKey, vs); err != nil {
+			if len(newIndexesIDs) > 0 {
+				if err := h.sh.DeleteIndexes(c, newIndexesIDs); err != nil {
+					h.logger.With(zap.Error(err), zap.Any("ids", newIndexesIDs)).Error("rollback error: failed to delete indexes")
+				}
+			}
+
+			if len(rollbackIndexes) > 0 {
+				if _, err := h.sh.UpsertIndexes(c, rollbackIndexes); err != nil {
+					h.logger.With(zap.Error(err)).Error("rollback error: failed to upsert indexes")
+				}
+			}
+		}
 	}
 
 	respIndexes := make([]*api.Index, 0, len(indexes))

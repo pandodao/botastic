@@ -8,13 +8,15 @@ import (
 	"gorm.io/gorm"
 )
 
-func (h *Handler) UpsertIndexes(ctx context.Context, indexes []*models.Index, callback func() error) error {
-	return h.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+func (h *Handler) UpsertIndexes(ctx context.Context, indexes []*models.Index) ([]uint, error) {
+	newCreatedIndexes := []uint{}
+	if err := h.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		for _, index := range indexes {
 			if index.ID == 0 {
 				if err := tx.Create(index).Error; err != nil {
 					return err
 				}
+				newCreatedIndexes = append(newCreatedIndexes, index.ID)
 			} else {
 				update := map[string]interface{}{
 					"properties": index.Properties,
@@ -28,8 +30,16 @@ func (h *Handler) UpsertIndexes(ctx context.Context, indexes []*models.Index, ca
 			}
 		}
 
-		return callback()
-	})
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return newCreatedIndexes, nil
+}
+
+func (h *Handler) DeleteIndexes(ctx context.Context, ids []uint) error {
+	return h.db.WithContext(ctx).Where("id IN (?)", ids).Delete(&models.Index{}).Error
 }
 
 func (h *Handler) GetIndexesByGroupKey(ctx context.Context, groupKey string) ([]*models.Index, error) {
