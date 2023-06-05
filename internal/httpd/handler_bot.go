@@ -17,7 +17,7 @@ func (h *Handler) CreateBot(c *gin.Context) {
 		return
 	}
 
-	if _, ok := h.llms.GetChatModel(req.ChatModel); !ok {
+	if _, err := h.llms.GetChatModel(req.ChatModel); err != nil {
 		h.respErr(c, http.StatusBadRequest, errors.New("chat model does not exist"))
 		return
 	}
@@ -98,7 +98,7 @@ func (h *Handler) UpdateBot(c *gin.Context) {
 		return
 	}
 
-	if _, ok := h.llms.GetChatModel(req.ChatModel); !ok {
+	if _, err := h.llms.GetChatModel(req.ChatModel); err != nil {
 		h.respErr(c, http.StatusBadRequest, errors.New("chat model does not exist"))
 		return
 	}

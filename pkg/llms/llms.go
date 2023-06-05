@@ -54,14 +54,20 @@ func New(cfg config.LLMsConfig) *Handler {
 	return h
 }
 
-func (h *Handler) GetChatModel(key string) (api.ChatLLM, bool) {
+func (h *Handler) GetChatModel(key string) (api.ChatLLM, error) {
 	v, ok := h.chatMap[key]
-	return v, ok
+	if !ok {
+		return nil, api.ErrModelNotFound
+	}
+	return v, nil
 }
 
-func (h *Handler) GetEmbeddingModel(key string) (api.EmbeddingLLM, bool) {
+func (h *Handler) GetEmbeddingModel(key string) (api.EmbeddingLLM, error) {
 	v, ok := h.embeddingMap[key]
-	return v, ok
+	if !ok {
+		return nil, api.ErrModelNotFound
+	}
+	return v, nil
 }
 
 func (h *Handler) ChatModels() []string {

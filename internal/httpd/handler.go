@@ -30,11 +30,11 @@ type Handler struct {
 	hub               *chanhub.Hub
 	turnTransmitter   TurnTransmitter
 	middlewareHandler MiddlewareHandler
-	vectorStorage     vector.Storage
+	vih               *vector.IndexHandler
 }
 
 func NewHandler(sh *storage.Handler, llms *llms.Handler, hub *chanhub.Hub, turnTransmitter TurnTransmitter,
-	logger *zap.Logger, middlewareHandler MiddlewareHandler, vs vector.Storage) *Handler {
+	logger *zap.Logger, middlewareHandler MiddlewareHandler, vih *vector.IndexHandler) *Handler {
 	return &Handler{
 		logger:            logger.Named("httpd/handler"),
 		llms:              llms,
@@ -42,7 +42,7 @@ func NewHandler(sh *storage.Handler, llms *llms.Handler, hub *chanhub.Hub, turnT
 		hub:               hub,
 		turnTransmitter:   turnTransmitter,
 		middlewareHandler: middlewareHandler,
-		vectorStorage:     vs,
+		vih:               vih,
 	}
 }
 

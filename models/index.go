@@ -18,6 +18,8 @@ type Index struct {
 	Properties IndexProperties
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+
+	Score float64 `gorm:"-"`
 }
 
 func (i Index) TableName() string {
@@ -32,6 +34,7 @@ func (i Index) API() *api.Index {
 		Properties: i.Properties,
 		CreatedAt:  i.CreatedAt,
 		UpdatedAt:  i.UpdatedAt,
+		Score:      i.Score,
 	}
 }
 

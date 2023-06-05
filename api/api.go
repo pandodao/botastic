@@ -45,10 +45,9 @@ type GetConvResponse Conv
 
 type MiddlewareResult struct {
 	Middleware
-	RenderName string              `json:"render_name,omitempty"`
-	Result     string              `json:"result,omitempty"`
 	Code       MiddlewareErrorCode `json:"code"`
 	Err        string              `json:"err,omitempty"`
+	RenderData map[string]any      `json:"render_data,omitempty"`
 }
 
 type TurnError struct {

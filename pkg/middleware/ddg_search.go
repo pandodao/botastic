@@ -32,11 +32,13 @@ func (m *DDGSearch) Desc() *api.MiddlewareDesc {
 	}
 }
 
-func (m *DDGSearch) Process(ctx context.Context, opts map[string]*api.MiddlewareDescOption, turn *models.Turn) (string, error) {
+func (m *DDGSearch) Process(ctx context.Context, opts map[string]*api.MiddlewareDescOption, turn *models.Turn) (string, map[string]any, error) {
 	limit := opts["limit"].Value.(int)
 	r, err := ddg.Search(ctx, turn.Request, limit)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
-	return r.Text()
+
+	result, err := r.Text()
+	return result, nil, err
 }

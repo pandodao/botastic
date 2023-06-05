@@ -53,7 +53,8 @@ func provideHttpdStarter(ctx context.Context, cfgFile2 string) (starter.Starter,
 	if err != nil {
 		return nil, err
 	}
-	httpdHandler := httpd.NewHandler(handler, llmsHandler, hub, stateHandler, logger, middlewareHandler, vectorStorage)
+	indexHandler := vector.NewIndexHandler(vectorStorage, handler, llmsHandler, logger)
+	httpdHandler := httpd.NewHandler(handler, llmsHandler, hub, stateHandler, logger, middlewareHandler, indexHandler)
 	server := httpd.New(httpdConfig, httpdHandler, logger)
 	v2 := provideStarters(server, stateHandler)
 	starterStarter := starter.Multi(v2...)

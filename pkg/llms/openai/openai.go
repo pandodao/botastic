@@ -63,6 +63,15 @@ func (h *HandlerWithModel) Name() string {
 }
 
 func (h *HandlerWithModel) Chat(ctx context.Context, req api.ChatRequest) (*api.ChatResponse, error) {
+	tokens, err := h.calChatRequestTokens(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if tokens >= h.MaxRequestTokens() {
+		return nil, api.ErrTooManyRequestTokens
+	}
+
 	chatReq := openai.ChatCompletionRequest{
 		Model:       h.model,
 		Temperature: req.Temperature,
@@ -83,7 +92,7 @@ func (h *HandlerWithModel) Chat(ctx context.Context, req api.ChatRequest) (*api.
 	}, nil
 }
 
-func (h *HandlerWithModel) CalChatRequestTokens(ctx context.Context, req api.ChatRequest) (int, error) {
+func (h *HandlerWithModel) calChatRequestTokens(ctx context.Context, req api.ChatRequest) (int, error) {
 	tkm, err := tiktoken.EncodingForModel(h.model)
 	if err != nil {
 		return 0, err
@@ -118,6 +127,15 @@ func (h *HandlerWithModel) CalChatRequestTokens(ctx context.Context, req api.Cha
 }
 
 func (h *HandlerWithModel) CreateEmbedding(ctx context.Context, req api.CreateEmbeddingRequest) (*api.CreateEmbeddingResponse, error) {
+	tokens, err := h.calEmbeddingRequestTokens(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if tokens >= h.MaxRequestTokens() {
+		return nil, api.ErrTooManyRequestTokens
+	}
+
 	resp, err := h.client.CreateEmbeddings(ctx, openai.EmbeddingRequest{
 		Input: req.Input,
 		Model: h.embeddingModel,
@@ -161,7 +179,7 @@ func (h *HandlerWithModel) MaxRequestTokens() int {
 	return 0
 }
 
-func (h *HandlerWithModel) CalEmbeddingRequestTokens(req api.CreateEmbeddingRequest) (int, error) {
+func (h *HandlerWithModel) calEmbeddingRequestTokens(req api.CreateEmbeddingRequest) (int, error) {
 	tkm, err := tiktoken.EncodingForModel(h.model)
 	if err != nil {
 		return 0, fmt.Errorf("model %s not supported", h.model)

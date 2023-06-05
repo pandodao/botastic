@@ -19,7 +19,7 @@ const (
 
 type Middleware interface {
 	Desc() *api.MiddlewareDesc
-	Process(context.Context, map[string]*api.MiddlewareDescOption, *models.Turn) (string, error)
+	Process(context.Context, map[string]*api.MiddlewareDescOption, *models.Turn) (string, map[string]any, error)
 }
 
 type Handler struct {
@@ -90,7 +90,7 @@ func (h *Handler) Process(ctx context.Context, mc api.MiddlewareConfig, turn *mo
 			return rs, false
 		}
 
-		result, err := func() (string, error) {
+		result, extraData, err := func() (string, map[string]any, error) {
 			timeoutSeconds := generalOptions[generalOptionTimeoutSeconds].Value.(int)
 			ctx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSeconds)*time.Second)
 			defer cancel()
@@ -108,10 +108,15 @@ func (h *Handler) Process(ctx context.Context, mc api.MiddlewareConfig, turn *mo
 				return rs, false
 			}
 		} else {
-			r.Result = result
-			r.RenderName = "MIDDLEWARE_RESULT_" + item.ID
+			r.RenderData = map[string]any{
+				fmt.Sprintf("MIDDLEWARE_%s_RESULT", item.ID): result,
+			}
+			for k, v := range extraData {
+				r.RenderData[fmt.Sprintf("MIDDLEWARE_%s_DATA_%s", item.ID, strings.ToUpper(k))] = v
+			}
 		}
 	}
+
 	return rs, true
 }
 

@@ -125,7 +125,9 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 
 			data := map[string]any{}
 			for _, r := range middlewareResults {
-				data[r.RenderName] = r.Result
+				for k, v := range r.RenderData {
+					data[k] = v
+				}
 			}
 
 			if err := h.renderBotPrompts(bot, data); err != nil {
@@ -133,8 +135,8 @@ func (h *Handler) handleTurnsWorker(ctx context.Context) {
 			}
 		}
 
-		cm, ok := h.llms.GetChatModel(bot.ChatModel)
-		if !ok {
+		cm, err := h.llms.GetChatModel(bot.ChatModel)
+		if err != nil {
 			return nil, models.NewTurnError(api.TurnErrorCodeChatModelNotFound)
 		}
 

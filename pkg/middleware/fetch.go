@@ -35,27 +35,27 @@ func (m *Fetch) Desc() *api.MiddlewareDesc {
 	}
 }
 
-func (m *Fetch) Process(ctx context.Context, opts map[string]*api.MiddlewareDescOption, turn *models.Turn) (string, error) {
+func (m *Fetch) Process(ctx context.Context, opts map[string]*api.MiddlewareDescOption, turn *models.Turn) (string, map[string]any, error) {
 	u := opts["url"].Value.(string)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	if resp.StatusCode/100 != 2 {
-		return "", fmt.Errorf("failed to fetch url: %s, status code: %d, body: %s", u, resp.StatusCode, string(body))
+		return "", nil, fmt.Errorf("failed to fetch url: %s, status code: %d, body: %s", u, resp.StatusCode, string(body))
 	}
 
-	return string(body), nil
+	return string(body), nil, nil
 }

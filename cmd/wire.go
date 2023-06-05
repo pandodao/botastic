@@ -28,7 +28,10 @@ func provideHttpdStarter(ctx context.Context, cfgFile string) (starter.Starter, 
 		wire.NewSet(storage.Init),
 		wire.NewSet(llms.New),
 		wire.NewSet(chanhub.New),
-		wire.NewSet(vector.Init),
+		wire.NewSet(
+			vector.Init,
+			vector.NewIndexHandler,
+		),
 		wire.NewSet(
 			middleware.NewFetch,
 			middleware.NewDDGSearch,
